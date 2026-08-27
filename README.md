@@ -4,12 +4,7 @@ Multi-site pharmacy operations platform for the Karsons Pharmacy Group, Isle of 
 
 ## Repository layout
 
-| Folder | Status |
-| --- | --- |
-| **`platform/`** | **The live build. All current work happens here.** |
-| `karsons/` | Superseded first build, kept only for reference. Not deployed. |
-
-Anything below refers to `platform/`.
+Everything lives in **`platform/`**. Paths below are relative to it.
 
 ## What it does
 
