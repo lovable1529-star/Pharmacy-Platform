@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Daily Operations · Karsons Pharmacy Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand-900:#241536; --brand-700:#3E2465; --brand-600:#5B3A8E;
+  --brand-300:#B49FD6; --brand-100:#EDE6F7; --brand-50:#F6F2FB;
+  --green-700:#166B41; --green-100:#DFF3E7;
+  --amber-700:#8A5A12; --amber-100:#FDF0DA;
+  --red-700:#B3402E; --red-100:#FBE9E5;
+  --ink:#211A2C; --soft:#5A5266; --line:#E3E0EC;
+  --surface:#fff; --canvas:#F7F6FA;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:static;height:auto}}
+
+.sidebar{background:var(--brand-900);color:#fff;padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:0 22px 20px}
+.brand-mark{width:34px;height:34px;border-radius:9px;flex:none;
+  background:linear-gradient(150deg,#1F8A54,#5B3A8E);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--brand-300)}
+.nav-group{padding:14px 22px 4px;font-size:11px;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--brand-300)}
+.sidebar a{display:block;padding:7px 22px;color:#E6DEF4;text-decoration:none;font-size:14px}
+.sidebar a:hover{background:rgba(255,255,255,.07)}
+.sidebar a.active{background:rgba(255,255,255,.14);font-weight:600;color:#fff;
+  box-shadow:inset 3px 0 0 #1F8A54}
+
+.content{padding:48px 56px 96px;max-width:940px}
+@media(max-width:900px){.content{padding:28px 20px 64px}}
+
+h1,h2,h3,h4{font-family:"Space Grotesk",Inter,sans-serif;letter-spacing:-.015em;
+  color:var(--brand-900);line-height:1.25}
+h1{font-size:34px;margin:0 0 8px}
+h2{font-size:23px;margin:44px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-size:17px;margin:28px 0 8px}
+h4{font-size:15px;margin:20px 0 6px;color:var(--soft)}
+p{margin:0 0 14px}
+a{color:var(--brand-600)}
+strong{color:var(--brand-900)}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+ul,ol{margin:0 0 16px;padding-left:22px}
+li{margin-bottom:5px}
+
+code{background:var(--brand-50);border:1px solid var(--brand-100);border-radius:4px;
+  padding:1px 5px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.87em;
+  color:var(--brand-700)}
+pre.code{background:var(--brand-900);color:#E9E3F5;padding:16px 18px;border-radius:12px;
+  overflow-x:auto;margin:0 0 18px;font-size:13px;line-height:1.6;position:relative}
+pre.code code{background:none;border:0;padding:0;color:inherit;font-size:inherit}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:8px;right:12px;
+  font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--brand-300)}
+
+blockquote{margin:0 0 18px;padding:12px 18px;background:var(--brand-50);
+  border-left:3px solid var(--brand-600);border-radius:0 8px 8px 0;color:var(--brand-700)}
+
+.table-wrap{overflow-x:auto;margin:0 0 20px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th{background:var(--brand-50);text-align:left;padding:10px 13px;font-weight:600;
+  color:var(--brand-900);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:16px 20px;margin:0 0 32px}
+.toc-title{font-size:11px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--soft);margin-bottom:8px}
+.toc ul{list-style:none;padding:0;margin:0}
+.toc li{margin-bottom:3px;font-size:14px}
+.toc li.sub{padding-left:16px;font-size:13px}
+.toc a{text-decoration:none}
+.toc a:hover{text-decoration:underline}
+
+.doc-footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+  font-size:13px;color:var(--soft);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">K</div>
+      <div>
+        <div class="brand-name">Karsons Platform</div>
+        <div class="brand-sub">Documentation</div>
+      </div>
+    </div>
+    
+      <div class="nav-group">Overview</div>
+      <a href="../index.html">Karsons Pharmacy Platform</a>
+      <div class="nav-group">Architecture</div>
+      <a href="../architecture/overview.html">Architecture Overview</a>
+      <div class="nav-group">Modules</div>
+      <a href="../modules/audit.html">Module — Audit Log</a><a href="../modules/authorisation.html">Module — Authorisation & Server Actions</a><a href="../modules/clinical-safety.html">Module — Clinical Safety</a><a href="../modules/decision-engine.html">Module — Decision Engine</a><a href="../modules/performance.html">Module — Performance & Hosting Cost</a><a href="../modules/service-designer.html">Module — Service Designer & Form Runtime</a>
+      <div class="nav-group">Deployment</div>
+      <a href="../deployment/runbook.html">Deployment Runbook</a><a href="../deployment/run-it-yourself.html">Run It Yourself</a>
+      <div class="nav-group">For pharmacy staff</div>
+      <a href="../client-guides/administrator-guide.html">Administrator Guide</a><a href="../client-guides/building-services.html">Building Your Own Services</a><a href="../client-guides/daily-operations.html" class="active">Daily Operations</a><a href="../client-guides/pharmacist-guide.html">Pharmacist Guide</a>
+  </aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-title">On this page</div><ul><li class=""><a href="#opening-the-pharmacy">Opening the pharmacy</a></li><li class=""><a href="#through-the-day">Through the day</a></li><li class="sub"><a href="#a-booked-patient-arrives">A booked patient arrives</a></li><li class="sub"><a href="#a-walk-in-arrives">A walk-in arrives</a></li><li class="sub"><a href="#someone-rings-to-book">Someone rings to book</a></li><li class="sub"><a href="#someone-rings-to-change-a-booking">Someone rings to change a booking</a></li><li class=""><a href="#closing-the-pharmacy">Closing the pharmacy</a></li><li class=""><a href="#weekly">Weekly</a></li><li class=""><a href="#when-something-goes-wrong">When something goes wrong</a></li><li class="sub"><a href="#a-patient-says-they-never-got-their-confirmation">A patient says they never got their confirmation</a></li><li class="sub"><a href="#a-gp-says-they-never-received-a-notification">A GP says they never received a notification</a></li><li class="sub"><a href="#a-batch-is-recalled">A batch is recalled</a></li><li class="sub"><a href="#you-made-a-mistake-on-a-record">You made a mistake on a record</a></li><li class=""><a href="#things-that-surprise-people">Things that surprise people</a></li></ul></nav>
+    <h1 id="daily-operations">Daily Operations</h1>
+<p><strong>A short guide to running the system day to day</strong></p>
+<hr>
+<h2 id="opening-the-pharmacy">Opening the pharmacy</h2>
+<p>Two things are worth thirty seconds each morning.</p>
+<p><strong>Check your dashboard.</strong> It shows today's appointments, anyone in the walk-in queue, requests waiting for review, and stock running low or nearing expiry.</p>
+<p><strong>Check yesterday's messages.</strong> Go to <strong>Communications → Sent</strong>. Anything that failed to deliver is flagged in red. A bounced GP notification means a surgery has no record of something that happened to their patient — worth catching the same day rather than a month later.</p>
+<hr>
+<h2 id="through-the-day">Through the day</h2>
+<h3 id="a-booked-patient-arrives">A booked patient arrives</h3>
+<p>Find them on the dashboard, click <strong>Arrived</strong>, then <strong>Start consultation</strong>.</p>
+<h3 id="a-walk-in-arrives">A walk-in arrives</h3>
+<p>Search for them. If they are not in the system, add them. Either way they join the walk-in queue, and the dashboard shows how long each person has waited.</p>
+<h3 id="someone-rings-to-book">Someone rings to book</h3>
+<p><strong>Appointments → New booking.</strong> Pick the service, the branch and a slot.</p>
+<h3 id="someone-rings-to-change-a-booking">Someone rings to change a booking</h3>
+<p>Find the appointment, click <strong>Reschedule</strong>. The patient is notified automatically, and the old slot is released for someone else.</p>
+<hr>
+<h2 id="closing-the-pharmacy">Closing the pharmacy</h2>
+<p>Most of this happens on its own.</p>
+<p><strong>At 6pm</strong> each GP surgery receives one email listing every patient of theirs you saw that day. You do not need to do anything.</p>
+<p><strong>At 6:30pm</strong> your team receives a summary of the day — how many consultations, which services, NHS versus private, split by branch.</p>
+<p><strong>Before you leave</strong>, glance at anything still sitting in <strong>Needs review</strong>. Requests waiting overnight are patients waiting overnight.</p>
+<hr>
+<h2 id="weekly">Weekly</h2>
+<p><strong>Check expiring stock.</strong> <strong>Inventory → Expiry.</strong> The system shows how much you are likely to still be holding when a batch expires, based on your current usage rate. That is your cue to run a clinic or move stock between branches.</p>
+<p><strong>Check your numbers.</strong> <strong>Reports</strong> shows uptake by service and branch. Useful for spotting a service that is not being offered as often as you think it is.</p>
+<hr>
+<h2 id="when-something-goes-wrong">When something goes wrong</h2>
+<h3 id="a-patient-says-they-never-got-their-confirmation">A patient says they never got their confirmation</h3>
+<p>Open their record and look at <strong>Messages</strong>. You can see exactly what was sent, when, and whether it arrived. If it bounced, correct their email and resend.</p>
+<h3 id="a-gp-says-they-never-received-a-notification">A GP says they never received a notification</h3>
+<p><strong>Communications → Sent</strong>, filter by that surgery. If it shows as delivered, the message reached their mail server. If it bounced, check the address under <strong>Settings → GP surgeries</strong>.</p>
+<h3 id="a-batch-is-recalled">A batch is recalled</h3>
+<p><strong>Inventory → Batches → [batch] → Recall.</strong></p>
+<p>The system immediately lists every patient who received it, tells you how many you can contact by email or text, and how many will need a phone call. Review the list, then send.</p>
+<p>The batch is blocked from further use straight away.</p>
+<h3 id="you-made-a-mistake-on-a-record">You made a mistake on a record</h3>
+<p>Open it and click <strong>Edit</strong>. Your correction is saved alongside the original with your name and the time.</p>
+<p><strong>Issued prescriptions cannot be edited.</strong> Issue a replacement — the system links the two together.</p>
+<hr>
+<h2 id="things-that-surprise-people">Things that surprise people</h2>
+<p><strong>A patient seen at Onchan shows up at Kirk Michael.</strong> That is deliberate. Their full history follows them, which means you can see if they collected something at the other branch last week.</p>
+<p><strong>Nothing is ever deleted.</strong> If a record seems to have vanished it has been archived. Ask an administrator.</p>
+<p><strong>Green does not mean automatic.</strong> A green repeat request means nothing was flagged. A pharmacist still confirms every supply. That is the design, not a missing feature.</p>
+<p><strong>Some questions only you see.</strong> Questions marked for the pharmacist — the fever check, for instance — never appear to the patient. They sit in the right place in the form so the clinical order makes sense, and appear on your screen at the appointment.</p>
+    <div class="doc-footer">
+      <span>Karsons Pharmacy Platform</span>
+      <span>Generated from source — do not edit HTML directly</span>
+    </div>
+  </main>
+</div>
+</body>
+</html>

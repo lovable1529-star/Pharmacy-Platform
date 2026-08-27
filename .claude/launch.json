@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "karsons-platform",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["platform/node_modules/next/dist/bin/next", "dev", "platform", "--port", "3100"],
+      "port": 3100
+    }
+  ]
+}

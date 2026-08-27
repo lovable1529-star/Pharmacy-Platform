@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Module — Service Designer & Form Runtime · Karsons Pharmacy Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand-900:#241536; --brand-700:#3E2465; --brand-600:#5B3A8E;
+  --brand-300:#B49FD6; --brand-100:#EDE6F7; --brand-50:#F6F2FB;
+  --green-700:#166B41; --green-100:#DFF3E7;
+  --amber-700:#8A5A12; --amber-100:#FDF0DA;
+  --red-700:#B3402E; --red-100:#FBE9E5;
+  --ink:#211A2C; --soft:#5A5266; --line:#E3E0EC;
+  --surface:#fff; --canvas:#F7F6FA;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:static;height:auto}}
+
+.sidebar{background:var(--brand-900);color:#fff;padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:0 22px 20px}
+.brand-mark{width:34px;height:34px;border-radius:9px;flex:none;
+  background:linear-gradient(150deg,#1F8A54,#5B3A8E);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--brand-300)}
+.nav-group{padding:14px 22px 4px;font-size:11px;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--brand-300)}
+.sidebar a{display:block;padding:7px 22px;color:#E6DEF4;text-decoration:none;font-size:14px}
+.sidebar a:hover{background:rgba(255,255,255,.07)}
+.sidebar a.active{background:rgba(255,255,255,.14);font-weight:600;color:#fff;
+  box-shadow:inset 3px 0 0 #1F8A54}
+
+.content{padding:48px 56px 96px;max-width:940px}
+@media(max-width:900px){.content{padding:28px 20px 64px}}
+
+h1,h2,h3,h4{font-family:"Space Grotesk",Inter,sans-serif;letter-spacing:-.015em;
+  color:var(--brand-900);line-height:1.25}
+h1{font-size:34px;margin:0 0 8px}
+h2{font-size:23px;margin:44px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-size:17px;margin:28px 0 8px}
+h4{font-size:15px;margin:20px 0 6px;color:var(--soft)}
+p{margin:0 0 14px}
+a{color:var(--brand-600)}
+strong{color:var(--brand-900)}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+ul,ol{margin:0 0 16px;padding-left:22px}
+li{margin-bottom:5px}
+
+code{background:var(--brand-50);border:1px solid var(--brand-100);border-radius:4px;
+  padding:1px 5px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.87em;
+  color:var(--brand-700)}
+pre.code{background:var(--brand-900);color:#E9E3F5;padding:16px 18px;border-radius:12px;
+  overflow-x:auto;margin:0 0 18px;font-size:13px;line-height:1.6;position:relative}
+pre.code code{background:none;border:0;padding:0;color:inherit;font-size:inherit}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:8px;right:12px;
+  font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--brand-300)}
+
+blockquote{margin:0 0 18px;padding:12px 18px;background:var(--brand-50);
+  border-left:3px solid var(--brand-600);border-radius:0 8px 8px 0;color:var(--brand-700)}
+
+.table-wrap{overflow-x:auto;margin:0 0 20px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th{background:var(--brand-50);text-align:left;padding:10px 13px;font-weight:600;
+  color:var(--brand-900);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:16px 20px;margin:0 0 32px}
+.toc-title{font-size:11px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--soft);margin-bottom:8px}
+.toc ul{list-style:none;padding:0;margin:0}
+.toc li{margin-bottom:3px;font-size:14px}
+.toc li.sub{padding-left:16px;font-size:13px}
+.toc a{text-decoration:none}
+.toc a:hover{text-decoration:underline}
+
+.doc-footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+  font-size:13px;color:var(--soft);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">K</div>
+      <div>
+        <div class="brand-name">Karsons Platform</div>
+        <div class="brand-sub">Documentation</div>
+      </div>
+    </div>
+    
+      <div class="nav-group">Overview</div>
+      <a href="../index.html">Karsons Pharmacy Platform</a>
+      <div class="nav-group">Architecture</div>
+      <a href="../architecture/overview.html">Architecture Overview</a>
+      <div class="nav-group">Modules</div>
+      <a href="../modules/audit.html">Module — Audit Log</a><a href="../modules/authorisation.html">Module — Authorisation & Server Actions</a><a href="../modules/clinical-safety.html">Module — Clinical Safety</a><a href="../modules/decision-engine.html">Module — Decision Engine</a><a href="../modules/performance.html">Module — Performance & Hosting Cost</a><a href="../modules/service-designer.html" class="active">Module — Service Designer & Form Runtime</a>
+      <div class="nav-group">Deployment</div>
+      <a href="../deployment/runbook.html">Deployment Runbook</a><a href="../deployment/run-it-yourself.html">Run It Yourself</a>
+      <div class="nav-group">For pharmacy staff</div>
+      <a href="../client-guides/administrator-guide.html">Administrator Guide</a><a href="../client-guides/building-services.html">Building Your Own Services</a><a href="../client-guides/daily-operations.html">Daily Operations</a><a href="../client-guides/pharmacist-guide.html">Pharmacist Guide</a>
+  </aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-title">On this page</div><ul><li class=""><a href="#purpose">Purpose</a></li><li class=""><a href="#files">Files</a></li><li class=""><a href="#field-types">Field types</a></li><li class=""><a href="#conditional-logic">Conditional logic</a></li><li class=""><a href="#the-rule-that-prevents-contradictory-records">The rule that prevents contradictory records</a></li><li class=""><a href="#clinician-only-questions">Clinician-only questions</a></li><li class=""><a href="#hidden-option-metadata">Hidden option metadata</a></li><li class=""><a href="#versioning">Versioning</a></li><li class=""><a href="#gotchas">Gotchas</a></li></ul></nav>
+    <h1 id="module-service-designer-form-runtime">Module — Service Designer &amp; Form Runtime</h1>
+<h2 id="purpose">Purpose</h2>
+<p>Lets the client build a complete clinical service — questions, branching, clinician form, declarations, outputs — without a developer. This is the capability Zoho could not deliver and the reason this platform exists.</p>
+<h2 id="files">Files</h2>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>Role</th></tr></thead><tbody><tr><td><code>src/types/form-schema.ts</code></td><td>Schema structure</td></tr><tr><td><code>src/lib/forms/runtime.ts</code></td><td>Visibility, validation, pruning, numbering</td></tr><tr><td><code>src/lib/forms/services/flu-vaccine.ts</code></td><td>Flu service as pure configuration</td></tr><tr><td><code>tests/form-runtime.test.ts</code></td><td>Runtime behaviour</td></tr></tbody></table></div>
+<h2 id="field-types">Field types</h2>
+<p>Text, textarea, number, date, dateOfBirth, select, multiselect, yesno, radio, checkbox, scale, email, phone, address, signature, fileUpload, photoCapture, measurement, info.</p>
+<p><code>measurement</code> handles the imperial/metric toggle — patients enter stones and inches, the database stores kg and cm. Conversion happens at the UI boundary via <code>src/lib/units</code>.</p>
+<h2 id="conditional-logic">Conditional logic</h2>
+<p>Two mechanisms, deliberately separate:</p>
+<p><strong><code>visibleWhen</code></strong> — show or hide based on any earlier answer. Works on fields and on whole steps. All rules must pass.</p>
+<p><strong><code>reveals</code></strong> — a field spawns children when answered a particular way. This is the client's most common pattern: <em>"Do you have allergies?" → Yes → detail box</em>. Reveals nest arbitrarily deep.</p>
+<h2 id="the-rule-that-prevents-contradictory-records">The rule that prevents contradictory records</h2>
+<p><code>pruneHiddenAnswers()</code> <strong>must</strong> be called before persisting.</p>
+<p>Consider: a patient answers "Yes" to allergies, types "Penicillin", then changes their answer to "No". Without pruning, the record simultaneously says the patient has no allergies and is allergic to penicillin. That is a clinical safety problem, not untidiness.</p>
+<h2 id="clinician-only-questions">Clinician-only questions</h2>
+<p>Fields marked <code>clinicianOnly</code> appear inside the patient form in the correct clinical order but are answered by the pharmacist at the appointment — for example <em>"Have you had a fever in the last 24 hours?"</em>. Patient-side validation excludes them; clinician-side validation includes them via <code>includeClinicianOnly: true</code>.</p>
+<h2 id="hidden-option-metadata">Hidden option metadata</h2>
+<p>An option can carry data the patient never sees. Selecting a GP surgery captures its <code>@gov.im</code> address; selecting a vaccine captures batch number and expiry. <code>collectMetadata()</code> extracts these on submission.</p>
+<p>This is exactly the auto-fill behaviour the client asked for, expressed as configuration rather than code.</p>
+<h2 id="versioning">Versioning</h2>
+<p>Published versions are immutable and submissions bind to the version they were completed against. Editing a form never rewrites history.</p>
+<h2 id="gotchas">Gotchas</h2>
+<ul><li>Field <code>id</code> must be unique across the whole form, not just its step.</li><li><code>info</code> fields are display-only — never validated, never numbered.</li><li>Question numbering runs across steps and includes revealed children.</li></ul>
+    <div class="doc-footer">
+      <span>Karsons Pharmacy Platform</span>
+      <span>Generated from source — do not edit HTML directly</span>
+    </div>
+  </main>
+</div>
+</body>
+</html>

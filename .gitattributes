@@ -1,0 +1,11 @@
+# Normalise line endings so Windows and CI agree on what changed.
+* text=auto eol=lf
+
+*.png binary
+*.jpg binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+
+pnpm-lock.yaml linguist-generated=true -diff

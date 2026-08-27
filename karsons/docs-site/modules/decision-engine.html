@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Module — Decision Engine · Karsons Pharmacy Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand-900:#241536; --brand-700:#3E2465; --brand-600:#5B3A8E;
+  --brand-300:#B49FD6; --brand-100:#EDE6F7; --brand-50:#F6F2FB;
+  --green-700:#166B41; --green-100:#DFF3E7;
+  --amber-700:#8A5A12; --amber-100:#FDF0DA;
+  --red-700:#B3402E; --red-100:#FBE9E5;
+  --ink:#211A2C; --soft:#5A5266; --line:#E3E0EC;
+  --surface:#fff; --canvas:#F7F6FA;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:static;height:auto}}
+
+.sidebar{background:var(--brand-900);color:#fff;padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:0 22px 20px}
+.brand-mark{width:34px;height:34px;border-radius:9px;flex:none;
+  background:linear-gradient(150deg,#1F8A54,#5B3A8E);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--brand-300)}
+.nav-group{padding:14px 22px 4px;font-size:11px;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--brand-300)}
+.sidebar a{display:block;padding:7px 22px;color:#E6DEF4;text-decoration:none;font-size:14px}
+.sidebar a:hover{background:rgba(255,255,255,.07)}
+.sidebar a.active{background:rgba(255,255,255,.14);font-weight:600;color:#fff;
+  box-shadow:inset 3px 0 0 #1F8A54}
+
+.content{padding:48px 56px 96px;max-width:940px}
+@media(max-width:900px){.content{padding:28px 20px 64px}}
+
+h1,h2,h3,h4{font-family:"Space Grotesk",Inter,sans-serif;letter-spacing:-.015em;
+  color:var(--brand-900);line-height:1.25}
+h1{font-size:34px;margin:0 0 8px}
+h2{font-size:23px;margin:44px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-size:17px;margin:28px 0 8px}
+h4{font-size:15px;margin:20px 0 6px;color:var(--soft)}
+p{margin:0 0 14px}
+a{color:var(--brand-600)}
+strong{color:var(--brand-900)}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+ul,ol{margin:0 0 16px;padding-left:22px}
+li{margin-bottom:5px}
+
+code{background:var(--brand-50);border:1px solid var(--brand-100);border-radius:4px;
+  padding:1px 5px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.87em;
+  color:var(--brand-700)}
+pre.code{background:var(--brand-900);color:#E9E3F5;padding:16px 18px;border-radius:12px;
+  overflow-x:auto;margin:0 0 18px;font-size:13px;line-height:1.6;position:relative}
+pre.code code{background:none;border:0;padding:0;color:inherit;font-size:inherit}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:8px;right:12px;
+  font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--brand-300)}
+
+blockquote{margin:0 0 18px;padding:12px 18px;background:var(--brand-50);
+  border-left:3px solid var(--brand-600);border-radius:0 8px 8px 0;color:var(--brand-700)}
+
+.table-wrap{overflow-x:auto;margin:0 0 20px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th{background:var(--brand-50);text-align:left;padding:10px 13px;font-weight:600;
+  color:var(--brand-900);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:16px 20px;margin:0 0 32px}
+.toc-title{font-size:11px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--soft);margin-bottom:8px}
+.toc ul{list-style:none;padding:0;margin:0}
+.toc li{margin-bottom:3px;font-size:14px}
+.toc li.sub{padding-left:16px;font-size:13px}
+.toc a{text-decoration:none}
+.toc a:hover{text-decoration:underline}
+
+.doc-footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+  font-size:13px;color:var(--soft);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">K</div>
+      <div>
+        <div class="brand-name">Karsons Platform</div>
+        <div class="brand-sub">Documentation</div>
+      </div>
+    </div>
+    
+      <div class="nav-group">Overview</div>
+      <a href="../index.html">Karsons Pharmacy Platform</a>
+      <div class="nav-group">Architecture</div>
+      <a href="../architecture/overview.html">Architecture Overview</a>
+      <div class="nav-group">Modules</div>
+      <a href="../modules/audit.html">Module — Audit Log</a><a href="../modules/authorisation.html">Module — Authorisation & Server Actions</a><a href="../modules/clinical-safety.html">Module — Clinical Safety</a><a href="../modules/decision-engine.html" class="active">Module — Decision Engine</a><a href="../modules/performance.html">Module — Performance & Hosting Cost</a><a href="../modules/service-designer.html">Module — Service Designer & Form Runtime</a>
+      <div class="nav-group">Deployment</div>
+      <a href="../deployment/runbook.html">Deployment Runbook</a><a href="../deployment/run-it-yourself.html">Run It Yourself</a>
+      <div class="nav-group">For pharmacy staff</div>
+      <a href="../client-guides/administrator-guide.html">Administrator Guide</a><a href="../client-guides/building-services.html">Building Your Own Services</a><a href="../client-guides/daily-operations.html">Daily Operations</a><a href="../client-guides/pharmacist-guide.html">Pharmacist Guide</a>
+  </aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-title">On this page</div><ul><li class=""><a href="#purpose">Purpose</a></li><li class=""><a href="#regulatory-constraint-read-before-changing-anything-here">Regulatory constraint — read before changing anything here</a></li><li class=""><a href="#files">Files</a></li><li class=""><a href="#how-evaluation-works">How evaluation works</a></li><li class=""><a href="#two-behaviours-that-exist-for-safety">Two behaviours that exist for safety</a></li><li class=""><a href="#derived-values">Derived values</a></li><li class=""><a href="#the-simulator">The simulator</a></li><li class=""><a href="#gotchas">Gotchas</a></li></ul></nav>
+    <h1 id="module-decision-engine">Module — Decision Engine</h1>
+<h2 id="purpose">Purpose</h2>
+<p>Triages a patient submission to GREEN, AMBER or RED and produces a complete, storable explanation of how it reached that outcome.</p>
+<h2 id="regulatory-constraint-read-before-changing-anything-here">Regulatory constraint — read before changing anything here</h2>
+<p>The engine <strong>triages</strong>. It does not decide.</p>
+<p>A pharmacist confirms every supply, including GREEN. Clinician-facing messages are phrased as <em>"Meets criteria for increase — confirm?"</em>, never <em>"Increase to 5mg"</em>. Patients see status only, never a dose recommendation.</p>
+<p>Software that autonomously recommends dose changes can be classified as a medical device under UK MDR / IMDRF Rule 11, bringing third-party conformity assessment, a quality management system and post-market surveillance obligations. Keeping a human in the loop avoids that entire regime at negligible cost.</p>
+<p>Do not add an auto-approval path. If a future requirement appears to need one, escalate rather than implement.</p>
+<h2 id="files">Files</h2>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>Role</th></tr></thead><tbody><tr><td><code>src/types/rule-schema.ts</code></td><td>The JSONB rule tree structure</td></tr><tr><td><code>src/lib/rules/engine.ts</code></td><td>Pure evaluator</td></tr><tr><td><code>src/lib/rules/glp1-ruleset.ts</code></td><td>Initial GLP-1 ruleset from the client's matrices</td></tr><tr><td><code>tests/rules-engine.test.ts</code></td><td>Engine behaviour</td></tr><tr><td><code>tests/glp1-clinical.test.ts</code></td><td>Clinical acceptance tests</td></tr></tbody></table></div>
+<h2 id="how-evaluation-works">How evaluation works</h2>
+<ol><li>Disabled rules removed, the rest sorted by priority descending.</li><li><strong>Every</strong> rule is evaluated — not just up to the first match — because the trace</li></ol>
+<p>   must show what was considered, not only what fired.</p>
+<ol><li>Advice from all matched rules is collected; guidance is additive.</li><li>The most severe matched outcome wins (RED &gt; AMBER &gt; GREEN). Ties go to the</li></ol>
+<p>   higher-priority rule.</p>
+<ol><li>If nothing matches, <code>defaultOutcome</code> applies.</li></ol>
+<h2 id="two-behaviours-that-exist-for-safety">Two behaviours that exist for safety</h2>
+<p><strong>Default is AMBER, never GREEN.</strong> An unrecognised or incomplete request goes to a pharmacist. This matches the client's stated philosophy — encourage supply, do not block unnecessarily, but never approve silently on missing data.</p>
+<p><strong>Missing fields skip the rule, they do not satisfy it.</strong> A rule referencing an absent answer is recorded as skipped, with a reason. A safety rule must never pass because a question went unanswered.</p>
+<h2 id="derived-values">Derived values</h2>
+<p>Rules reference <code>derived.*</code> for values computed before evaluation: <code>bmi</code>, <code>age</code>, <code>weightLossPercent</code>, <code>weeksOnCurrentDose</code>, <code>doseStepChange</code>. Compute these in the calling code and pass them in — the engine does no arithmetic of its own, which keeps it pure and keeps the derivation independently testable.</p>
+<h2 id="the-simulator">The simulator</h2>
+<p>Because evaluation is pure, a draft ruleset can be replayed against historical submissions to show exactly which past decisions would change. Clinical rule changes stop being a leap of faith.</p>
+<h2 id="gotchas">Gotchas</h2>
+<ul><li>Priority is descending — higher numbers evaluate first.</li><li><code>between</code> is inclusive at both ends.</li><li><code>contains</code> is case-insensitive for strings, exact for arrays.</li><li>Empty string counts as absent for <code>exists</code> / <code>notExists</code>.</li><li>Published ruleset versions are immutable. Changes create a new version.</li></ul>
+    <div class="doc-footer">
+      <span>Karsons Pharmacy Platform</span>
+      <span>Generated from source — do not edit HTML directly</span>
+    </div>
+  </main>
+</div>
+</body>
+</html>

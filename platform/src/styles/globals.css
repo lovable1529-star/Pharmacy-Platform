@@ -1,0 +1,252 @@
+@import "tailwindcss";
+
+/*
+ * Karsons design tokens.
+ *
+ * Colour discipline — this is the rule that keeps clinical screens readable:
+ *
+ *   PURPLE  carries the interface. Navigation, brand, primary actions.
+ *   GREEN   means clinically safe / complete. Never decoration.
+ *   AMBER   means needs review. Reserved for triage and safety findings.
+ *   RED     means stop. Reserved for triage and safety findings.
+ *
+ * There is no red button anywhere in this product, and no amber badge that
+ * isn't a clinical concern. A pharmacist scanning a screen has to be able to
+ * trust that red means stop.
+ *
+ * Neutrals are biased slightly violet so they sit with the brand rather than
+ * looking like an unstyled default.
+ */
+
+@theme {
+  /* Brand — purple */
+  --color-brand-50:  #F7F5FC;
+  --color-brand-100: #EDE7F8;
+  --color-brand-200: #DCCFF1;
+  --color-brand-300: #BFA7E3;
+  --color-brand-400: #9B78D0;
+  --color-brand-500: #7C52BC;
+  --color-brand-600: #5B3A8E;
+  --color-brand-700: #472C70;
+  --color-brand-800: #34204F;
+  --color-brand-900: #221434;
+
+  /* Clinical — safe / complete */
+  --color-safe-50:  #F0F8F3;
+  --color-safe-100: #DCEFE4;
+  --color-safe-200: #B8DFC9;
+  --color-safe-600: #1F7A50;
+  --color-safe-700: #17603E;
+  --color-safe-900: #0D3823;
+
+  /* Triage — needs review */
+  --color-review-50:  #FDF8EE;
+  --color-review-100: #F8EEDA;
+  --color-review-200: #F0DCB4;
+  --color-review-600: #A8700E;
+  --color-review-700: #8A5A0B;
+  --color-review-900: #4A3006;
+
+  /* Triage — stop */
+  --color-stop-50:  #FDF4F2;
+  --color-stop-100: #F8E4E1;
+  --color-stop-200: #F0C7C0;
+  --color-stop-600: #C23A2B;
+  --color-stop-700: #A32E22;
+  --color-stop-900: #5C1A13;
+
+  /* Neutrals — violet-biased */
+  --color-ink:        #191428;
+  --color-ink-soft:   #544D6B;
+  --color-ink-faint:  #7C7594;
+  --color-line:       #DEDAE9;
+  --color-line-soft:  #EAE7F2;
+  --color-surface:    #FFFFFF;
+  --color-sunk:       #F3F1F9;
+  --color-canvas:     #F6F5F9;
+
+  /* Type */
+  --font-display: "Archivo", system-ui, sans-serif;
+  --font-sans: "Public Sans", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* Radii — restrained. Enterprise software is not a toy. */
+  --radius-control: 7px;
+  --radius-panel: 10px;
+
+  --shadow-panel: 0 1px 2px rgba(25, 20, 40, 0.05), 0 10px 28px -18px rgba(25, 20, 40, 0.30);
+  --shadow-pop: 0 4px 12px rgba(25, 20, 40, 0.10), 0 16px 40px -20px rgba(25, 20, 40, 0.35);
+}
+
+/* ─────────────────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+  margin: 0;
+}
+
+/*
+ * Digits that appear in columns — stock counts, GPhC numbers, prices, batch
+ * numbers — must line up. This is most of what makes a data table look
+ * professional rather than improvised.
+ */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus is always visible. Patients with disabilities use these forms, and
+   accessibility here is a legal exposure, not a preference. */
+:focus-visible {
+  outline: 2px solid var(--color-brand-500);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Scrollbars that don't shout */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line) transparent;
+}
+
+/* ─────────────────────────────────────────────────────────────
+ * Third-party components, themed to our tokens.
+ *
+ * react-day-picker and react-phone-number-input ship sensible defaults; these
+ * rules only restate colour, radius and type so they sit in the same visual
+ * system as everything else. Their behaviour — keyboard navigation, ARIA
+ * labelling, international dialling formats — is left entirely alone, since
+ * that is the reason for using them.
+ * ───────────────────────────────────────────────────────────── */
+
+.karsons-calendar {
+  --rdp-accent-color: var(--color-brand-600);
+  --rdp-accent-background-color: var(--color-brand-50);
+  --rdp-today-color: var(--color-brand-700);
+  --rdp-day-height: 38px;
+  --rdp-day-width: 38px;
+  --rdp-day_button-height: 34px;
+  --rdp-day_button-width: 34px;
+  --rdp-day_button-border-radius: 7px;
+  --rdp-selected-border: none;
+  --rdp-outside-opacity: 0.35;
+  --rdp-disabled-opacity: 0.3;
+  font-family: var(--font-sans);
+  font-size: 13.5px;
+}
+
+.karsons-calendar .rdp-month_caption {
+  font-family: var(--font-display);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--color-ink);
+}
+
+.karsons-calendar .rdp-weekday {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+.karsons-calendar .rdp-day_button {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink-soft);
+}
+
+.karsons-calendar .rdp-selected .rdp-day_button {
+  background: var(--color-brand-600);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* A day with nothing free is not merely faint — it must not look clickable. */
+.karsons-calendar .rdp-disabled .rdp-day_button {
+  color: var(--color-ink-faint);
+  cursor: not-allowed;
+  text-decoration: line-through;
+}
+
+.karsons-calendar .rdp-chevron {
+  fill: var(--color-ink-faint);
+}
+
+.karsons-calendar .rdp-button_next:hover .rdp-chevron,
+.karsons-calendar .rdp-button_previous:hover .rdp-chevron {
+  fill: var(--color-brand-600);
+}
+
+/* ── Phone input ─────────────────────────────────────────── */
+
+.karsons-phone {
+  --PhoneInputCountryFlag-height: 1em;
+  --PhoneInputCountrySelectArrow-color: var(--color-ink-faint);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  padding: 0 12px;
+}
+
+.karsons-phone:focus-within {
+  border-color: var(--color-brand-400);
+}
+
+.karsons-phone .PhoneInputInput {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  padding: 10px 0;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--color-ink);
+}
+
+.karsons-phone .PhoneInputInput::placeholder {
+  color: var(--color-ink-faint);
+}
+
+.karsons-phone .PhoneInputCountrySelect {
+  color: var(--color-ink);
+}

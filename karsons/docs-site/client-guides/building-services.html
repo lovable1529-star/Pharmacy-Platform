@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Building Your Own Services · Karsons Pharmacy Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand-900:#241536; --brand-700:#3E2465; --brand-600:#5B3A8E;
+  --brand-300:#B49FD6; --brand-100:#EDE6F7; --brand-50:#F6F2FB;
+  --green-700:#166B41; --green-100:#DFF3E7;
+  --amber-700:#8A5A12; --amber-100:#FDF0DA;
+  --red-700:#B3402E; --red-100:#FBE9E5;
+  --ink:#211A2C; --soft:#5A5266; --line:#E3E0EC;
+  --surface:#fff; --canvas:#F7F6FA;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:static;height:auto}}
+
+.sidebar{background:var(--brand-900);color:#fff;padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:0 22px 20px}
+.brand-mark{width:34px;height:34px;border-radius:9px;flex:none;
+  background:linear-gradient(150deg,#1F8A54,#5B3A8E);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--brand-300)}
+.nav-group{padding:14px 22px 4px;font-size:11px;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--brand-300)}
+.sidebar a{display:block;padding:7px 22px;color:#E6DEF4;text-decoration:none;font-size:14px}
+.sidebar a:hover{background:rgba(255,255,255,.07)}
+.sidebar a.active{background:rgba(255,255,255,.14);font-weight:600;color:#fff;
+  box-shadow:inset 3px 0 0 #1F8A54}
+
+.content{padding:48px 56px 96px;max-width:940px}
+@media(max-width:900px){.content{padding:28px 20px 64px}}
+
+h1,h2,h3,h4{font-family:"Space Grotesk",Inter,sans-serif;letter-spacing:-.015em;
+  color:var(--brand-900);line-height:1.25}
+h1{font-size:34px;margin:0 0 8px}
+h2{font-size:23px;margin:44px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-size:17px;margin:28px 0 8px}
+h4{font-size:15px;margin:20px 0 6px;color:var(--soft)}
+p{margin:0 0 14px}
+a{color:var(--brand-600)}
+strong{color:var(--brand-900)}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+ul,ol{margin:0 0 16px;padding-left:22px}
+li{margin-bottom:5px}
+
+code{background:var(--brand-50);border:1px solid var(--brand-100);border-radius:4px;
+  padding:1px 5px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.87em;
+  color:var(--brand-700)}
+pre.code{background:var(--brand-900);color:#E9E3F5;padding:16px 18px;border-radius:12px;
+  overflow-x:auto;margin:0 0 18px;font-size:13px;line-height:1.6;position:relative}
+pre.code code{background:none;border:0;padding:0;color:inherit;font-size:inherit}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:8px;right:12px;
+  font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--brand-300)}
+
+blockquote{margin:0 0 18px;padding:12px 18px;background:var(--brand-50);
+  border-left:3px solid var(--brand-600);border-radius:0 8px 8px 0;color:var(--brand-700)}
+
+.table-wrap{overflow-x:auto;margin:0 0 20px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th{background:var(--brand-50);text-align:left;padding:10px 13px;font-weight:600;
+  color:var(--brand-900);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:16px 20px;margin:0 0 32px}
+.toc-title{font-size:11px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--soft);margin-bottom:8px}
+.toc ul{list-style:none;padding:0;margin:0}
+.toc li{margin-bottom:3px;font-size:14px}
+.toc li.sub{padding-left:16px;font-size:13px}
+.toc a{text-decoration:none}
+.toc a:hover{text-decoration:underline}
+
+.doc-footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+  font-size:13px;color:var(--soft);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">K</div>
+      <div>
+        <div class="brand-name">Karsons Platform</div>
+        <div class="brand-sub">Documentation</div>
+      </div>
+    </div>
+    
+      <div class="nav-group">Overview</div>
+      <a href="../index.html">Karsons Pharmacy Platform</a>
+      <div class="nav-group">Architecture</div>
+      <a href="../architecture/overview.html">Architecture Overview</a>
+      <div class="nav-group">Modules</div>
+      <a href="../modules/audit.html">Module — Audit Log</a><a href="../modules/authorisation.html">Module — Authorisation & Server Actions</a><a href="../modules/clinical-safety.html">Module — Clinical Safety</a><a href="../modules/decision-engine.html">Module — Decision Engine</a><a href="../modules/performance.html">Module — Performance & Hosting Cost</a><a href="../modules/service-designer.html">Module — Service Designer & Form Runtime</a>
+      <div class="nav-group">Deployment</div>
+      <a href="../deployment/runbook.html">Deployment Runbook</a><a href="../deployment/run-it-yourself.html">Run It Yourself</a>
+      <div class="nav-group">For pharmacy staff</div>
+      <a href="../client-guides/administrator-guide.html">Administrator Guide</a><a href="../client-guides/building-services.html" class="active">Building Your Own Services</a><a href="../client-guides/daily-operations.html">Daily Operations</a><a href="../client-guides/pharmacist-guide.html">Pharmacist Guide</a>
+  </aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-title">On this page</div><ul><li class=""><a href="#what-this-lets-you-do">What this lets you do</a></li><li class=""><a href="#before-you-start">Before you start</a></li><li class=""><a href="#step-1-create-the-service">Step 1 — Create the service</a></li><li class=""><a href="#step-2-build-the-patient-form">Step 2 — Build the patient form</a></li><li class="sub"><a href="#choosing-a-question-type">Choosing a question type</a></li><li class="sub"><a href="#making-a-question-required">Making a question required</a></li><li class=""><a href="#step-3-questions-that-appear-based-on-other-answers">Step 3 — Questions that appear based on other answers</a></li><li class="sub"><a href="#follow-up-questions">Follow-up questions</a></li><li class="sub"><a href="#whole-pages-that-appear-conditionally">Whole pages that appear conditionally</a></li><li class=""><a href="#step-4-questions-your-pharmacist-answers">Step 4 — Questions your pharmacist answers</a></li><li class=""><a href="#step-5-dropdowns-that-fill-in-hidden-information">Step 5 — Dropdowns that fill in hidden information</a></li><li class=""><a href="#step-6-the-pharmacists-form">Step 6 — The pharmacist's form</a></li><li class=""><a href="#step-7-declarations">Step 7 — Declarations</a></li><li class=""><a href="#step-8-what-happens-afterwards">Step 8 — What happens afterwards</a></li><li class=""><a href="#step-9-preview-and-publish">Step 9 — Preview and publish</a></li><li class=""><a href="#changing-a-service-later">Changing a service later</a></li><li class=""><a href="#tips-from-experience">Tips from experience</a></li><li class=""><a href="#getting-help">Getting help</a></li></ul></nav>
+    <h1 id="building-your-own-services">Building Your Own Services</h1>
+<p><strong>A guide for Karsons Pharmacy administrators</strong></p>
+<hr>
+<h2 id="what-this-lets-you-do">What this lets you do</h2>
+<p>You can create a whole new clinical service yourself — the questions patients answer, the form your pharmacist fills in, the documents that get produced and the emails that get sent. No developer, no waiting, no cost.</p>
+<p>If you decide on a Tuesday to start offering travel vaccinations, you can have it live by Tuesday afternoon.</p>
+<hr>
+<h2 id="before-you-start">Before you start</h2>
+<p>Have these ready:</p>
+<ul><li>The questions you want to ask patients, in the order you want them asked</li><li>Which questions must be answered and which are optional</li><li>What your pharmacist needs to record at the appointment</li><li>What the patient pays, if anything</li><li>Which branches will offer it</li></ul>
+<p>You do not need to have it perfect. You can change everything later.</p>
+<hr>
+<h2 id="step-1-create-the-service">Step 1 — Create the service</h2>
+<p>Go to <strong>Services → New Service</strong>.</p>
+<p>Give it a name patients will recognise. "Travel Vaccination Clinic" is better than "TVC Phase 1".</p>
+<p>Set the price. Leave it at £0 if the service is free or NHS-funded.</p>
+<p>Choose which branches offer it. You can add branches later.</p>
+<hr>
+<h2 id="step-2-build-the-patient-form">Step 2 — Build the patient form</h2>
+<p>This is where you add your questions. Drag a question type from the left onto the form.</p>
+<h3 id="choosing-a-question-type">Choosing a question type</h3>
+<div class="table-wrap"><table><thead><tr><th>You want to ask</th><th>Use</th></tr></thead><tbody><tr><td>A short answer, like a name</td><td><strong>Text</strong></td></tr><tr><td>A longer explanation</td><td><strong>Long text</strong></td></tr><tr><td>Yes or no</td><td><strong>Yes/No</strong></td></tr><tr><td>One choice from a list</td><td><strong>Dropdown</strong></td></tr><tr><td>Several choices from a list</td><td><strong>Multiple choice</strong></td></tr><tr><td>A date</td><td><strong>Date</strong></td></tr><tr><td>Their weight or height</td><td><strong>Measurement</strong></td></tr><tr><td>A photo of ID, or a selfie</td><td><strong>Upload</strong> or <strong>Take photo</strong></td></tr><tr><td>Their signature</td><td><strong>Signature</strong></td></tr><tr><td>Just to tell them something</td><td><strong>Information</strong></td></tr></tbody></table></div>
+<p><strong>Measurement</strong> is worth knowing about. Patients can enter their weight in stones and pounds or in kilograms — whichever they prefer — and the system converts it automatically. You never have to think about it.</p>
+<h3 id="making-a-question-required">Making a question required</h3>
+<p>Tick <strong>Required</strong> on any question the patient must answer. They cannot move to the next page until they have.</p>
+<p>Only make a question required if you genuinely need the answer. Every required question is another reason someone abandons the form halfway through.</p>
+<hr>
+<h2 id="step-3-questions-that-appear-based-on-other-answers">Step 3 — Questions that appear based on other answers</h2>
+<p>This is the part people find most useful.</p>
+<h3 id="follow-up-questions">Follow-up questions</h3>
+<p>Say you ask <em>"Do you have any allergies?"</em></p>
+<p>If they answer <strong>No</strong>, you do not want to show them an empty box asking for details. If they answer <strong>Yes</strong>, you do.</p>
+<p>Click the question, choose <strong>Add follow-up</strong>, and set it to appear when the answer is <strong>Yes</strong>. Add your detail box there.</p>
+<p>The follow-up only appears when it is relevant. If the patient changes their mind and switches to <strong>No</strong>, anything they typed in the follow-up is removed — so your records never end up contradicting themselves.</p>
+<h3 id="whole-pages-that-appear-conditionally">Whole pages that appear conditionally</h3>
+<p>You can do the same with an entire page. If you have pregnancy questions, set the page to appear only when the patient's answer to the gender question makes it relevant.</p>
+<p>Click the page heading, choose <strong>Show this page when…</strong>, and pick the condition.</p>
+<hr>
+<h2 id="step-4-questions-your-pharmacist-answers">Step 4 — Questions your pharmacist answers</h2>
+<p>Some questions cannot be answered in advance. <em>"Have you had a fever in the last 24 hours?"</em> has to be asked on the day.</p>
+<p>Tick <strong>Pharmacist answers this</strong> on any such question.</p>
+<p>The question still sits in the right place in the form, so the clinical order makes sense — but the patient never sees it, and it will not stop them submitting. It appears on your pharmacist's screen at the appointment instead.</p>
+<hr>
+<h2 id="step-5-dropdowns-that-fill-in-hidden-information">Step 5 — Dropdowns that fill in hidden information</h2>
+<p>When a patient picks their GP surgery from a list, you need that surgery's email address so the system can notify them — but the patient should not see it.</p>
+<p>Add a <strong>Dropdown</strong>, then for each option fill in the <strong>Hidden information</strong> fields.</p>
+<p>The patient sees "Ramsey Group Practice". The system quietly captures the email address behind it.</p>
+<p>This works for anything. Select a vaccine and the batch number and expiry date fill in automatically. Select a pharmacist and their registration number fills in.</p>
+<hr>
+<h2 id="step-6-the-pharmacists-form">Step 6 — The pharmacist's form</h2>
+<p>Switch to the <strong>Pharmacist form</strong> tab.</p>
+<p>This is what your team completes at the appointment. Typically: which product was used, which batch, where it was administered, whether it was NHS or private, and any notes.</p>
+<hr>
+<h2 id="step-7-declarations">Step 7 — Declarations</h2>
+<p>Under <strong>Declarations</strong>, list the statements your pharmacist confirms before submitting. For example:</p>
+<ul><li>I have verified the patient's identity</li><li>I have checked the batch number and expiry date</li><li>The patient has given informed consent</li></ul>
+<p>These are recorded permanently against the consultation and appear on the GP notification.</p>
+<hr>
+<h2 id="step-8-what-happens-afterwards">Step 8 — What happens afterwards</h2>
+<p>Under <strong>Outputs</strong>, choose what the system does when a consultation is completed:</p>
+<ul><li><strong>Documents</strong> — produce a vaccination record or receipt for the patient</li><li><strong>Emails</strong> — notify the GP, confirm with the patient</li><li><strong>Stock</strong> — reduce the stock count for the product used</li></ul>
+<p>For GP notifications you can choose <strong>immediately</strong> or <strong>end-of-day batch</strong>. The batch option is usually better: each surgery receives one email at the end of the day listing every patient, rather than a stream of separate messages.</p>
+<hr>
+<h2 id="step-9-preview-and-publish">Step 9 — Preview and publish</h2>
+<p>Click <strong>Preview</strong> to see exactly what the patient sees. Switch between phone, tablet and desktop views.</p>
+<p>Walk through it as though you were a patient. Answer questions the wrong way on purpose and check the right follow-ups appear.</p>
+<p>When you are happy, click <strong>Publish</strong>.</p>
+<hr>
+<h2 id="changing-a-service-later">Changing a service later</h2>
+<p>Open the service and click <strong>Edit</strong>. Make your changes and publish again.</p>
+<p><strong>Anyone who has already filled in the form keeps the version they answered.</strong> Their answers are never rewritten by your edits. This matters — a form you change next year must not alter what a patient told you last year.</p>
+<p>You can see every version under <strong>History</strong>, and what changed between them.</p>
+<hr>
+<h2 id="tips-from-experience">Tips from experience</h2>
+<p><strong>Ask fewer questions.</strong> Every question you add costs you completions. If you would not chase the answer when it is missing, do not ask for it.</p>
+<p><strong>Put the important questions first.</strong> People are most engaged on the first page.</p>
+<p><strong>Write questions the way you would say them.</strong> "Do you take any blood-thinning medication, such as warfarin?" beats "Anticoagulant therapy status".</p>
+<p><strong>Use follow-ups instead of long forms.</strong> A short form that expands when needed feels far quicker than a long one where most questions do not apply.</p>
+<p><strong>Test it on a phone.</strong> Most patients will complete it on their phone.</p>
+<hr>
+<h2 id="getting-help">Getting help</h2>
+<p>Every question you create is numbered. If you need to ask us about one, quote the number — "question 14 on the travel vaccine form" — and we will know exactly which one you mean.</p>
+    <div class="doc-footer">
+      <span>Karsons Pharmacy Platform</span>
+      <span>Generated from source — do not edit HTML directly</span>
+    </div>
+  </main>
+</div>
+</body>
+</html>

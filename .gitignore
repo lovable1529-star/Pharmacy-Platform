@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# Environment — NEVER commit these.
+# .env.local holds the Supabase service-role key and the database password.
+# The service-role key bypasses Row Level Security entirely, so a leak is a
+# full patient-data breach, not an inconvenience. .env.example is the template
+# and is committed deliberately; it must only ever contain placeholders.
+.env
+.env.*
+!.env.example
+
+# Test / tooling output
+coverage/
+.vitest/
+playwright-report/
+test-results/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+
+# Local Claude Code state (personal to each machine; the shared launch.json
+# is committed so the dev server starts the same way for everyone)
+.claude/settings.local.json

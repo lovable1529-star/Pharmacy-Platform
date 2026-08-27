@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Run It Yourself · Karsons Pharmacy Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand-900:#241536; --brand-700:#3E2465; --brand-600:#5B3A8E;
+  --brand-300:#B49FD6; --brand-100:#EDE6F7; --brand-50:#F6F2FB;
+  --green-700:#166B41; --green-100:#DFF3E7;
+  --amber-700:#8A5A12; --amber-100:#FDF0DA;
+  --red-700:#B3402E; --red-100:#FBE9E5;
+  --ink:#211A2C; --soft:#5A5266; --line:#E3E0EC;
+  --surface:#fff; --canvas:#F7F6FA;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:static;height:auto}}
+
+.sidebar{background:var(--brand-900);color:#fff;padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:0 22px 20px}
+.brand-mark{width:34px;height:34px;border-radius:9px;flex:none;
+  background:linear-gradient(150deg,#1F8A54,#5B3A8E);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--brand-300)}
+.nav-group{padding:14px 22px 4px;font-size:11px;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--brand-300)}
+.sidebar a{display:block;padding:7px 22px;color:#E6DEF4;text-decoration:none;font-size:14px}
+.sidebar a:hover{background:rgba(255,255,255,.07)}
+.sidebar a.active{background:rgba(255,255,255,.14);font-weight:600;color:#fff;
+  box-shadow:inset 3px 0 0 #1F8A54}
+
+.content{padding:48px 56px 96px;max-width:940px}
+@media(max-width:900px){.content{padding:28px 20px 64px}}
+
+h1,h2,h3,h4{font-family:"Space Grotesk",Inter,sans-serif;letter-spacing:-.015em;
+  color:var(--brand-900);line-height:1.25}
+h1{font-size:34px;margin:0 0 8px}
+h2{font-size:23px;margin:44px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-size:17px;margin:28px 0 8px}
+h4{font-size:15px;margin:20px 0 6px;color:var(--soft)}
+p{margin:0 0 14px}
+a{color:var(--brand-600)}
+strong{color:var(--brand-900)}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+ul,ol{margin:0 0 16px;padding-left:22px}
+li{margin-bottom:5px}
+
+code{background:var(--brand-50);border:1px solid var(--brand-100);border-radius:4px;
+  padding:1px 5px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.87em;
+  color:var(--brand-700)}
+pre.code{background:var(--brand-900);color:#E9E3F5;padding:16px 18px;border-radius:12px;
+  overflow-x:auto;margin:0 0 18px;font-size:13px;line-height:1.6;position:relative}
+pre.code code{background:none;border:0;padding:0;color:inherit;font-size:inherit}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:8px;right:12px;
+  font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--brand-300)}
+
+blockquote{margin:0 0 18px;padding:12px 18px;background:var(--brand-50);
+  border-left:3px solid var(--brand-600);border-radius:0 8px 8px 0;color:var(--brand-700)}
+
+.table-wrap{overflow-x:auto;margin:0 0 20px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th{background:var(--brand-50);text-align:left;padding:10px 13px;font-weight:600;
+  color:var(--brand-900);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:16px 20px;margin:0 0 32px}
+.toc-title{font-size:11px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--soft);margin-bottom:8px}
+.toc ul{list-style:none;padding:0;margin:0}
+.toc li{margin-bottom:3px;font-size:14px}
+.toc li.sub{padding-left:16px;font-size:13px}
+.toc a{text-decoration:none}
+.toc a:hover{text-decoration:underline}
+
+.doc-footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+  font-size:13px;color:var(--soft);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">K</div>
+      <div>
+        <div class="brand-name">Karsons Platform</div>
+        <div class="brand-sub">Documentation</div>
+      </div>
+    </div>
+    
+      <div class="nav-group">Overview</div>
+      <a href="../index.html">Karsons Pharmacy Platform</a>
+      <div class="nav-group">Architecture</div>
+      <a href="../architecture/overview.html">Architecture Overview</a>
+      <div class="nav-group">Modules</div>
+      <a href="../modules/audit.html">Module — Audit Log</a><a href="../modules/authorisation.html">Module — Authorisation & Server Actions</a><a href="../modules/clinical-safety.html">Module — Clinical Safety</a><a href="../modules/decision-engine.html">Module — Decision Engine</a><a href="../modules/performance.html">Module — Performance & Hosting Cost</a><a href="../modules/service-designer.html">Module — Service Designer & Form Runtime</a>
+      <div class="nav-group">Deployment</div>
+      <a href="../deployment/runbook.html">Deployment Runbook</a><a href="../deployment/run-it-yourself.html" class="active">Run It Yourself</a>
+      <div class="nav-group">For pharmacy staff</div>
+      <a href="../client-guides/administrator-guide.html">Administrator Guide</a><a href="../client-guides/building-services.html">Building Your Own Services</a><a href="../client-guides/daily-operations.html">Daily Operations</a><a href="../client-guides/pharmacist-guide.html">Pharmacist Guide</a>
+  </aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-title">On this page</div><ul><li class=""><a href="#requirements">Requirements</a></li><li class=""><a href="#verify-the-build-first">Verify the build first</a></li><li class=""><a href="#walkthrough-15-minutes">Walkthrough — 15 minutes</a></li><li class="sub"><a href="#1-the-dashboard-1-min">1. The dashboard (1 min)</a></li><li class="sub"><a href="#2-find-a-patient-2-min">2. Find a patient (2 min)</a></li><li class="sub"><a href="#3-a-patient-record-1-min">3. A patient record (1 min)</a></li><li class="sub"><a href="#4-run-a-consultation-3-min">4. Run a consultation (3 min)</a></li><li class="sub"><a href="#5-build-a-service-4-min-the-important-one">5. Build a service (4 min) — the important one</a></li><li class="sub"><a href="#6-clinical-rules-and-the-simulator-3-min-the-centrepiece">6. Clinical rules and the simulator (3 min) — the centrepiece</a></li><li class="sub"><a href="#7-review-a-repeat-request-2-min">7. Review a repeat request (2 min)</a></li><li class="sub"><a href="#8-recall-a-batch-1-min">8. Recall a batch (1 min)</a></li><li class="sub"><a href="#9-write-a-clinical-rule-2-min">9. Write a clinical rule (2 min)</a></li><li class="sub"><a href="#10-add-a-patient-1-min">10. Add a patient (1 min)</a></li><li class="sub"><a href="#11-book-an-appointment-1-min">11. Book an appointment (1 min)</a></li><li class="sub"><a href="#12-compliance-1-min">12. Compliance (1 min)</a></li><li class="sub"><a href="#13-communications-1-min">13. Communications (1 min)</a></li><li class=""><a href="#things-to-test-that-should-fail">Things to test that should fail</a></li><li class=""><a href="#what-is-not-wired-yet">What is not wired yet</a></li><li class=""><a href="#before-the-client-sees-it">Before the client sees it</a></li><li class=""><a href="#deploying-to-vercel-for-the-demo">Deploying to Vercel for the demo</a></li></ul></nav>
+    <h1 id="run-it-yourself">Run It Yourself</h1>
+<p>Getting the system running locally and checking everything works, before it goes in front of the client.</p>
+<hr>
+<h2 id="requirements">Requirements</h2>
+<p>Node 20 or later. Nothing else — <strong>no database, no Supabase account, no environment variables</strong>.</p>
+<p>The application boots in demo mode against an in-memory store. Every screen below works without any external service.</p>
+<pre class="code" data-lang="bash"><code>pnpm install
+pnpm dev</code></pre>
+<p>Open <strong>http://localhost:3000</strong>. It redirects to the dashboard.</p>
+<hr>
+<h2 id="verify-the-build-first">Verify the build first</h2>
+<pre class="code" data-lang="bash"><code>pnpm verify</code></pre>
+<p>Runs typecheck, all 290 tests, and the documentation build. If this passes, the system is sound. If it fails, stop and fix before demoing.</p>
+<p>To check the production build specifically:</p>
+<pre class="code" data-lang="bash"><code>pnpm build &amp;&amp; pnpm start</code></pre>
+<hr>
+<h2 id="walkthrough-15-minutes">Walkthrough — 15 minutes</h2>
+<p>Follow this in order. It is also the demo script.</p>
+<h3 id="1-the-dashboard-1-min">1. The dashboard (1 min)</h3>
+<p>You land on <strong>Today at Onchan</strong>.</p>
+<p><strong>Check:</strong> the red banner near the top says a repeat request is blocked on safety grounds, naming Callum Quayle and Thomas Radcliffe. That banner is not hard-coded — the decision engine triaged those requests when the page rendered.</p>
+<p><strong>Try:</strong> switch branch to <strong>Kirk Michael</strong> in the sidebar. Appointments, the walk-in queue and stock all change. Patient records will not, because patients are organisation-scoped by design.</p>
+<h3 id="2-find-a-patient-2-min">2. Find a patient (2 min)</h3>
+<p><strong>Patients</strong> in the sidebar.</p>
+<ul><li>Type <code>Kelly</code> — several results.</li><li>Type <code>Kelly 05/03/1974</code> — the matching patient jumps to the top, with badges</li></ul>
+<p>  showing which fields matched.</p>
+<ul><li>Type <code>Kermodee</code> (deliberate misspelling) — Kermode is still found.</li><li>Type <code>IM3 1AR</code> — postcode search works despite being two words.</li></ul>
+<p><strong>Check:</strong> searching does not fire until three characters. That is <code>shouldSearch()</code> keeping the query volume, and the hosting bill, down.</p>
+<h3 id="3-a-patient-record-1-min">3. A patient record (1 min)</h3>
+<p>Open any patient. Roughly one in seven has a recorded egg allergy — try a few until you find one.</p>
+<p><strong>Check:</strong> the allergy sits in a red banner above everything else. History merges consultations, appointments, repeat requests and messages into one timeline rather than separate tabs.</p>
+<h3 id="4-run-a-consultation-3-min">4. Run a consultation (3 min)</h3>
+<p>Click <strong>Start consultation</strong>.</p>
+<p><strong>Try, in this order:</strong></p>
+<ol><li>Leave "verify identity" unticked. The submit button is disabled and the</li></ol>
+<p>   safety panel says why. It is genuinely disabled, not styled to look it.</p>
+<ol><li>Tick identity. Answer the fever question <strong>Yes</strong> — a red warning appears and</li></ol>
+<p>   submission stays blocked.</p>
+<ol><li>Change fever to <strong>No</strong>.</li><li>Change the vaccine to <strong>Fluenz Tetra Nasal Spray</strong>. If the patient has an egg</li></ol>
+<p>   allergy, a BLOCK appears immediately — Fluenz contains egg, and the check    matches through synonyms.</p>
+<ol><li>Switch back to a compatible vaccine, sign all declarations, submit.</li></ol>
+<p><strong>Check:</strong> the confirmation lists stock decremented, record generated, GP notification queued, audit written.</p>
+<p><strong>Also check:</strong> selecting a pharmacist auto-fills their GPhC number, and selecting a vaccine auto-fills batch and expiry. That is the hidden-metadata feature the client asked for, working as configuration.</p>
+<h3 id="5-build-a-service-4-min-the-important-one">5. Build a service (4 min) — the important one</h3>
+<p><strong>Services → New service</strong>.</p>
+<p>This is what Zoho could not do.</p>
+<ol><li>Click <strong>Yes / No</strong> in the left palette. A question appears.</li><li>In the right panel, change the text to *"Have you travelled outside the</li></ol>
+<p>   British Isles in the last 12 months?"*</p>
+<ol><li>Click <strong>+ Add a follow-up when they answer Yes</strong>. A detail box appears,</li></ol>
+<p>   nested under the question.</p>
+<ol><li>Look at the preview on the right. Answer <strong>No</strong> — the follow-up stays hidden.</li></ol>
+<p>   Answer <strong>Yes</strong> — it appears.</p>
+<ol><li>Tick <strong>Pharmacist answers this</strong> on a question. It vanishes from the patient</li></ol>
+<p>   preview but stays in place in the editor.</p>
+<ol><li>Add a <strong>Dropdown</strong>, add options, and watch the preview update live.</li><li>Click <strong>Publish this version</strong>.</li></ol>
+<p><strong>Check:</strong> the preview is the same component the real patient form uses. There is no separate patient build.</p>
+<p><strong>Then:</strong> open <strong>http://localhost:3000/f/flu-vaccination</strong> in a separate tab, or on your phone. That is a patient completing a form. Answer "Yes" to allergies — the detail box appears. Change to "No" — it disappears, and the typed text is discarded so the record cannot contradict itself.</p>
+<h3 id="6-clinical-rules-and-the-simulator-3-min-the-centrepiece">6. Clinical rules and the simulator (3 min) — the centrepiece</h3>
+<p><strong>Repeat care → Clinical rules</strong>.</p>
+<p>Twenty-two rules, each showing how often it fired across 40 historical cases.</p>
+<p><strong>Try:</strong> toggle off <strong>"Two or more doses missed in past 4 weeks"</strong>.</p>
+<p>The simulation panel updates instantly:</p>
+<ul><li>The RED / AMBER / GREEN counts shift</li><li>A red box appears listing cases that <em>would now pass without being flagged</em></li></ul>
+<p><strong>Check:</strong> that red box is the point. A rule change that quietly stops flagging a safety concern is the dangerous kind, and it is impossible to miss here.</p>
+<p><strong>Try:</strong> toggle it back on. Everything returns to zero changes.</p>
+<h3 id="7-review-a-repeat-request-2-min">7. Review a repeat request (2 min)</h3>
+<p><strong>Repeat care</strong>. Requests are sorted worst-first.</p>
+<p>Open <strong>Callum Quayle</strong> — RED. He requested 2.5mg → 10mg, a three-step jump.</p>
+<p>Click <strong>Why?</strong>. You see every rule evaluated, which fired, and the derived values used — including <code>doseStepChange: 3</code>.</p>
+<p>Open <strong>Bridget Kelly</strong> — GREEN. Note the wording: <em>"No concerns flagged"</em>, never "approved", and there is still a <strong>Confirm and issue</strong> button. Nothing is ever supplied automatically. That is what keeps the product outside medical device regulation.</p>
+<p>Open <strong>Fiona Kneale</strong> — AMBER, with her question surfaced in an amber box so the dispensing pharmacist catches it at collection.</p>
+<h3 id="8-recall-a-batch-1-min">8. Recall a batch (1 min)</h3>
+<p><strong>Inventory</strong>. Click <strong>Recall</strong> on any batch.</p>
+<p><strong>Check:</strong> the dialog shows how many patients received it, how much stock is still on shelves and where, and — importantly — how many patients have <strong>no contact details</strong> and will need a phone call.</p>
+<p>The client never asked for this.</p>
+<h3 id="9-write-a-clinical-rule-2-min">9. Write a clinical rule (2 min)</h3>
+<p>Still on <strong>Clinical rules</strong>, click <strong>+ Write a new rule</strong>.</p>
+<ol><li>Set the field to <strong>BMI</strong>, the comparison to <strong>is less than</strong>, the value to</li></ol>
+<p>   <strong>21</strong>.</p>
+<ol><li>Click <strong>+ Add a condition</strong> and set <strong>Dose request</strong> <strong>is</strong> <strong>Increase</strong>.</li><li>Choose <strong>RED</strong>.</li><li>Read the plain-English line at the bottom — it should say roughly *"If BMI is</li></ol>
+<p>   less than 21 and Dose request is Increase, mark this request RED."*</p>
+<ol><li>Save. The simulation updates immediately with the new rule included.</li></ol>
+<p><strong>Check:</strong> the client is authoring clinical logic, not choosing from a menu. That is both the product claim and the regulatory position — the pharmacy is the clinical author.</p>
+<h3 id="10-add-a-patient-1-min">10. Add a patient (1 min)</h3>
+<p><strong>Patients</strong>, search for something that returns nothing, click <strong>Add new patient</strong>.</p>
+<p>Enter <code>Bridget</code> / <code>Kelly</code> and date of birth <code>10/05/1980</code>.</p>
+<p><strong>Check:</strong> before creating anything, an amber notice appears saying existing records look similar. Click through and you get the duplicate list with reasons, and the option to use an existing record instead.</p>
+<h3 id="11-book-an-appointment-1-min">11. Book an appointment (1 min)</h3>
+<p><strong>Appointments</strong>. Click any free slot, pick a patient and a service, confirm.</p>
+<p><strong>Check:</strong> slots already booked and slots in the past are not offered.</p>
+<h3 id="12-compliance-1-min">12. Compliance (1 min)</h3>
+<p><strong>Compliance → Audit trail</strong>. The chain verifies 75 entries.</p>
+<p><strong>Try:</strong> click <strong>Simulate tampering</strong>. The banner turns red and names the exact entry where the chain breaks. Click <strong>Restore</strong>.</p>
+<p>That is <code>verifyChain()</code> — the same tested function that runs nightly.</p>
+<h3 id="13-communications-1-min">13. Communications (1 min)</h3>
+<p><strong>Communications</strong>. One notification per surgery, with delivery status.</p>
+<p><strong>Check:</strong> one has bounced, and a red alert says the address is likely wrong. Every GP is a <code>@gov.im</code> government mailbox, and a silent bounce means a practice has no record of something that happened to their patient.</p>
+<hr>
+<h2 id="things-to-test-that-should-fail">Things to test that should fail</h2>
+<p>Worth trying, because the failures are the safety features working:</p>
+<div class="table-wrap"><table><thead><tr><th>Try this</th><th>Expected</th></tr></thead><tbody><tr><td>Submit a consultation without verifying identity</td><td>Blocked</td></tr><tr><td>Give Fluenz to an egg-allergic patient</td><td>Blocked</td></tr><tr><td>Submit with the fever answer as Yes</td><td>Blocked</td></tr><tr><td>Submit without signing all declarations</td><td>Blocked</td></tr><tr><td>Answer Yes to allergies, then change to No</td><td>Typed detail discarded</td></tr><tr><td>Search with two characters</td><td>No query fires</td></tr></tbody></table></div>
+<hr>
+<h2 id="what-is-not-wired-yet">What is not wired yet</h2>
+<p>Be clear about this when demoing.</p>
+<div class="table-wrap"><table><thead><tr><th>Not connected</th><th>Consequence</th></tr></thead><tbody><tr><td>Database</td><td>Changes reset on reload</td></tr><tr><td>Auth</td><td>No login — you are the owner</td></tr><tr><td>Email</td><td>Nothing actually sends</td></tr><tr><td>Payments</td><td>Stripe not connected</td></tr><tr><td>PDF</td><td>Template exists; no download route</td></tr><tr><td>Cron</td><td>The four scheduled jobs have no handlers</td></tr><tr><td>Server actions</td><td>Nothing persists between page loads</td></tr></tbody></table></div>
+<p>None of these change the domain layer, because none of it touches a database by design. Wiring them is mechanical.</p>
+<hr>
+<h2 id="before-the-client-sees-it">Before the client sees it</h2>
+<p>Two placeholders must be replaced:</p>
+<ol><li><strong>GPhC registration numbers</strong> in <code>src/lib/demo/data.ts</code> — correctly formatted</li></ol>
+<p>   but invented.</p>
+<ol><li><strong>GP surgery email addresses</strong> — right <code>@gov.im</code> format, not the real</li></ol>
+<p>   mailboxes.</p>
+<p>Both are commented in the file. Seeing his own pharmacists and surgeries in the dropdowns is a large part of the effect.</p>
+<p>Also confirm the <strong>GPhC premises number</strong> — <code>9012896</code> was taken from an Ashcroft screenshot and is their registration, not his.</p>
+<hr>
+<h2 id="deploying-to-vercel-for-the-demo">Deploying to Vercel for the demo</h2>
+<p>Demo mode needs no environment variables at all.</p>
+<pre class="code" data-lang="bash"><code>npx vercel --prod</code></pre>
+<p>Set <strong>Settings → Functions → Region: London (lhr1)</strong>.</p>
+<p>For the full setup with Supabase, email and payments, see the Deployment runbook.</p>
+    <div class="doc-footer">
+      <span>Karsons Pharmacy Platform</span>
+      <span>Generated from source — do not edit HTML directly</span>
+    </div>
+  </main>
+</div>
+</body>
+</html>

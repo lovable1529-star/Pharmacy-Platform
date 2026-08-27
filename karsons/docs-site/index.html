@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Karsons Pharmacy Platform · Karsons Pharmacy Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand-900:#241536; --brand-700:#3E2465; --brand-600:#5B3A8E;
+  --brand-300:#B49FD6; --brand-100:#EDE6F7; --brand-50:#F6F2FB;
+  --green-700:#166B41; --green-100:#DFF3E7;
+  --amber-700:#8A5A12; --amber-100:#FDF0DA;
+  --red-700:#B3402E; --red-100:#FBE9E5;
+  --ink:#211A2C; --soft:#5A5266; --line:#E3E0EC;
+  --surface:#fff; --canvas:#F7F6FA;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--canvas);color:var(--ink);
+  font:16px/1.65 Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  -webkit-font-smoothing:antialiased}
+.layout{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+@media(max-width:900px){.layout{grid-template-columns:1fr}.sidebar{position:static;height:auto}}
+
+.sidebar{background:var(--brand-900);color:#fff;padding:24px 0;position:sticky;top:0;height:100vh;overflow-y:auto}
+.brand{display:flex;align-items:center;gap:10px;padding:0 22px 20px}
+.brand-mark{width:34px;height:34px;border-radius:9px;flex:none;
+  background:linear-gradient(150deg,#1F8A54,#5B3A8E);
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.brand-name{font-weight:700;font-size:15px;letter-spacing:-.01em}
+.brand-sub{font-size:11px;color:var(--brand-300)}
+.nav-group{padding:14px 22px 4px;font-size:11px;text-transform:uppercase;
+  letter-spacing:.09em;color:var(--brand-300)}
+.sidebar a{display:block;padding:7px 22px;color:#E6DEF4;text-decoration:none;font-size:14px}
+.sidebar a:hover{background:rgba(255,255,255,.07)}
+.sidebar a.active{background:rgba(255,255,255,.14);font-weight:600;color:#fff;
+  box-shadow:inset 3px 0 0 #1F8A54}
+
+.content{padding:48px 56px 96px;max-width:940px}
+@media(max-width:900px){.content{padding:28px 20px 64px}}
+
+h1,h2,h3,h4{font-family:"Space Grotesk",Inter,sans-serif;letter-spacing:-.015em;
+  color:var(--brand-900);line-height:1.25}
+h1{font-size:34px;margin:0 0 8px}
+h2{font-size:23px;margin:44px 0 12px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+h3{font-size:17px;margin:28px 0 8px}
+h4{font-size:15px;margin:20px 0 6px;color:var(--soft)}
+p{margin:0 0 14px}
+a{color:var(--brand-600)}
+strong{color:var(--brand-900)}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+
+ul,ol{margin:0 0 16px;padding-left:22px}
+li{margin-bottom:5px}
+
+code{background:var(--brand-50);border:1px solid var(--brand-100);border-radius:4px;
+  padding:1px 5px;font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.87em;
+  color:var(--brand-700)}
+pre.code{background:var(--brand-900);color:#E9E3F5;padding:16px 18px;border-radius:12px;
+  overflow-x:auto;margin:0 0 18px;font-size:13px;line-height:1.6;position:relative}
+pre.code code{background:none;border:0;padding:0;color:inherit;font-size:inherit}
+pre.code[data-lang]::before{content:attr(data-lang);position:absolute;top:8px;right:12px;
+  font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--brand-300)}
+
+blockquote{margin:0 0 18px;padding:12px 18px;background:var(--brand-50);
+  border-left:3px solid var(--brand-600);border-radius:0 8px 8px 0;color:var(--brand-700)}
+
+.table-wrap{overflow-x:auto;margin:0 0 20px}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--surface);
+  border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th{background:var(--brand-50);text-align:left;padding:10px 13px;font-weight:600;
+  color:var(--brand-900);border-bottom:1px solid var(--line);white-space:nowrap}
+td{padding:10px 13px;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}
+
+.toc{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+  padding:16px 20px;margin:0 0 32px}
+.toc-title{font-size:11px;text-transform:uppercase;letter-spacing:.09em;
+  color:var(--soft);margin-bottom:8px}
+.toc ul{list-style:none;padding:0;margin:0}
+.toc li{margin-bottom:3px;font-size:14px}
+.toc li.sub{padding-left:16px;font-size:13px}
+.toc a{text-decoration:none}
+.toc a:hover{text-decoration:underline}
+
+.doc-footer{margin-top:64px;padding-top:20px;border-top:1px solid var(--line);
+  font-size:13px;color:var(--soft);display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-mark">K</div>
+      <div>
+        <div class="brand-name">Karsons Platform</div>
+        <div class="brand-sub">Documentation</div>
+      </div>
+    </div>
+    
+      <div class="nav-group">Overview</div>
+      <a href="index.html" class="active">Karsons Pharmacy Platform</a>
+      <div class="nav-group">Architecture</div>
+      <a href="architecture/overview.html">Architecture Overview</a>
+      <div class="nav-group">Modules</div>
+      <a href="modules/audit.html">Module — Audit Log</a><a href="modules/authorisation.html">Module — Authorisation & Server Actions</a><a href="modules/clinical-safety.html">Module — Clinical Safety</a><a href="modules/decision-engine.html">Module — Decision Engine</a><a href="modules/performance.html">Module — Performance & Hosting Cost</a><a href="modules/service-designer.html">Module — Service Designer & Form Runtime</a>
+      <div class="nav-group">Deployment</div>
+      <a href="deployment/runbook.html">Deployment Runbook</a><a href="deployment/run-it-yourself.html">Run It Yourself</a>
+      <div class="nav-group">For pharmacy staff</div>
+      <a href="client-guides/administrator-guide.html">Administrator Guide</a><a href="client-guides/building-services.html">Building Your Own Services</a><a href="client-guides/daily-operations.html">Daily Operations</a><a href="client-guides/pharmacist-guide.html">Pharmacist Guide</a>
+  </aside>
+  <main class="content">
+    <nav class="toc"><div class="toc-title">On this page</div><ul><li class=""><a href="#the-core-idea">The core idea</a></li><li class=""><a href="#where-to-start">Where to start</a></li><li class=""><a href="#documentation-map">Documentation map</a></li><li class=""><a href="#non-negotiable-rules">Non-negotiable rules</a></li><li class=""><a href="#current-state">Current state</a></li><li class=""><a href="#compliance-position">Compliance position</a></li></ul></nav>
+    <h1 id="karsons-pharmacy-platform">Karsons Pharmacy Platform</h1>
+<p>A multi-company clinical services platform for a pharmacy group on the Isle of Man. It runs vaccination services, GLP-1 weight management repeat prescribing, and any other clinical service the client configures himself.</p>
+<hr>
+<h2 id="the-core-idea">The core idea</h2>
+<p>Every clinical service is the same object underneath:</p>
+<blockquote>patient intake → clinician review → clinical action → notification → immutable audit record</blockquote>
+<p>Flu vaccination, GLP-1 repeat care and any future service are <em>configurations</em> of that one pipeline, not separate builds. This is the decision that separates this platform from the Zoho attempt that preceded it.</p>
+<p><code>src/lib/forms/services/flu-vaccine.ts</code> is the proof: the entire flu service — every question, every conditional branch, the clinician form, the declarations, the outputs — is a single data structure. No flu-specific logic exists anywhere else in the codebase.</p>
+<hr>
+<h2 id="where-to-start">Where to start</h2>
+<p><strong>Building or maintaining the system?</strong> Read <code>CLAUDE.md</code> first, then Architecture, then the module you are working on.</p>
+<p><strong>Running the pharmacy?</strong> Start with the guides under <em>For pharmacy staff</em>. They are written for pharmacy teams, not developers.</p>
+<p><strong>Deploying it?</strong> Go straight to the Deployment runbook.</p>
+<hr>
+<h2 id="documentation-map">Documentation map</h2>
+<div class="table-wrap"><table><thead><tr><th>Section</th><th>For</th></tr></thead><tbody><tr><td><strong>Architecture</strong></td><td>How the system fits together and why</td></tr><tr><td><strong>Modules</strong></td><td>Each subsystem in detail, with its gotchas</td></tr><tr><td><strong>Deployment</strong></td><td>Step-by-step setup, hosting and cost</td></tr><tr><td><strong>For pharmacy staff</strong></td><td>Day-to-day use, written without jargon</td></tr></tbody></table></div>
+<hr>
+<h2 id="non-negotiable-rules">Non-negotiable rules</h2>
+<p>These exist for legal and regulatory reasons, not stylistic ones.</p>
+<ol><li><strong>Never delete clinical data.</strong> Version it or archive it.</li><li><strong>Every mutation writes an audit event.</strong> The log is append-only and hash-chained.</li><li><strong>A pharmacist confirms every supply.</strong> There is no autonomous approval path —</li></ol>
+<p>   this keeps the product outside medical device regulation.</p>
+<ol><li><strong>Patients are organisation-scoped.</strong> Findable at any branch, which is also</li></ol>
+<p>   what makes cross-branch safety checks possible.</p>
+<ol><li><strong>No real patient data outside production.</strong> Seed data is synthetic; only</li></ol>
+<p>   reference data is real.</p>
+<hr>
+<h2 id="current-state">Current state</h2>
+<p><strong>265 tests passing</strong> across twelve suites.</p>
+<div class="table-wrap"><table><thead><tr><th>Layer</th><th>Status</th></tr></thead><tbody><tr><td>Database schema, all 12 modules</td><td>Complete</td></tr><tr><td>Decision engine + GLP-1 ruleset</td><td>Complete, tested</td></tr><tr><td>Rule simulator</td><td>Complete, tested</td></tr><tr><td>Form schema, runtime and renderer</td><td>Complete, tested</td></tr><tr><td>Service Designer</td><td>Complete</td></tr><tr><td>Scoped RBAC + action wrapper</td><td>Complete, tested</td></tr><tr><td>Audit log (hash-chained)</td><td>Complete, tested</td></tr><tr><td>Patient search + duplicate detection</td><td>Complete, tested</td></tr><tr><td>Clinical safety checks</td><td>Complete, tested</td></tr><tr><td>Inventory, expiry forecast, recall</td><td>Complete, tested</td></tr><tr><td>Scheduling and walk-in queue</td><td>Complete, tested</td></tr><tr><td>GP batching and delivery monitoring</td><td>Complete, tested</td></tr><tr><td>Prescription PDF</td><td>Complete</td></tr><tr><td>Performance and cost controls</td><td>Complete, tested</td></tr></tbody></table></div>
+<hr>
+<h2 id="compliance-position">Compliance position</h2>
+<p>Built to UK GDPR standards, which the Isle of Man regime closely mirrors. All data stays in UK-region infrastructure.</p>
+<p>Before real patient data: DPIA, penetration test, WCAG 2.2 AA audit, signed DPAs, medical device regulatory opinion, clinical hazard log, and a named Clinical Safety Officer.</p>
+    <div class="doc-footer">
+      <span>Karsons Pharmacy Platform</span>
+      <span>Generated from source — do not edit HTML directly</span>
+    </div>
+  </main>
+</div>
+</body>
+</html>
