@@ -41,3 +41,6 @@ Thumbs.db
 # Local Claude Code state (personal to each machine; the shared launch.json
 # is committed so the dev server starts the same way for everyone)
 .claude/settings.local.json
+
+# Superseded first build. Kept on disk for reference, not published.
+karsons/
