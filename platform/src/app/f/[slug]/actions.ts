@@ -28,6 +28,7 @@ import { matchOrCreatePatient, readIdentity } from '@/lib/patients/identify';
 import { evaluateRuleset, type RulesetDefinition } from '@/lib/rules/engine';
 import { alertPharmacist } from '@/lib/notifications/alerts';
 import { deriveValues } from '@/lib/clinical/derived';
+import { loadPreviousSupply } from '@/lib/clinical/previous-supply';
 import type { FormSchema, Answers } from '@/types/form-schema';
 
 export interface SubmitResult {
@@ -129,13 +130,6 @@ export async function submitPublicForm(
     const answers = pruneHiddenAnswers(schema, rawAnswers);
     const metadata = collectMetadata(schema, answers);
 
-    const derived = deriveValues({
-      answers,
-      heightCm: siValue(answers, 'height'),
-      weightKg: siValue(answers, 'weight'),
-      dateOfBirth: typeof answers.dateOfBirth === 'string' ? answers.dateOfBirth : null,
-    });
-
     const result = await db.transaction(async (tx) => {
       // ── Find the draft, or start fresh ────────────────────
       //
@@ -180,6 +174,31 @@ export async function submitPublicForm(
         });
         patientId = matched.id;
       }
+
+      /*
+       * Derive AFTER the patient is identified, not before.
+       *
+       * This used to run above the transaction, where no patient existed yet,
+       * so the previous weight and previous strength were never supplied and
+       * `weightLossPercent` and `doseStepChange` were always null. Four rules
+       * read those two values and were therefore skipped on every submission —
+       * both routes to GREEN among them, which is why nothing could ever be
+       * auto-approved.
+       */
+      const previousSupply = await loadPreviousSupply(tx, {
+        organisationId: svc.organisationId,
+        patientId,
+        serviceId: svc.id,
+      });
+
+      const derived = deriveValues({
+        answers,
+        heightCm: siValue(answers, 'height'),
+        weightKg: siValue(answers, 'weight'),
+        dateOfBirth: typeof answers.dateOfBirth === 'string' ? answers.dateOfBirth : null,
+        previousMedicineValue: previousSupply.previousMedicineValue,
+        previousWeightKg: previousSupply.previousWeightKg,
+      });
 
       const payload = {
         answers: { ...answers, _metadata: metadata } as Record<string, unknown>,

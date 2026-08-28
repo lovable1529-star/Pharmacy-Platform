@@ -14,6 +14,24 @@ const SURGERIES = [
 
 const FLU = buildFluVaccinationForm(SURGERIES);
 
+/**
+ * Find a question by id rather than by position.
+ *
+ * Two tests here indexed the form as `steps[1].fields[3]`, so reordering the
+ * questionnaire to match the specification broke them without anything
+ * actually being wrong. The id is the stable handle — that is the whole point
+ * of the schema's id rule — so tests should use it.
+ */
+function field(id: string) {
+  for (const step of FLU.steps) {
+    const found = step.fields.find((f) => f.id === id);
+    if (found) return found;
+  }
+  throw new Error(`No field ${id} in the flu form`);
+}
+
+const HEALTH_STEP = FLU.steps.find((st) => st.id === 'health')!;
+
 const BASE = {
   firstName: 'Bridget',
   lastName: 'Kelly',
@@ -35,7 +53,7 @@ describe('conditional reveals — the dominant pattern in his forms', () => {
   });
 
   it('places the revealed field immediately after its parent', () => {
-    const expanded = expandField(FLU.steps[1]!.fields[3]!, { otherAllergies: 'yes' });
+    const expanded = expandField(field('otherAllergies'), { otherAllergies: 'yes' });
     expect(expanded.map((f) => f.id)).toEqual(['otherAllergies', 'otherAllergiesDetail']);
   });
 });
@@ -106,17 +124,19 @@ describe('validation', () => {
   });
 
   it('does not require an answer to a hidden field', () => {
-    const male = validateStep(FLU.steps[1]!, {
+    const male = validateStep(HEALTH_STEP, {
       ...BASE, gender: 'male',
-      hadFluVaccineBefore: 'yes', fluVaccineLast6Months: 'no',
+      hadFluVaccineBefore: 'yes', fluVaccineThisSeason: 'no',
       vaccineReaction: 'no', otherAllergies: 'no',
+      bleedingDisorder: 'no', currentMedication: 'no',
       currentlyUnwell: 'no', covidThisSeason: 'yes',
+      feverLast24Hours: 'no',
     });
     expect(male.valid).toBe(true);
   });
 
   it('requires the revealed detail once Yes is chosen', () => {
-    const result = validateStep(FLU.steps[1]!, {
+    const result = validateStep(HEALTH_STEP, {
       ...BASE, gender: 'male',
       hadFluVaccineBefore: 'yes', fluVaccineLast6Months: 'no',
       vaccineReaction: 'yes', otherAllergies: 'no',

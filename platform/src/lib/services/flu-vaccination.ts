@@ -106,24 +106,51 @@ export function buildFluVaccinationForm(
         title: 'Health questions',
         description: 'A pharmacist will go through these with you before your vaccination.',
         fields: [
+          /*
+           * Fever leads the section because the specification numbers it Q1 and
+           * requires it high in the pharmacist's view. It stays clinician-only:
+           * "in the last 24 hours" is a question about the day of the
+           * appointment, and asking it a week in advance answers nothing.
+           */
           {
-            id: 'hadFluVaccineBefore',
+            id: 'feverLast24Hours',
             type: 'yesNo',
-            label: 'Have you had a flu vaccine before?',
+            label: 'Have you had a high fever or temperature in the last 24 hours?',
             required: true,
             presentation: 'pills',
+            clinicianOnly: true,
+            warnWhen: [
+              {
+                value: 'yes',
+                severity: 'stop',
+                message: 'Do not vaccinate today. Postpone until the patient has recovered.',
+              },
+            ],
           },
+
+          // Both pregnancy questions are closed for male patients and mandatory
+          // for everyone else, per the gender rule in the specification.
           {
-            id: 'fluVaccineLast6Months',
+            id: 'breastfeeding',
             type: 'yesNo',
-            label: 'Have you had a flu vaccine in the last 6 months?',
+            label: 'Are you breast-feeding?',
             required: true,
             presentation: 'pills',
+            visibleWhen: [{ field: 'gender', operator: 'neq', value: 'male' }],
           },
+          {
+            id: 'pregnant',
+            type: 'yesNo',
+            label: 'Are you pregnant, or is there any possibility that you could be pregnant?',
+            required: true,
+            presentation: 'pills',
+            visibleWhen: [{ field: 'gender', operator: 'neq', value: 'male' }],
+          },
+
           {
             id: 'vaccineReaction',
             type: 'yesNo',
-            label: 'Have you ever had an allergic or anaphylactic reaction to a vaccine?',
+            label: 'Have you ever had an allergic or anaphylactic reaction to a vaccine before?',
             required: true,
             presentation: 'pills',
             reveals: [
@@ -161,21 +188,46 @@ export function buildFluVaccinationForm(
             ],
           },
           {
-            id: 'currentlyUnwell',
+            id: 'bleedingDisorder',
             type: 'yesNo',
-            label: 'Are you currently unwell?',
+            label: 'Do you have a bleeding disorder, including taking any medication that thins your blood (anticoagulants)?',
             required: true,
             presentation: 'pills',
+            helpText: 'This affects how and where the vaccine is given, not whether you can have it.',
           },
           {
-            id: 'pregnant',
-            type: 'yesNoNa',
-            label: 'Are you pregnant?',
+            id: 'currentMedication',
+            type: 'yesNo',
+            label: 'Are you currently taking any medication, over the counter or prescription?',
             required: true,
             presentation: 'pills',
-            // Closed for male patients, open and mandatory for anyone else —
-            // exactly as the feedback document specifies.
-            visibleWhen: [{ field: 'gender', operator: 'neq', value: 'male' }],
+            reveals: [
+              {
+                whenValue: 'yes',
+                fields: [
+                  {
+                    id: 'currentMedicationDetail',
+                    type: 'longText',
+                    label: 'Please provide medication details',
+                    required: true,
+                  },
+                ],
+              },
+            ],
+          },
+          /*
+           * The season, not a rolling six months. The previous wording asked
+           * about the last 6 months, which answers a different question either
+           * side of a season boundary. `fluVaccineLast6Months` is retired
+           * rather than relabelled: an id must keep meaning what it meant, and
+           * submissions already bound to version 3 still render against it.
+           */
+          {
+            id: 'fluVaccineThisSeason',
+            type: 'yesNo',
+            label: 'Have you already had a flu vaccine for this flu season?',
+            required: true,
+            presentation: 'pills',
           },
           {
             id: 'covidThisSeason',
@@ -191,28 +243,27 @@ export function buildFluVaccinationForm(
               },
             ],
           },
+
+          // From the pharmacy's own paper form, kept alongside the specified set.
+          {
+            id: 'hadFluVaccineBefore',
+            type: 'yesNo',
+            label: 'Have you had a flu vaccine before?',
+            required: true,
+            presentation: 'pills',
+          },
+          {
+            id: 'currentlyUnwell',
+            type: 'yesNo',
+            label: 'Are you currently unwell?',
+            required: true,
+            presentation: 'pills',
+          },
           {
             id: 'otherConditions',
             type: 'longText',
             label: 'Do you have any other health conditions we should know about?',
             placeholder: 'Leave blank if none.',
-          },
-          // Asked by the pharmacist on the day, never in advance. He was
-          // explicit about this, and about it appearing high in their view.
-          {
-            id: 'feverLast24Hours',
-            type: 'yesNo',
-            label: 'Have you had a fever or high temperature in the last 24 hours?',
-            required: true,
-            presentation: 'pills',
-            clinicianOnly: true,
-            warnWhen: [
-              {
-                value: 'yes',
-                severity: 'stop',
-                message: 'Do not vaccinate today. Postpone until the patient has recovered.',
-              },
-            ],
           },
         ],
       },
