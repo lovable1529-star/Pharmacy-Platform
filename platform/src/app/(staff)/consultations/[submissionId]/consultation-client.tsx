@@ -1,10 +1,14 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { UploadTargetProvider } from '@/components/fields/upload-context';
+
 import {
   ConsultationForm, type BatchOption, type ClinicianOption,
 } from '@/components/clinical/consultation-form';
 import type { Answers, FormSchema } from '@/types/form-schema';
 import { completeConsultation } from '../actions';
+import { amendSubmission } from './amend-actions';
 
 export function ConsultationClient(props: {
   submissionId: string;
@@ -18,7 +22,10 @@ export function ConsultationClient(props: {
   clinicians: ClinicianOption[];
   batches: BatchOption[];
 }) {
+  const router = useRouter();
+
   return (
+    <UploadTargetProvider value={{ submissionId: props.submissionId }}>
     <ConsultationForm
       patient={props.patient}
       schema={props.schema}
@@ -26,6 +33,18 @@ export function ConsultationClient(props: {
       clinicians={props.clinicians}
       batches={props.batches}
       branchName={props.branchName}
+      onAmend={async (answers, reason) => {
+        const result = await amendSubmission({
+          submissionId: props.submissionId,
+          answers,
+          reason,
+        });
+        // Pull the corrected answers — and any re-triaged outcome — back down,
+        // so the panel shows what is now on the record rather than what the
+        // clinician typed.
+        if (result.ok) router.refresh();
+        return result;
+      }}
       onComplete={async (input) =>
         completeConsultation({
           submissionId: props.submissionId,
@@ -37,5 +56,6 @@ export function ConsultationClient(props: {
         })
       }
     />
+    </UploadTargetProvider>
   );
 }

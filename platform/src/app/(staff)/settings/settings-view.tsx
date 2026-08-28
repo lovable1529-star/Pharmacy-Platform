@@ -5,6 +5,9 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Plus, Loader2, AlertTriangle, Clock, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import {
+  AddBranchForm, AddPharmacistForm, AddProductForm, PharmacistRowActions,
+} from './entity-forms';
 import { formatDate } from '@/lib/units';
 import { addBatch, addSurgery } from './actions';
 
@@ -104,13 +107,24 @@ export function SettingsView(props: Props) {
           ))}
         </Card>
       ) : null}
+      {tab === 'Locations' ? (
+        <AddBranchForm companies={props.companies.map((c) => ({ id: c.id, name: c.name }))} />
+      ) : null}
 
       {tab === 'Pharmacists' ? (
-        <Card title={`${props.clinicians.length} registered pharmacists`}>
-          {props.clinicians.map((c) => (
-            <Row key={c.id} primary={c.fullName} secondary={`GPhC ${c.gphcNumber}`} />
-          ))}
-        </Card>
+        <>
+          <Card title={`${props.clinicians.length} registered pharmacists`}>
+            {props.clinicians.map((c) => (
+              <Row
+                key={c.id}
+                primary={c.fullName}
+                secondary={`GPhC ${c.gphcNumber}`}
+                action={<PharmacistRowActions id={c.id} fullName={c.fullName} />}
+              />
+            ))}
+          </Card>
+          <AddPharmacistForm />
+        </>
       ) : null}
 
       {tab === 'GP surgeries' ? (
@@ -126,6 +140,7 @@ export function SettingsView(props: Props) {
 
       {tab === 'Stock' ? (
         <>
+          <AddProductForm />
           <Card title={`${props.batches.length} batches`}>
             {props.batches.map((b) => (
               <Row
@@ -177,16 +192,20 @@ function Card({ title, children }: { title: string; children: React.ReactNode })
 }
 
 function Row({
-  primary, secondary, tone, note,
+  primary, secondary, tone, note, action,
 }: {
   primary: string;
   secondary?: string;
   tone?: 'review' | 'stop';
   note?: string;
+  action?: React.ReactNode;
 }) {
   return (
     <div className="border-b border-line-soft px-4 py-3 last:border-b-0">
-      <div className="text-[14px] font-medium text-ink">{primary}</div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-[14px] font-medium text-ink">{primary}</div>
+        {action}
+      </div>
       {secondary ? (
         <div
           className={cn(

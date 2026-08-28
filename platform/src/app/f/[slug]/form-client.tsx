@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, CloudOff, Loader2 } from 'lucide-react';
 import { FormWizard } from '@/components/form/wizard';
+import { UploadTargetProvider } from '@/components/fields/upload-context';
 import type { Answers, FormSchema } from '@/types/form-schema';
 import { saveFormDraft, submitPublicForm, type SubmitResult } from './actions';
 
@@ -118,13 +119,15 @@ export function PublicForm({
         </div>
       ) : null}
 
-      <FormWizard
-        schema={schema}
-        initialAnswers={savedAnswers ?? {}}
-        onAnswersChange={handleChange}
-        onSubmit={handleSubmit}
-        submitLabel="Submit my answers"
-      />
+      <UploadTargetProvider value={{ token }}>
+        <FormWizard
+          schema={schema}
+          initialAnswers={savedAnswers ?? {}}
+          onAnswersChange={handleChange}
+          onSubmit={handleSubmit}
+          submitLabel="Submit my answers"
+        />
+      </UploadTargetProvider>
     </>
   );
 }

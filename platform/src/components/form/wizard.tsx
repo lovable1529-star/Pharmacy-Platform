@@ -29,7 +29,13 @@ import {
   type FieldProps,
 } from '@/components/fields/controls';
 
-function Control(props: FieldProps & { schema: FormSchema }) {
+/**
+ * Exported so the clinician's review panel edits an answer with the exact
+ * control the patient answered it on. Two implementations of "what a weight
+ * field looks like" would drift, and the one a clinician corrects a record
+ * with is the worse one to get wrong.
+ */
+export function Control(props: FieldProps & { schema: FormSchema }) {
   const { field, schema } = props;
 
   switch (field.type) {

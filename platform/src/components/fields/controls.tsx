@@ -16,8 +16,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
-import { Check, Upload, Camera, Eraser, Info, AlertTriangle, OctagonX } from 'lucide-react';
+import { Check, Upload, Camera, Eraser, Info, AlertTriangle, OctagonX, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { canUpload, uploadFile, useUploadTarget } from './upload-context';
+import { isStoredFileRef, formatFileSize } from './stored-file';
 import {
   stonesAndPoundsToKg, kgToStonesAndPounds, feetAndInchesToCm, cmToFeetAndInches,
   inchesToCm, cmToInches, calculateBmi,
@@ -629,49 +631,106 @@ export function DerivedValue({ field, answers }: FieldProps) {
 // 11 · Upload and camera
 // ─────────────────────────────────────────────────────────────
 
+/**
+ * A file the patient actually sent.
+ *
+ * The upload happens the moment a file is chosen, not at submit. That is what
+ * turns the green tick into a promise the system can keep: previously the form
+ * showed one, then dropped the file on submit because a `File` cannot be
+ * serialised into the answers payload — so the patient believed they had sent
+ * their exemption letter and the pharmacy never knew one existed.
+ *
+ * The answer stored is a reference to the saved object, never the file itself.
+ */
 export function FileUploadInput({ field, value, onChange, disabled }: FieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const fileName = typeof value === 'string' ? value : (value as File | undefined)?.name;
+  const target = useUploadTarget();
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
+
+  const stored = isStoredFileRef(value) ? value : null;
   const isCamera = field.type === 'photoCapture';
   const Icon = isCamera ? Camera : Upload;
+  const uploadable = canUpload(target);
+
+  async function choose(file: File | undefined) {
+    if (!file) return;
+    setFailure(null);
+
+    if (!uploadable) {
+      // Refuse rather than accept-and-lose. Being told now is far better than
+      // a clinician discovering the gap when the patient is in front of them.
+      setFailure('This form cannot take attachments. Please bring the document with you.');
+      return;
+    }
+
+    setBusy(true);
+    const result = await uploadFile(target, field.id, file);
+    setBusy(false);
+
+    if (result.ok) onChange(result.file);
+    else setFailure(result.error);
+  }
 
   return (
     <>
       <button
         type="button"
-        disabled={disabled}
+        disabled={disabled || busy}
         onClick={() => inputRef.current?.click()}
         className={cn(
           'flex w-full items-center gap-3.5 rounded-[9px] border border-dashed px-4 py-4 text-left transition-colors',
-          fileName ? 'border-safe-600 bg-safe-50' : 'border-line bg-sunk hover:border-brand-400',
-          disabled && 'cursor-not-allowed opacity-55',
+          stored ? 'border-safe-600 bg-safe-50' : 'border-line bg-sunk hover:border-brand-400',
+          failure && 'border-stop-600 bg-stop-50',
+          (disabled || busy) && 'cursor-not-allowed opacity-55',
         )}
       >
         <span
           className={cn(
             'flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px]',
-            fileName ? 'bg-safe-100 text-safe-700' : 'bg-surface text-ink-faint',
+            stored ? 'bg-safe-100 text-safe-700' : 'bg-surface text-ink-faint',
           )}
         >
-          {fileName ? <Check size={18} strokeWidth={2.4} /> : <Icon size={18} strokeWidth={1.9} />}
+          {busy ? (
+            <Loader2 size={18} className="animate-spin" />
+          ) : stored ? (
+            <Check size={18} strokeWidth={2.4} />
+          ) : (
+            <Icon size={18} strokeWidth={1.9} />
+          )}
         </span>
         <span className="min-w-0">
           <span className="block truncate text-[14px] font-medium text-ink">
-            {fileName ?? (isCamera ? 'Take a photo' : 'Choose a file or take a photo')}
+            {busy
+              ? 'Sending…'
+              : (stored?.name ?? (isCamera ? 'Take a photo' : 'Choose a file or take a photo'))}
           </span>
           <span className="block text-[12.5px] text-ink-faint">
-            {fileName ? 'Tap to replace' : 'JPG, PNG or PDF'}
+            {busy
+              ? 'Please keep this page open'
+              : stored
+                ? `Sent · ${formatFileSize(stored.size)} · tap to replace`
+                : 'JPG, PNG, HEIC or PDF, up to 10MB'}
           </span>
         </span>
       </button>
+
+      {failure ? (
+        <p className="mt-1.5 text-[12.5px] text-stop-700">{failure}</p>
+      ) : null}
+
       <input
         ref={inputRef}
         id={field.id}
         type="file"
-        accept="image/*,application/pdf"
+        accept="image/jpeg,image/png,image/heic,application/pdf"
         capture={isCamera ? 'environment' : undefined}
         className="sr-only"
-        onChange={(e) => onChange(e.target.files?.[0])}
+        onChange={(e) => {
+          void choose(e.target.files?.[0]);
+          // Clear it so choosing the same file twice still fires a change.
+          e.target.value = '';
+        }}
       />
     </>
   );

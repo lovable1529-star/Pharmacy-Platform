@@ -22,8 +22,9 @@
  */
 
 import { useMemo, useState } from 'react';
-import { Check, ShieldCheck, Loader2, AlertTriangle, Syringe } from 'lucide-react';
+import { Check, ShieldCheck, Loader2, AlertTriangle, Syringe, ClipboardCheck } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { AnswerReview } from '@/components/clinical/answer-review';
 import { visibleFieldsForStep, activeWarnings, numberQuestions } from '@/lib/forms/runtime';
 import { formatDate } from '@/lib/units';
 import { ADMINISTRATION_SITES, INJECTION_TYPES } from '@/lib/seed/karsons';
@@ -39,6 +40,11 @@ export interface ConsultationFormProps {
   patient: { id: string; fullName: string; dateOfBirth: string; addressLine1: string | null; postcode: string | null };
   schema: FormSchema;
   patientAnswers: Answers;
+  /**
+   * Correcting an answer. Absent for a record that is already closed, which is
+   * how a completed consultation becomes read-only.
+   */
+  onAmend?: (answers: Answers, reason: string) => Promise<{ ok: boolean; error?: string }>;
   clinicians: ClinicianOption[];
   batches: BatchOption[];
   branchName: string;
@@ -53,7 +59,7 @@ export interface ConsultationFormProps {
 }
 
 export function ConsultationForm({
-  patient, schema, patientAnswers, clinicians, batches, branchName, onComplete,
+  patient, schema, patientAnswers, clinicians, batches, branchName, onComplete, onAmend,
 }: ConsultationFormProps) {
   const numbered = useMemo(
     () => (schema.numberQuestions ? numberQuestions(schema) : schema),
@@ -180,6 +186,17 @@ export function ConsultationForm({
             </span>
           </span>
         </button>
+      </section>
+
+      {/* What the patient told us — check it against them before anything else.
+          His brief: "Clinician reviews all the information collected with the
+          form". This is the step that was missing entirely. */}
+      <section className="mb-5">
+        <h2 className="mb-2.5 flex items-center gap-2 font-display text-[15px] font-semibold text-ink">
+          <ClipboardCheck size={15} strokeWidth={2} />
+          What the patient told us
+        </h2>
+        <AnswerReview schema={schema} answers={patientAnswers} onAmend={onAmend} />
       </section>
 
       {/* Clinician questions */}
