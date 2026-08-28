@@ -30,6 +30,7 @@ import { evaluateRuleset, type RulesetDefinition } from '@/lib/rules/engine';
 import { alertPharmacist } from '@/lib/notifications/alerts';
 import { deriveValues } from '@/lib/clinical/derived';
 import { loadPreviousSupply } from '@/lib/clinical/previous-supply';
+import { loadDoseLadders } from '@/lib/clinical/ladders';
 import { changeSubmissionStatus, recordInitialStatus } from '@/lib/workflow/history';
 import type { FormSchema, Answers } from '@/types/form-schema';
 
@@ -187,10 +188,17 @@ export async function submitPublicForm(
        * both routes to GREEN among them, which is why nothing could ever be
        * auto-approved.
        */
+      // Ladders come from the medicine master, so a strength added or corrected
+      // there changes the dose-step rules without a deploy. Loaded first: the
+      // previous supply is validated against them, and a strength the master no
+      // longer lists must produce no step change rather than a wrong one.
+      const ladders = await loadDoseLadders(tx, svc.organisationId);
+
       const previousSupply = await loadPreviousSupply(tx, {
         organisationId: svc.organisationId,
         patientId,
         serviceId: svc.id,
+        ladders,
       });
 
       const derived = deriveValues({
@@ -200,6 +208,7 @@ export async function submitPublicForm(
         dateOfBirth: typeof answers.dateOfBirth === 'string' ? answers.dateOfBirth : null,
         previousMedicineValue: previousSupply.previousMedicineValue,
         previousWeightKg: previousSupply.previousWeightKg,
+        ladders,
       });
 
       const payload = {

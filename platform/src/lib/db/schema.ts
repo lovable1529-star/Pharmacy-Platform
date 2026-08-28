@@ -194,6 +194,10 @@ export const gpSurgery = pgTable('gp_surgery', {
   organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
   name: text('name').notNull(),
   email: text('email').notNull(),
+  /** §12's practice master: a practice is a place, not just a mailbox. */
+  practiceCode: text('practice_code'),
+  phone: text('phone'),
+  address: text('address'),
   archivedAt: timestamp('archived_at', { withTimezone: true }),
 }, (t) => [index('gp_surgery_org_idx').on(t.organisationId)]);
 
@@ -753,3 +757,95 @@ export const statusHistory = pgTable('status_history', {
   index('status_history_entity_idx').on(t.entityType, t.entityId, t.createdAt),
   index('status_history_org_idx').on(t.organisationId, t.createdAt),
 ]);
+
+// ─────────────────────────────────────────────────────────────
+// Medicine master
+//
+// §12 requires medicines to be configurable rather than coded: brand, generic
+// name, strength, form, service, active. The strengths matter more than the
+// list suggests — "only same or ±1 step" is a safety rule, and a step only
+// means something against a ladder that knows which strength sits between
+// which. So a strength carries a POSITION, and that ordering is the clinical
+// content, not presentation.
+//
+// Held separately from `product`, which is the physical thing on a shelf with
+// a batch and an expiry. A medicine is what may be prescribed; a product is
+// what is dispensed. Flu vaccines are products; Mounjaro is both, and conflating
+// them is how a strength ladder ends up attached to a box.
+// ─────────────────────────────────────────────────────────────
+
+export const medicine = pgTable('medicine', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  /** The name a patient recognises — Mounjaro, Wegovy. */
+  brand: text('brand').notNull(),
+  genericName: text('generic_name'),
+  /** Injection, tablet, nasal spray. */
+  form: text('form'),
+  /** The service this belongs to, where it belongs to only one. */
+  serviceId: uuid('service_id').references(() => service.id),
+  active: boolean('active').default(true).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('medicine_org_idx').on(t.organisationId),
+  uniqueIndex('medicine_brand_idx').on(t.organisationId, t.brand),
+]);
+
+export const medicineStrength = pgTable('medicine_strength', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  medicineId: uuid('medicine_id').notNull().references(() => medicine.id),
+  /** As written on the box — "7.5mg". Matched against the answer value. */
+  label: text('label').notNull(),
+  /**
+   * Rung number, ascending. The whole reason this table exists rather than a
+   * text array: a step change is the distance between two positions.
+   */
+  position: integer('position').notNull(),
+  active: boolean('active').default(true).notNull(),
+}, (t) => [
+  index('medicine_strength_medicine_idx').on(t.medicineId, t.position),
+  uniqueIndex('medicine_strength_label_idx').on(t.medicineId, t.label),
+  uniqueIndex('medicine_strength_position_idx').on(t.medicineId, t.position),
+]);
+
+// ─────────────────────────────────────────────────────────────
+// Slot configuration — the parts availability could not express
+//
+// `availability` already carries working days, opening and closing times, slot
+// length and maximum appointments per slot. §12 asks for two more, and they are
+// genuinely different shapes rather than one flexible table:
+//
+//   a break recurs      — lunch, every weekday, forever
+//   a closure is dated  — Christmas, a training afternoon, one branch only
+//
+// Collapsing them into a single table with half its columns null depending on
+// which kind of row it is would make every query interrogate the row's type
+// before it could trust a column.
+// ─────────────────────────────────────────────────────────────
+
+export const availabilityBreak = pgTable('availability_break', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  branchId: uuid('branch_id').notNull().references(() => branch.id),
+  /** Null applies the break to every service at that branch. */
+  serviceId: uuid('service_id').references(() => service.id),
+  /** 0 = Sunday, matching `availability`. */
+  weekday: integer('weekday').notNull(),
+  startMinute: integer('start_minute').notNull(),
+  endMinute: integer('end_minute').notNull(),
+  label: text('label'),
+}, (t) => [index('availability_break_branch_idx').on(t.branchId, t.weekday)]);
+
+export const scheduleClosure = pgTable('schedule_closure', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  /** Null closes every branch — a public holiday. */
+  branchId: uuid('branch_id').references(() => branch.id),
+  closedOn: date('closed_on').notNull(),
+  /** Both null closes the whole day; set, they close part of it. */
+  startMinute: integer('start_minute'),
+  endMinute: integer('end_minute'),
+  reason: text('reason'),
+}, (t) => [index('schedule_closure_date_idx').on(t.closedOn, t.branchId)]);

@@ -25,7 +25,7 @@
 import { and, eq } from 'drizzle-orm';
 import type { Tx } from '@/lib/actions';
 import { repeatEnrolment } from '@/lib/db/schema';
-import { DOSE_LADDERS } from '@/lib/clinical/derived';
+import { DOSE_LADDERS, type DoseLadders } from '@/lib/clinical/derived';
 
 export interface PreviousSupply {
   /** `mounjaro_7.5mg` — the shape `parseMedicineValue` expects. */
@@ -45,12 +45,13 @@ const NOTHING: PreviousSupply = { previousMedicineValue: null, previousWeightKg:
 export function medicineValue(
   medicine: string | null,
   strength: string | null,
+  ladders: DoseLadders = DOSE_LADDERS,
 ): string | null {
   if (!medicine || !strength) return null;
 
   const canonical = medicine.trim();
   const key = canonical.charAt(0).toUpperCase() + canonical.slice(1).toLowerCase();
-  const ladder = DOSE_LADDERS[key];
+  const ladder = ladders[key];
   if (!ladder || !ladder.includes(strength.trim())) return null;
 
   return `${key.toLowerCase()}_${strength.trim()}`;
@@ -65,7 +66,12 @@ export function medicineValue(
  */
 export async function loadPreviousSupply(
   tx: Tx,
-  input: { organisationId: string; patientId: string | null; serviceId: string },
+  input: {
+    organisationId: string;
+    patientId: string | null;
+    serviceId: string;
+    ladders?: DoseLadders;
+  },
 ): Promise<PreviousSupply> {
   if (!input.patientId) return NOTHING;
 
@@ -96,7 +102,7 @@ export async function loadPreviousSupply(
   const weight = previous == null ? null : Number(previous);
 
   return {
-    previousMedicineValue: medicineValue(row.medicine, row.strength),
+    previousMedicineValue: medicineValue(row.medicine, row.strength, input.ladders),
     previousWeightKg: Number.isFinite(weight) ? weight : null,
   };
 }

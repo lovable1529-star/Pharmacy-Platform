@@ -13,23 +13,45 @@
 import { calculateBmi, percentageWeightLoss } from '@/lib/units';
 import { MOUNJARO_STRENGTHS, WEGOVY_STRENGTHS } from '@/lib/services/weight-management';
 
-export const DOSE_LADDERS: Record<string, string[]> = {
+/**
+ * The strengths of each medicine, in the order a patient climbs them.
+ *
+ * ORDER IS THE POINT. "Only same or ±1 step" is a safety rule, and a step is
+ * only meaningful against a ladder that knows 5mg sits between 2.5mg and
+ * 7.5mg. A set of strengths without a position cannot answer it.
+ *
+ * These are the built-in defaults. The specification requires the medicine
+ * master to be configurable rather than coded (§12), so every function here
+ * takes the ladders as an argument and falls back to this only when none is
+ * supplied — which keeps them pure and testable, and means a ladder edited in
+ * the database changes the clinical behaviour without a deploy.
+ */
+export type DoseLadders = Record<string, string[]>;
+
+export const DOSE_LADDERS: DoseLadders = {
   Mounjaro: MOUNJARO_STRENGTHS,
   Wegovy: WEGOVY_STRENGTHS,
 };
 
 /** Splits `mounjaro_7.5mg` into its medicine and strength. */
-export function parseMedicineValue(value: unknown): { medicine: string; strength: string } | null {
+export function parseMedicineValue(
+  value: unknown,
+  ladders: DoseLadders = DOSE_LADDERS,
+): { medicine: string; strength: string } | null {
   if (typeof value !== 'string' || !value.includes('_')) return null;
   const [medicineKey, strength] = value.split('_');
   if (!medicineKey || !strength) return null;
   const medicine = medicineKey.charAt(0).toUpperCase() + medicineKey.slice(1);
-  return DOSE_LADDERS[medicine] ? { medicine, strength } : null;
+  return ladders[medicine] ? { medicine, strength } : null;
 }
 
 /** Position on the ladder, or null if the strength is not on it. */
-export function ladderPosition(medicine: string, strength: string): number | null {
-  const index = DOSE_LADDERS[medicine]?.indexOf(strength);
+export function ladderPosition(
+  medicine: string,
+  strength: string,
+  ladders: DoseLadders = DOSE_LADDERS,
+): number | null {
+  const index = ladders[medicine]?.indexOf(strength);
   return index === undefined || index === -1 ? null : index;
 }
 
@@ -38,13 +60,17 @@ export function ladderPosition(medicine: string, strength: string): number | nul
  * Null when the two are not on the same ladder — which is itself a red flag,
  * and the ruleset treats a missing value as "do not proceed automatically".
  */
-export function doseStepChange(from: unknown, to: unknown): number | null {
-  const a = parseMedicineValue(from);
-  const b = parseMedicineValue(to);
+export function doseStepChange(
+  from: unknown,
+  to: unknown,
+  ladders: DoseLadders = DOSE_LADDERS,
+): number | null {
+  const a = parseMedicineValue(from, ladders);
+  const b = parseMedicineValue(to, ladders);
   if (!a || !b || a.medicine !== b.medicine) return null;
 
-  const fromIndex = ladderPosition(a.medicine, a.strength);
-  const toIndex = ladderPosition(b.medicine, b.strength);
+  const fromIndex = ladderPosition(a.medicine, a.strength, ladders);
+  const toIndex = ladderPosition(b.medicine, b.strength, ladders);
   if (fromIndex === null || toIndex === null) return null;
 
   return toIndex - fromIndex;
@@ -87,6 +113,8 @@ export interface DerivationInput {
   /** The strength supplied last time, for computing the step change. */
   previousMedicineValue?: string | null;
   previousWeightKg?: number | null;
+  /** Configured ladders. Omitted, the built-in defaults apply. */
+  ladders?: DoseLadders;
   now?: Date;
 }
 
@@ -109,8 +137,9 @@ const HEAVY_SNACKING = new Set(['daily', 'frequent']);
 
 export function deriveValues(input: DerivationInput): DerivedValues {
   const { answers, now = new Date() } = input;
+  const ladders = input.ladders ?? DOSE_LADDERS;
 
-  const current = parseMedicineValue(answers.currentMedicine ?? answers.requestedMedicine);
+  const current = parseMedicineValue(answers.currentMedicine ?? answers.requestedMedicine, ladders);
 
   const bmi =
     input.weightKg != null && input.heightCm != null
@@ -127,7 +156,7 @@ export function deriveValues(input: DerivationInput): DerivedValues {
   const requested = answers.requestedMedicine ?? null;
   const doseStep =
     input.previousMedicineValue && requested
-      ? doseStepChange(input.previousMedicineValue, requested)
+      ? doseStepChange(input.previousMedicineValue, requested, ladders)
       : null;
 
   const suppression = answers.appetiteSuppression;
