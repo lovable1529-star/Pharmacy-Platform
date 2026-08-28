@@ -19,7 +19,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   service, formVersion, rulesetVersion, submission, ruleEvaluation, auditEvent,
-  statusHistory,
+  statusHistory, urgentTask,
   appointment,
 } from '@/lib/db/schema';
 import { sealAuditEntry } from '@/lib/audit';
@@ -31,6 +31,7 @@ import { alertPharmacist } from '@/lib/notifications/alerts';
 import { deriveValues } from '@/lib/clinical/derived';
 import { loadPreviousSupply } from '@/lib/clinical/previous-supply';
 import { loadDoseLadders } from '@/lib/clinical/ladders';
+import { captureConsent } from '@/lib/workflow/consent';
 import { changeSubmissionStatus, recordInitialStatus } from '@/lib/workflow/history';
 import type { FormSchema, Answers } from '@/types/form-schema';
 
@@ -275,6 +276,16 @@ export async function submitPublicForm(
         });
       }
 
+      await captureConsent(tx, {
+        organisationId: svc.organisationId,
+        submissionId: row.id,
+        patientId,
+        schema,
+        answers,
+        formVersion: version.version,
+        capturedBy: 'Patient',
+      });
+
       // Triage, if this service has published rules.
       let outcome: 'GREEN' | 'AMBER' | 'RED' | undefined;
       let patientMessage: string | undefined;
@@ -304,6 +315,25 @@ export async function submitPublicForm(
 
           outcome = evaluation.outcome;
           patientMessage = evaluation.patientMessage;
+
+          /*
+           * §6.3 — a RED is not just a status, it is work for somebody today.
+           *
+           * The queue it lands in is separate from the review list precisely so
+           * that "a pharmacist should look at this" and "ring this patient now"
+           * cannot be confused, which is what happens when both sit in the same
+           * list ordered by severity.
+           */
+          if (evaluation.outcome === 'RED') {
+            await tx.insert(urgentTask).values({
+              organisationId: svc.organisationId,
+              submissionId: row.id,
+              patientId,
+              branchId: existing?.branchId ?? null,
+              reason: evaluation.message
+                ?? `Blocked by ${evaluation.decidingRuleId ?? 'a safety rule'}`,
+            });
+          }
 
           /*
            * The engine's verdict is a status change like any other, and it is
