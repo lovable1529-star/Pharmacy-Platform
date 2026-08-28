@@ -1,0 +1,987 @@
+<title>Karsons Deployment Runbook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap">
+
+<style>
+  /* ── Tokens: complete light palette on bare :root ──────────────────
+     Neutrals are biased toward the platform's own purple chrome rather
+     than a flat grey, so the document reads as part of the product it
+     deploys. */
+  :root {
+    --ink:        #16131E;
+    --ink-soft:   #3D3650;
+    --ink-faint:  #6B6382;
+    --canvas:     #F6F5F9;
+    --surface:    #FFFFFF;
+    --sunk:       #EFEDF4;
+    --line:       #E3DFEA;
+    --line-soft:  #EFECF4;
+    --accent:     #6B4FBB;
+    --accent-dim: #F0EBFA;
+    --go:         #2E7D52;
+    --go-dim:     #E7F3EC;
+    --warn:       #A96A08;
+    --warn-dim:   #FBF0DC;
+    --stop:       #B3261E;
+    --stop-dim:   #FBEAE8;
+    --code-bg:    #1B1726;
+    --code-ink:   #E8E3F2;
+    --shadow:     0 1px 2px rgba(22,19,30,.05), 0 8px 24px -12px rgba(22,19,30,.16);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink:        #EDEAF4;
+      --ink-soft:   #B7AFCA;
+      --ink-faint:  #8B82A3;
+      --canvas:     #0F0C18;
+      --surface:    #191527;
+      --sunk:       #221C33;
+      --line:       #2E2745;
+      --line-soft:  #241E36;
+      --accent:     #B49BF0;
+      --accent-dim: #251E3C;
+      --go:         #6FD09B;
+      --go-dim:     #16281E;
+      --warn:       #E5AC5A;
+      --warn-dim:   #2C2113;
+      --stop:       #F1948C;
+      --stop-dim:   #2E1917;
+      --code-bg:    #221C33;
+      --code-ink:   #E8E3F2;
+      --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ink:        #EDEAF4;
+    --ink-soft:   #B7AFCA;
+    --ink-faint:  #8B82A3;
+    --canvas:     #0F0C18;
+    --surface:    #191527;
+    --sunk:       #221C33;
+    --line:       #2E2745;
+    --line-soft:  #241E36;
+    --accent:     #B49BF0;
+    --accent-dim: #251E3C;
+    --go:         #6FD09B;
+    --go-dim:     #16281E;
+    --warn:       #E5AC5A;
+    --warn-dim:   #2C2113;
+    --stop:       #F1948C;
+    --stop-dim:   #2E1917;
+    --code-bg:    #221C33;
+    --code-ink:   #E8E3F2;
+    --shadow:     0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.6);
+  }
+
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 0 28px 96px;
+    display: grid;
+    grid-template-columns: 232px minmax(0, 1fr);
+    gap: 56px;
+    align-items: start;
+  }
+
+  /* ── Masthead ──────────────────────────────────────────────────── */
+  header.masthead {
+    grid-column: 1 / -1;
+    padding: 60px 0 34px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 44px;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    font-weight: 500;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 14px;
+  }
+  h1 {
+    font-family: "IBM Plex Serif", ui-serif, Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(31px, 4.4vw, 45px);
+    line-height: 1.1;
+    letter-spacing: -.018em;
+    text-wrap: balance;
+    margin: 0 0 16px;
+  }
+  .standfirst {
+    font-size: 17.5px;
+    color: var(--ink-soft);
+    max-width: 60ch;
+    margin: 0;
+  }
+  .meta {
+    margin-top: 22px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 12px;
+    color: var(--ink-faint);
+  }
+  .meta b { color: var(--ink-soft); font-weight: 500; }
+
+  /* ── Step rail ─────────────────────────────────────────────────── */
+  nav.rail { position: sticky; top: 28px; }
+  nav.rail h2 {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: .13em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 14px;
+  }
+  nav.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+  nav.rail a {
+    display: grid;
+    grid-template-columns: 26px 1fr;
+    gap: 8px;
+    padding: 7px 9px;
+    border-radius: 7px;
+    text-decoration: none;
+    color: var(--ink-soft);
+    font-size: 13.5px;
+    line-height: 1.35;
+    border: 1px solid transparent;
+    transition: background .14s ease, color .14s ease, border-color .14s ease;
+  }
+  nav.rail a:hover { background: var(--sunk); color: var(--ink); }
+  nav.rail a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  nav.rail .n {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-faint);
+    padding-top: 1px;
+  }
+  nav.rail a.later .n { color: var(--ink-faint); opacity: .6; }
+  nav.rail hr { border: 0; border-top: 1px solid var(--line); margin: 12px 4px; }
+
+  main { min-width: 0; }
+
+  /* ── Sections ──────────────────────────────────────────────────── */
+  section { margin-bottom: 60px; scroll-margin-top: 24px; }
+  section > :first-child { margin-top: 0; }
+
+  .step-head {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 16px;
+    align-items: baseline;
+    margin-bottom: 18px;
+  }
+  .step-num {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 13px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent);
+    background: var(--accent-dim);
+    border-radius: 6px;
+    padding: 3px 9px;
+    white-space: nowrap;
+  }
+  h2.step-title {
+    font-family: "IBM Plex Serif", ui-serif, Georgia, serif;
+    font-weight: 600;
+    font-size: clamp(22px, 2.6vw, 27px);
+    line-height: 1.22;
+    letter-spacing: -.012em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  h3 {
+    font-family: "IBM Plex Sans", ui-sans-serif, sans-serif;
+    font-weight: 600;
+    font-size: 16px;
+    letter-spacing: .005em;
+    margin: 34px 0 10px;
+  }
+  p { margin: 0 0 15px; max-width: 68ch; }
+  ul, ol.body { margin: 0 0 15px; padding-left: 22px; max-width: 66ch; }
+  li { margin-bottom: 7px; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+  strong { font-weight: 600; }
+
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .875em;
+    background: var(--sunk);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    padding: 1px 5px;
+    color: var(--ink);
+  }
+
+  pre {
+    background: var(--code-bg);
+    color: var(--code-ink);
+    border-radius: 10px;
+    padding: 15px 18px;
+    overflow-x: auto;
+    margin: 0 0 18px;
+    font-size: 13px;
+    line-height: 1.66;
+    box-shadow: var(--shadow);
+  }
+  pre code {
+    background: none; border: 0; padding: 0;
+    color: inherit; font-size: inherit;
+  }
+  pre .c { color: #9A8FB5; }
+
+  /* ── Callouts: the stripe encodes consequence, not decoration ──── */
+  .note {
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--ink-faint);
+    background: var(--surface);
+    border-radius: 8px;
+    padding: 14px 17px;
+    margin: 0 0 20px;
+    max-width: 68ch;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .tag {
+    display: block;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 7px;
+  }
+  .note.stop  { border-left-color: var(--stop); background: var(--stop-dim); }
+  .note.stop .tag { color: var(--stop); }
+  .note.warn  { border-left-color: var(--warn); background: var(--warn-dim); }
+  .note.warn .tag { color: var(--warn); }
+  .note.go    { border-left-color: var(--go); background: var(--go-dim); }
+  .note.go .tag { color: var(--go); }
+  .note.later { border-left-color: var(--ink-faint); background: var(--sunk); }
+  .note.later .tag { color: var(--ink-faint); }
+
+  /* ── Tables ────────────────────────────────────────────────────── */
+  .tablewrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface);
+    margin: 0 0 22px;
+    box-shadow: var(--shadow);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .09em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    background: var(--sunk);
+    white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: 0; }
+  td code { white-space: nowrap; }
+
+  .pill {
+    display: inline-block;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .pill.req  { background: var(--stop-dim); color: var(--stop); }
+  .pill.opt  { background: var(--sunk);     color: var(--ink-faint); }
+  .pill.demo { background: var(--go-dim);   color: var(--go); }
+
+  /* ── Checklist ─────────────────────────────────────────────────── */
+  .checklist { list-style: none; margin: 0 0 8px; padding: 0; max-width: 68ch; display: grid; gap: 1px; }
+  .checklist li { margin: 0; }
+  .checklist label {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 11px;
+    align-items: start;
+    padding: 11px 14px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    cursor: pointer;
+    transition: border-color .14s ease, background .14s ease;
+  }
+  .checklist label:hover { border-color: var(--accent); }
+  .checklist input { margin: 5px 0 0; accent-color: var(--accent); width: 15px; height: 15px; }
+  .checklist input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .checklist .what { font-size: 14.5px; }
+  .checklist .why { display: block; color: var(--ink-faint); font-size: 13px; margin-top: 2px; }
+  .checklist input:checked ~ .what { color: var(--ink-faint); text-decoration: line-through; text-decoration-color: var(--line); }
+  .reset {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px;
+    background: none;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 5px 11px;
+    color: var(--ink-faint);
+    cursor: pointer;
+  }
+  .reset:hover { border-color: var(--accent); color: var(--accent); }
+  .reset:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  footer {
+    grid-column: 1 / -1;
+    border-top: 1px solid var(--line);
+    padding-top: 22px;
+    color: var(--ink-faint);
+    font-size: 13px;
+  }
+
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: minmax(0, 1fr); gap: 0; padding: 0 20px 72px; }
+    nav.rail { position: static; margin-bottom: 44px; padding: 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+    header.masthead { padding-top: 40px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+</style>
+
+<div class="wrap">
+
+  <header class="masthead">
+    <p class="eyebrow">Karsons Pharmacy Platform</p>
+    <h1>Putting the platform on Vercel</h1>
+    <p class="standfirst">
+      Everything needed to get the demo running on a real URL, in order, with the
+      reason each step exists. Written for the Saturday demo: the five clinical
+      screens, signed in, fast. Email, SMS and the nightly jobs are deliberately
+      left switched off at the end.
+    </p>
+    <div class="meta">
+      <span><b>Repo</b> shahid1529work-sudo/Pharmacy-Platform</span>
+      <span><b>Root directory</b> <code>platform</code></span>
+      <span><b>Framework</b> Next.js 15.5</span>
+      <span><b>Updated</b> 29 August 2026</span>
+    </div>
+  </header>
+
+  <nav class="rail" aria-label="Steps">
+    <h2>Runbook</h2>
+    <ol>
+      <li><a href="#preflight"><span class="n">00</span><span>Before you start</span></a></li>
+      <li><a href="#region"><span class="n">01</span><span>Decide the database region</span></a></li>
+      <li><a href="#database"><span class="n">02</span><span>Finish the database</span></a></li>
+      <li><a href="#import"><span class="n">03</span><span>Import into Vercel</span></a></li>
+      <li><a href="#env"><span class="n">04</span><span>Environment variables</span></a></li>
+      <li><a href="#lhr"><span class="n">05</span><span>Move functions to London</span></a></li>
+      <li><a href="#callback"><span class="n">06</span><span>Tell Supabase the URL</span></a></li>
+      <li><a href="#verify"><span class="n">07</span><span>Deploy and verify</span></a></li>
+      <hr>
+      <li><a href="#trouble" class="later"><span class="n">§</span><span>Troubleshooting</span></a></li>
+      <li><a href="#later" class="later"><span class="n">§</span><span>Switched off for now</span></a></li>
+      <li><a href="#demo" class="later"><span class="n">§</span><span>On the day</span></a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+    <!-- ────────────────────────────────────────────────────────── -->
+    <section id="preflight">
+      <div class="step-head">
+        <span class="step-num">00</span>
+        <h2 class="step-title">Before you start</h2>
+      </div>
+
+      <p>Three of these are already done. They are listed so you can tell at a
+      glance what is missing rather than discovering it halfway through.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Thing</th><th>State</th><th>Note</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Code on GitHub</td>
+              <td><span class="pill demo">Done</span></td>
+              <td>Pushed to <code>main</code>, through commit <code>1b1073b</code>.</td>
+            </tr>
+            <tr>
+              <td>Cron schedule file</td>
+              <td><span class="pill demo">Done</span></td>
+              <td><code>platform/vercel.json</code> already defines four jobs. They stay dormant — see <a href="#later">Switched off for now</a>.</td>
+            </tr>
+            <tr>
+              <td>Secrets kept out of Git</td>
+              <td><span class="pill demo">Done</span></td>
+              <td><code>.env*</code> is gitignored. Every value gets typed into Vercel by hand, once.</td>
+            </tr>
+            <tr>
+              <td>Supabase project</td>
+              <td><span class="pill req">Your call</span></td>
+              <td>Read <a href="#region">step 01</a> before reusing the existing one.</td>
+            </tr>
+            <tr>
+              <td>Vercel account</td>
+              <td><span class="pill req">You</span></td>
+              <td>Hobby is enough for a demo. Sign in with the same GitHub account.</td>
+            </tr>
+            <tr>
+              <td><code>14_prescription_numbers.sql</code></td>
+              <td><span class="pill req">Not run</span></td>
+              <td>Prescription numbering stays broken until it is. <a href="#database">Step 02</a>.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note later">
+        <span class="tag">Naming</span>
+        <p>Throughout, <strong>You</strong> marks something only you can do — it
+        needs a password, a card, or a decision that is yours. Everything else is
+        mechanical.</p>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────────────────────── -->
+    <section id="region">
+      <div class="step-head">
+        <span class="step-num">01</span>
+        <h2 class="step-title">Decide the database region — do this first</h2>
+      </div>
+
+      <div class="note stop">
+        <span class="tag">Do this before anything else</span>
+        <p>The live Supabase project is in <strong>Seoul</strong>
+        (<code>ap-northeast-2</code>). Your client is on the Isle of Man. Every
+        query on every page crosses half the planet and back.</p>
+      </div>
+
+      <p>This is measured, not guessed. From the development machine on
+      29 August:</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Operation</th><th>Cost</th><th>Times per page load</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Postgres round trip</td><td>~180&nbsp;ms</td><td>5</td></tr>
+            <tr><td>Supabase Auth call</td><td>210–410&nbsp;ms</td><td>2</td></tr>
+            <tr><td>First connection of the day</td><td>~1.4&nbsp;s</td><td>1</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>That accounts for essentially the whole of a two-second page. It is not
+      query cost and it is not rendering — it is distance. Moving the project to
+      <strong>London (<code>eu-west-2</code>)</strong> cuts every one of those
+      trips to roughly 20–40&nbsp;ms, which turns a two-second screen into a
+      three-hundred-millisecond one. No amount of code will do that.</p>
+
+      <p>It is also the right home for the data regardless. Isle of Man patient
+      records sitting in South Korea is a conversation you do not want to have
+      with a pharmacy owner, and <code>.env.example</code> in this repo has said
+      <code>eu-west-2</code> from the beginning — the live project was simply
+      created somewhere else.</p>
+
+      <h3>What moving involves</h3>
+
+      <p>Supabase cannot change a project's region in place. You create a new
+      project and re-run the setup, which you already do by hand:</p>
+
+      <ol class="body">
+        <li><strong>You</strong> — new Supabase project, region
+        <strong>London (eu-west-2)</strong>. Save the database password.</li>
+        <li>Run <code>01_schema.sql</code> through <code>14_prescription_numbers.sql</code>
+        in order in the SQL editor. All fourteen, ascending, no skips.</li>
+        <li><strong>You</strong> — create your staff login and seed, exactly as
+        in <code>SETUP.md</code> sections 6 and 7.</li>
+        <li>Take the new connection strings and keys into <a href="#env">step 04</a>.</li>
+      </ol>
+
+      <p>Budget an hour, and do it well before the demo rather than the night
+      before. If you would rather not, everything below still works against
+      Seoul — the demo will simply feel like a two-second application instead of
+      a fast one.</p>
+
+      <div class="note warn">
+        <span class="tag">If you stay on Seoul</span>
+        <p>Set the Vercel function region to <strong>Seoul (icn1)</strong> in
+        <a href="#lhr">step 05</a> instead of London. Putting the functions in
+        London while the database is in Seoul is the worst of both worlds — you
+        would add a second intercontinental hop to every query.</p>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────────────────────── -->
+    <section id="database">
+      <div class="step-head">
+        <span class="step-num">02</span>
+        <h2 class="step-title">Finish the database</h2>
+      </div>
+
+      <p>Whichever project you are deploying against, one script has not been run
+      yet.</p>
+
+      <div class="note stop">
+        <span class="tag">Outstanding</span>
+        <p><code>platform/supabase/14_prescription_numbers.sql</code> has never
+        been run. Until it is, every prescription PDF is numbered
+        <code>UNNUMBERED-…</code>, because the function that allocates a real
+        per-branch, per-year number does not exist.</p>
+      </div>
+
+      <p>Open Supabase → <strong>SQL Editor</strong>, paste the file, run it. It
+      is written to be safe to run more than once, and it ends with a
+      verification query that should return <code>1</code> in all four columns:</p>
+
+      <pre><code>sequence_table | number_column | unique_guard | allocator
+             1 |             1 |            1 |         1</code></pre>
+
+      <p>If you are setting up a fresh London project, run all fourteen in
+      order instead — <code>14</code> depends on tables created by the earlier
+      ones.</p>
+
+      <h3>Confirm the two connection strings</h3>
+
+      <p>Supabase gives several. Only two matter, and mixing them up produces
+      errors that look like nothing to do with connection strings:</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Variable</th><th>Port</th><th>Used for</th><th>If you get it wrong</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>DATABASE_URL</code></td>
+              <td><code>6543</code></td>
+              <td>The application. Pooled through pgBouncer.</td>
+              <td>On 5432 you get <code>prepared statement "s1" already exists</code>, intermittently.</td>
+            </tr>
+            <tr>
+              <td><code>DIRECT_URL</code></td>
+              <td><code>5432</code></td>
+              <td>Migrations from your own machine.</td>
+              <td>On 6543 migrations fail with syntax or permission errors.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────────────────────── -->
+    <section id="import">
+      <div class="step-head">
+        <span class="step-num">03</span>
+        <h2 class="step-title">Import the repository into Vercel</h2>
+      </div>
+
+      <ol class="body">
+        <li>Go to <a href="https://vercel.com/new">vercel.com/new</a> and sign in
+        with GitHub.</li>
+        <li>Import <strong>Pharmacy-Platform</strong>. If it is not listed, grant
+        Vercel access to the repository from the GitHub connection screen.</li>
+        <li>Set <strong>Root Directory</strong> to <code>platform</code>. This is
+        the one setting that is easy to miss and guarantees a failed build — the
+        Next.js app is not at the repository root.</li>
+        <li>Leave Framework Preset, Build Command and Output Directory on their
+        detected values. Vercel finds <code>pnpm-lock.yaml</code> and uses pnpm
+        on its own.</li>
+        <li><strong>Do not deploy yet.</strong> Add the environment variables
+        first — see the next step. A deploy without them fails at build time on
+        <code>DATABASE_URL is not set</code>.</li>
+      </ol>
+
+      <div class="note later">
+        <span class="tag">Node version</span>
+        <p>There is no <code>.nvmrc</code> and no <code>engines</code> field, so
+        Vercel picks its current default (Node 22 at time of writing), which
+        matches local development. Nothing to configure.</p>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────────────────────── -->
+    <section id="env">
+      <div class="step-head">
+        <span class="step-num">04</span>
+        <h2 class="step-title">Environment variables</h2>
+      </div>
+
+      <p>Vercel → <strong>Settings → Environment Variables</strong>. Tick
+      <strong>Production</strong>, <strong>Preview</strong> and
+      <strong>Development</strong> for each unless noted, otherwise a preview
+      deployment comes up with an empty configuration and looks broken.</p>
+
+      <h3>Required for the demo</h3>
+
+      <p>These five are the whole demo. Nothing else on this page is needed to
+      sign in and show the clinical screens.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Variable</th><th></th><th>What it does, and what happens without it</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>DATABASE_URL</code></td>
+              <td><span class="pill req">Required</span></td>
+              <td>Every query the app makes. Port <strong>6543</strong>. Missing, the build fails outright with a message telling you so.</td>
+            </tr>
+            <tr>
+              <td><code>NEXT_PUBLIC_SUPABASE_URL</code></td>
+              <td><span class="pill req">Required</span></td>
+              <td>Where sign-in goes. Missing, nobody can authenticate.</td>
+            </tr>
+            <tr>
+              <td><code>NEXT_PUBLIC_SUPABASE_ANON_KEY</code></td>
+              <td><span class="pill req">Required</span></td>
+              <td>The browser half of authentication. Safe to expose — it is the public key, and Row Level Security is what protects the data behind it.</td>
+            </tr>
+            <tr>
+              <td><code>NEXT_PUBLIC_APP_URL</code></td>
+              <td><span class="pill req">Required</span></td>
+              <td>Your production URL, no trailing slash, e.g. <code>https://karsons.vercel.app</code>. <strong>This one fails silently.</strong> Unset, it falls back to <code>http://localhost:3100</code>, and every booking link, payment link and staff invitation points at a machine that is not there.</td>
+            </tr>
+            <tr>
+              <td><code>SUPABASE_SERVICE_ROLE_KEY</code></td>
+              <td><span class="pill demo">If inviting</span></td>
+              <td>Only needed to invite staff users. Without it the Users screen says so plainly and everything else works. <strong>Never</strong> prefix this with <code>NEXT_PUBLIC_</code> — it bypasses every security rule in the database.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="note warn">
+        <span class="tag">Silent failure</span>
+        <p><code>NEXT_PUBLIC_APP_URL</code> is the one to double-check. Nothing
+        errors, nothing logs, and the application looks completely healthy — the
+        links are simply wrong, and you find out when you click one in front of
+        the client.</p>
+      </div>
+
+      <h3>Not needed on Saturday</h3>
+
+      <p>Leave these unset. Each one is designed to fail quietly and stay out of
+      the way rather than break the app.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Variable</th><th></th><th>Behaviour while unset</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><code>RESEND_API_KEY</code>, <code>EMAIL_FROM</code></td>
+              <td><span class="pill opt">Skip</span></td>
+              <td>Email logs what it would have sent and reports "Email is not configured yet." Nothing crashes.</td>
+            </tr>
+            <tr>
+              <td><code>TWILIO_*</code></td>
+              <td><span class="pill opt">Skip</span></td>
+              <td>SMS and WhatsApp queue as <code>UNAVAILABLE</code> and send later if keys ever arrive. Nothing is lost.</td>
+            </tr>
+            <tr>
+              <td><code>CRON_SECRET</code></td>
+              <td><span class="pill opt">Skip</span></td>
+              <td>All four scheduled jobs refuse to run. See <a href="#later">Switched off for now</a>.</td>
+            </tr>
+            <tr>
+              <td><code>STRIPE_*</code></td>
+              <td><span class="pill opt">Skip</span></td>
+              <td>Payments are simulated by design. Out of scope until the NMS and GPhC position is settled.</td>
+            </tr>
+            <tr>
+              <td><code>DIRECT_URL</code></td>
+              <td><span class="pill opt">Skip</span></td>
+              <td>Migrations run from your machine, not from Vercel. It does no harm to add it, and no good either.</td>
+            </tr>
+            <tr>
+              <td><code>CLINIC_ALERT_EMAIL</code>, <code>PHARMACIST_WHATSAPP_TO</code></td>
+              <td><span class="pill opt">Skip</span></td>
+              <td>Alert destinations. Irrelevant while email and SMS are off.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────────────────────── -->
+    <section id="lhr">
+      <div class="step-head">
+        <span class="step-num">05</span>
+        <h2 class="step-title">Put the functions next to the database</h2>
+      </div>
+
+      <p>Vercel → <strong>Settings → Functions → Function Region</strong>.</p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>If your Supabase project is in…</th><th>Set the function region to</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>London (<code>eu-west-2</code>) — recommended</td><td><strong>London, UK (lhr1)</strong></td></tr>
+            <tr><td>Seoul (<code>ap-northeast-2</code>) — current</td><td><strong>Seoul, South Korea (icn1)</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>The rule is simply that the server code and the database should be in
+      the same place. Every page makes five database round trips and two auth
+      calls; if the function is in London and the database in Seoul, all seven
+      cross the world twice. Matching them is free and is worth more than any
+      code change.</p>
+
+      <p>The default region is Washington DC, which is the wrong answer in both
+      cases. Change it before the first real deploy.</p>
+    </section>
+
+    <!-- ────────────────────────────────────────────────────────── -->
+    <section id="callback">
+      <div class="step-head">
+        <span class="step-num">06</span>
+        <h2 class="step-title">Tell Supabase about the new address</h2>
+      </div>
+
+      <p>Supabase only redirects back to URLs it has been told about. Until this
+      is done, signing in appears to do nothing at all.</p>
+
+      <p>Supabase → <strong>Authentication → URL Configuration</strong>:</p>
+
+      <ul>
+        <li><strong>Site URL</strong> — your production URL, e.g.
+        <code>https://karsons.vercel.app</code></li>
+        <li><strong>Redirect URLs</strong> — add both:</li>
+      </ul>
+
+      <pre><code>https://karsons.vercel.app/auth/callback
+https://karsons.vercel.app/**          <span class="c">← covers preview deploys and password reset</span></code></pre>
+
+      <p>Keep <code>http://localhost:3100/**</code> in the list as well, so local
+      development carries on working.</p>
+    </section>
+
+    <!-- ────────────────────────────────────────────────────────── -->
+    <section id="verify">
+      <div class="step-head">
+        <span class="step-num">07</span>
+        <h2 class="step-title">Deploy, then prove it works</h2>
+      </div>
+
+      <p>Trigger a deploy — <strong>Deployments → Redeploy</strong>, or push any
+      commit. Then walk this list. It is ordered so that a failure tells you
+      which step above to go back to, and it remembers what you have ticked.</p>
+
+      <ul class="checklist" id="checks">
+        <li><label><input type="checkbox" data-k="build"><span class="what">The build succeeded<span class="why">If it failed on <code>DATABASE_URL is not set</code>, the variables were added after the deploy started — redeploy.</span></span></label></li>
+        <li><label><input type="checkbox" data-k="signin"><span class="what">You can sign in<span class="why">Nothing happening on submit means step 06 — redirect URLs.</span></span></label></li>
+        <li><label><input type="checkbox" data-k="five"><span class="what">All five screens load: Patients, Consultations, Appointments, Repeat care, Services<span class="why">Rows visible, no error boundary.</span></span></label></li>
+        <li><label><input type="checkbox" data-k="skel"><span class="what">Navigating shows a shimmering skeleton, then content<span class="why">Proves the loading states shipped. The click should feel acknowledged instantly.</span></span></label></li>
+        <li><label><input type="checkbox" data-k="fast"><span class="what">Going back to a screen you just visited is instant<span class="why">The 30-second route cache. Second visits should not flash a skeleton at all.</span></span></label></li>
+        <li><label><input type="checkbox" data-k="badge"><span class="what">The Repeat care badge shows a number<span class="why">Confirms the count query is working.</span></span></label></li>
+        <li><label><input type="checkbox" data-k="arrive"><span class="what">Mark someone arrived, then open Consultations — the change is there<span class="why">Proves cached screens still invalidate on a write. This is the one that would bite hardest if it were wrong.</span></span></label></li>
+        <li><label><input type="checkbox" data-k="pdf"><span class="what">A prescription PDF has a real number, not <code>UNNUMBERED-…</code><span class="why">If it does not, script 14 has not been run — step 02.</span></span></label></li>
+        <li><label><input type="checkbox" data-k="links"><span class="what">A booking link points at your Vercel domain, not localhost<span class="why">The silent one. <code>NEXT_PUBLIC_APP_URL</code>.</span></span></label></li>
+      </ul>
+
+      <p><button class="reset" id="reset" type="button">Clear ticks</button></p>
+
+      <div class="note go">
+        <span class="tag">Expected</span>
+        <p>On London, first load of a screen should land in roughly a third of a
+        second and a repeat visit should be immediate. On Seoul, expect around
+        two seconds every time — working, but visibly slow.</p>
+      </div>
+    </section>
+
+    <!-- ────────────────────────────────────────────────────────── -->
+    <section id="trouble">
+      <div class="step-head">
+        <span class="step-num">§</span>
+        <h2 class="step-title">When something is wrong</h2>
+      </div>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>What you see</th><th>What it actually is</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Build fails, no Next.js app found</td><td>Root Directory is not <code>platform</code>.</td></tr>
+            <tr><td>Build fails on <code>DATABASE_URL is not set</code></td><td>Variables missing, or added after this deploy began. Redeploy.</td></tr>
+            <tr><td>Sign-in does nothing</td><td>Redirect URLs not added in Supabase. Step 06.</td></tr>
+            <tr><td><code>No staff account exists for …</code></td><td>You signed in with an email that has no <code>app_user</code> row. Re-seed with <code>SEED_ADMIN_EMAIL</code> and <code>SEED_ADMIN_AUTH_ID</code>.</td></tr>
+            <tr><td>Signed in, but every list is empty</td><td>The same thing, seen from the other side: Row Level Security is working correctly and there is no <code>app_user</code> row for your auth ID.</td></tr>
+            <tr><td><code>prepared statement "s1" already exists</code></td><td><code>DATABASE_URL</code> is on port 5432. It must be 6543.</td></tr>
+            <tr><td>Every page takes about two seconds</td><td>Functions and database are not in the same region, or both are in Seoul. Steps 01 and 05.</td></tr>
+            <tr><td>Prescription numbers read <code>UNNUMBERED-…</code></td><td>Script 14 has not been run. Step 02.</td></tr>
+            <tr><td>Emails and texts never arrive</td><td>Expected — they are switched off. Nothing is broken.</td></tr>
+            <tr><td>A screen shows data that is a few seconds out of date</td><td>The 30-second route cache, and only for changes made outside the app. Anything done <em>in</em> the app clears it immediately.</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>Vercel's <strong>Logs</strong> tab shows server errors with the same
+      digest the browser displays, which is the fastest way to turn "Application
+      error" into an actual stack trace.</p>
+    </section>
+
+    <!-- ────────────────────────────────────────────────────────── -->
+    <section id="later">
+      <div class="step-head">
+        <span class="step-num">§</span>
+        <h2 class="step-title">Deliberately switched off</h2>
+      </div>
+
+      <p>None of this is needed for the demo, and none of it is missing work. It
+      is built and waiting on decisions or credentials.</p>
+
+      <h3>The four nightly jobs</h3>
+
+      <p><code>platform/vercel.json</code> already schedules them: appointment
+      reminders at 09:00, the GP batch at 18:00, the daily summary at 18:30, and
+      an audit-chain check at 02:00.</p>
+
+      <div class="note later">
+        <span class="tag">They will not run, and that is correct</span>
+        <p>Every cron route is guarded by <code>CRON_SECRET</code>, and the guard
+        <strong>fails closed</strong> — with no secret set, all four return
+        <code>401</code> and do nothing. That is the intended state for now:
+        these endpoints are reachable from the public internet, so an unguarded
+        one would let anybody trigger GP notifications.</p>
+      </div>
+
+      <p>To switch them on later: set <code>CRON_SECRET</code> to a long random
+      string in Vercel. Vercel sends it automatically as a bearer token; you do
+      not wire anything up. Email needs to be configured first, or the jobs will
+      run and have nothing to send through.</p>
+
+      <h3>Email, SMS and WhatsApp</h3>
+
+      <p>Resend for email, Twilio for the rest. Email needs SPF, DKIM and DMARC
+      aligned on the sending domain before <code>@gov.im</code> addresses will
+      accept anything — GP surgeries are the recipients that matter, and they
+      drop unaligned mail silently.</p>
+
+      <h3>Payments</h3>
+
+      <p>Simulated end to end. The flow is real — a payment link, a settle step,
+      a status that moves to <code>PAID</code>, a notification queued — but no
+      money moves and no card details are handled. Demonstrate it as the workflow
+      it is; the Stripe integration waits on the NMS and GPhC position.</p>
+    </section>
+
+    <!-- ────────────────────────────────────────────────────────── -->
+    <section id="demo">
+      <div class="step-head">
+        <span class="step-num">§</span>
+        <h2 class="step-title">On the day</h2>
+      </div>
+
+      <ul>
+        <li><strong>Open the five screens once before he arrives.</strong> The
+        first request of the day pays about 1.4 seconds to open a database
+        connection, and the first hit on each route compiles it. Both are
+        one-off; do not let him watch you pay them.</li>
+        <li><strong>Use the Vercel URL, not localhost.</strong> A development
+        server is roughly ten times slower than the deployed build, and the
+        difference is obvious to anyone watching.</li>
+        <li><strong>Move between screens more than once.</strong> The second
+        visit is where the caching shows — going back to Appointments after
+        Patients should be instant, with no flash at all.</li>
+        <li><strong>Mark someone arrived, then open Consultations.</strong> It
+        shows the screens are joined up, and it is the exact thing that used to
+        be broken.</li>
+      </ul>
+
+      <div class="note go">
+        <span class="tag">Worth saying out loud</span>
+        <p>If the region move has not happened yet and he remarks on the speed,
+        it is a straightforward answer: the database is currently in the wrong
+        part of the world, moving it is an hour's work, and it makes every screen
+        roughly five times faster. That reads as competence. Being vague about it
+        does not.</p>
+      </div>
+    </section>
+
+  </main>
+
+  <footer>
+    Karsons Pharmacy Platform · deployment runbook · 29 August 2026 ·
+    companion to <code>platform/SETUP.md</code>, which covers running it locally.
+  </footer>
+
+</div>
+
+<script>
+  // Tick state is a convenience for whoever is working through the list, so it
+  // lives in this browser only. Every access is guarded: private windows and
+  // blocked site data throw on read, and a thrown checklist would take the page
+  // down with it.
+  (function () {
+    var KEY = 'karsons-deploy-checks';
+    var boxes = document.querySelectorAll('#checks input[type=checkbox]');
+
+    function load() {
+      try {
+        return JSON.parse(localStorage.getItem(KEY) || '{}') || {};
+      } catch (e) {
+        return {};
+      }
+    }
+
+    function save(state) {
+      try {
+        localStorage.setItem(KEY, JSON.stringify(state));
+      } catch (e) {
+        /* Nothing to do — the ticks simply will not survive a reload. */
+      }
+    }
+
+    var state = load();
+
+    boxes.forEach(function (box) {
+      if (state[box.dataset.k]) box.checked = true;
+      box.addEventListener('change', function () {
+        state[box.dataset.k] = box.checked;
+        save(state);
+      });
+    });
+
+    var reset = document.getElementById('reset');
+    if (reset) {
+      reset.addEventListener('click', function () {
+        boxes.forEach(function (b) { b.checked = false; });
+        state = {};
+        save(state);
+      });
+    }
+  })();
+</script>
