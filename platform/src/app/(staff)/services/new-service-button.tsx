@@ -6,6 +6,7 @@ import { Plus, X, Loader2, AlertTriangle, Copy } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { SearchSelect } from '@/components/ui/search-select';
 import { duplicateService } from './actions';
+import { Portal } from '@/components/ui/portal';
 
 export interface DuplicableService {
   id: string;
@@ -51,6 +52,7 @@ export function NewServiceButton({ services }: { services: DuplicableService[] }
       </button>
 
       {open ? (
+        <Portal>
         <div className="fixed inset-0 z-50 flex items-center justify-center p-5">
           <div className="absolute inset-0 bg-ink/30" onClick={() => setOpen(false)} aria-hidden="true" />
 
@@ -159,6 +161,7 @@ export function NewServiceButton({ services }: { services: DuplicableService[] }
             </div>
           </div>
         </div>
+        </Portal>
       ) : null}
     </>
   );

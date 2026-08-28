@@ -12,6 +12,7 @@
 import { useEffect, useState } from 'react';
 import { X, Loader2, AlertTriangle, PhoneOff, Check } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { Portal } from '@/components/ui/portal';
 import { formatDate } from '@/lib/units';
 import { getRecallImpact, recallBatch, type RecallImpact } from './actions';
 
@@ -50,6 +51,7 @@ export function RecallDialog({
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-center justify-center p-5">
       <div className="absolute inset-0 bg-ink/30" onClick={() => onClose(done)} aria-hidden="true" />
 
@@ -210,6 +212,7 @@ export function RecallDialog({
         ) : null}
       </div>
     </div>
+    </Portal>
   );
 }
 

@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Clock, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { Portal } from '@/components/ui/portal';
 import { SearchSelect } from '@/components/ui/search-select';
 import {
   saveOpeningWindow, removeOpeningWindow, type WindowRow,
@@ -211,6 +212,7 @@ export function OpeningHoursEditor({
       })}
 
       {draft ? (
+        <Portal>
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 px-4">
           <div className="w-full max-w-[480px] rounded-panel border border-line bg-surface shadow-pop">
             <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
@@ -339,6 +341,7 @@ export function OpeningHoursEditor({
             </div>
           </div>
         </div>
+        </Portal>
       ) : null}
     </div>
   );

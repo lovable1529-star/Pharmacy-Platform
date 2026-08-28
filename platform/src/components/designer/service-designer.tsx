@@ -309,6 +309,28 @@ export function ServiceDesigner({
   const [paletteOpen, setPaletteOpen] = useState(false);
 
   /*
+   * Closing the palette on an outside click.
+   *
+   * Was a `fixed inset-0` catcher, which does not cover the screen here: the
+   * designer's own layout makes it the containing block, so the catcher was the
+   * size of the column rather than the viewport and clicking the preview beside
+   * it left the palette open. A document listener has no geometry to get wrong.
+   */
+  useEffect(() => {
+    if (!paletteOpen) return;
+
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as Element | null;
+      if (target?.closest('[data-palette]')) return;
+      setPaletteQuery('');
+      setPaletteOpen(false);
+    }
+
+    document.addEventListener('mousedown', onPointerDown);
+    return () => document.removeEventListener('mousedown', onPointerDown);
+  }, [paletteOpen]);
+
+  /*
    * Naming a step.
    *
    * A new step arrives called "Step 4" and is immediately focused with its name
@@ -855,7 +877,7 @@ export function ServiceDesigner({
             <>
 
             {/* Add a question — search, not a rail of eighteen */}
-            <div className="relative shrink-0 border-b border-line-soft p-3">
+            <div className="relative shrink-0 border-b border-line-soft p-3" data-palette>
               <div
                 className={cn(
                   'flex items-center gap-2.5 rounded-control border bg-canvas px-3 py-2 transition-[border-color,box-shadow]',
@@ -902,11 +924,6 @@ export function ServiceDesigner({
 
               {paletteOpen ? (
                 <>
-                  <div
-                    className="fixed inset-0 z-10"
-                    onClick={() => { setPaletteQuery(''); setPaletteOpen(false); }}
-                    aria-hidden="true"
-                  />
                   <div className="absolute inset-x-3 top-full z-20 mt-1 max-h-[420px] animate-pop overflow-y-auto rounded-panel border border-line bg-surface p-1.5 shadow-pop">
                     {grouped.length === 0 ? (
                       <p className="px-3 py-6 text-center text-[13px] text-ink-faint">

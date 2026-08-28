@@ -28,6 +28,7 @@ import {
   X, Check, Ban, MessageCircleQuestion, ChevronRight, Loader2, CircleSlash, CircleCheck,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { Portal } from '@/components/ui/portal';
 import { formatDateTime } from '@/lib/units';
 import { EmptyState, PageHeader, Panel } from '@/components/ui/primitives';
 import type { QueueItem } from '@/lib/queries/reviews';
@@ -153,6 +154,7 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-[70] flex justify-end">
       <div
         className="absolute inset-0 animate-fade bg-ink/25 backdrop-blur-[2px]"
@@ -353,6 +355,7 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
         </div>
       </aside>
     </div>
+    </Portal>
   );
 }
 

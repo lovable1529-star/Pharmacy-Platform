@@ -17,6 +17,7 @@ import { DayPicker } from 'react-day-picker';
 import { enGB } from 'date-fns/locale';
 import { Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { Portal } from '@/components/ui/portal';
 import { SearchSelect } from '@/components/ui/search-select';
 import { PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
 import { getRescheduleSlots, type DaySlots } from './actions';
@@ -90,6 +91,7 @@ export function RescheduleDialog({
     : [];
 
   return (
+    <Portal>
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 px-4 py-8">
       <div className="max-h-full w-full max-w-[560px] overflow-auto rounded-panel border border-line bg-surface shadow-pop">
         <div className="flex items-start justify-between border-b border-line px-5 py-4">
@@ -236,5 +238,6 @@ export function RescheduleDialog({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

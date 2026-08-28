@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Repeat, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { Portal } from '@/components/ui/portal';
 import { SearchSelect } from '@/components/ui/search-select';
 import { formatDate } from '@/lib/units';
 import { saveEnrolment, setEnrolmentStatus } from './enrolment-actions';
@@ -252,6 +253,7 @@ export function EnrolmentPanel({
       )}
 
       {editing ? (
+        <Portal>
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 px-4 py-8">
           <div className="max-h-full w-full max-w-[560px] overflow-auto rounded-panel border border-line bg-surface shadow-pop">
             <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
@@ -403,6 +405,7 @@ export function EnrolmentPanel({
             </div>
           </div>
         </div>
+        </Portal>
       ) : null}
     </section>
   );

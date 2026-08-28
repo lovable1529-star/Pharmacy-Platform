@@ -13,7 +13,7 @@
  * FINISHED, because the answer changes what they say to the patient.
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -165,6 +165,41 @@ export function AppointmentsView({
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+
+  /*
+   * Dismissing the row menu.
+   *
+   * This used to be an invisible `fixed inset-0` button covering the screen.
+   * It did not cover the screen: every page is wrapped in `.animate-rise`,
+   * whose transform animation makes it the containing block for fixed
+   * descendants, so the catcher was 1156x435 inside the article rather than
+   * 1440x900 over the viewport — measured, not guessed. Clicking the sidebar or
+   * the top bar left the menu stuck open.
+   *
+   * A document listener has no geometry to get wrong, needs no z-index, and
+   * gets Escape for free — which the catcher never handled.
+   */
+  useEffect(() => {
+    if (!menu) return;
+
+    function onPointerDown(event: MouseEvent) {
+      const target = event.target as Element | null;
+      // Anything within a row's menu region, including another row's trigger,
+      // is handled by that element's own click.
+      if (target?.closest('[data-row-menu]')) return;
+      setMenu(null);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') setMenu(null);
+    }
+
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [menu]);
 
   // Recomputed on render rather than ticking, so the page does not re-render
   // every second for a badge nobody is watching. A refresh updates it.
@@ -391,7 +426,7 @@ export function AppointmentsView({
                     )}
 
                     {/* Row menu */}
-                    <div className="relative">
+                    <div className="relative" data-row-menu={row.id}>
                       <button
                         type="button"
                         aria-label={`Actions for ${name}`}
@@ -403,13 +438,6 @@ export function AppointmentsView({
 
                       {menu === row.id ? (
                         <>
-                          <button
-                            type="button"
-                            aria-hidden
-                            tabIndex={-1}
-                            className="fixed inset-0 z-10 cursor-default"
-                            onClick={() => setMenu(null)}
-                          />
                           <div className="absolute right-0 top-8 z-20 w-[212px] overflow-hidden rounded-[9px] border border-line bg-surface py-1 shadow-pop">
                             {row.resumeToken ? (
                               <button
