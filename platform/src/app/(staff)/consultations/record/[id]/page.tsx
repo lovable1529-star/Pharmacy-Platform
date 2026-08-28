@@ -26,6 +26,8 @@ import {
   submission, formVersion, ruleEvaluation,
 } from '@/lib/db/schema';
 import { AnswerReview } from '@/components/clinical/answer-review';
+import { getAddenda } from './addendum-actions';
+import { AddendaPanel } from './addenda-panel';
 import { PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
 import { formatDate } from '@/lib/units';
 import type { Answers, FormSchema } from '@/types/form-schema';
@@ -137,6 +139,8 @@ export default async function ConsultationRecordPage({
     }
   }
 
+  const addenda = await getAddenda(row.id);
+
   const clinical = (row.clinicalData ?? {}) as Record<string, unknown>;
   const text = (key: string) =>
     typeof clinical[key] === 'string' ? (clinical[key] as string) : null;
@@ -167,6 +171,8 @@ export default async function ConsultationRecordPage({
           Download PDF
         </a>
       </div>
+
+      <AddendaPanel consultationId={row.id} addenda={addenda} />
 
       {/* ── What was given ──────────────────────────────── */}
       <section className="mb-5 overflow-hidden rounded-[10px] border border-line bg-surface">

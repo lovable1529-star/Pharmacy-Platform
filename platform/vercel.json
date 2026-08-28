@@ -1,7 +1,20 @@
 {
   "crons": [
-    { "path": "/api/cron/gp-batch", "schedule": "0 18 * * *" },
-    { "path": "/api/cron/daily-summary", "schedule": "30 18 * * *" },
-    { "path": "/api/cron/verify-audit-chain", "schedule": "0 2 * * *" }
+    {
+      "path": "/api/cron/reminders",
+      "schedule": "0 9 * * *"
+    },
+    {
+      "path": "/api/cron/gp-batch",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/cron/daily-summary",
+      "schedule": "30 18 * * *"
+    },
+    {
+      "path": "/api/cron/verify-audit-chain",
+      "schedule": "0 2 * * *"
+    }
   ]
 }
