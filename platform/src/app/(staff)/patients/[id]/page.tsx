@@ -11,6 +11,8 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, Mail, Phone, MapPin, Stethoscope, Pencil } from 'lucide-react';
 import { getAllergies } from './allergy-actions';
 import { AllergiesPanel } from './allergies-panel';
+import { getEnrolments, getRepeatServices } from './enrolment-actions';
+import { EnrolmentPanel } from './enrolment-panel';
 import { getStaffContext } from '@/lib/auth/context';
 import { getPatient, getPatientTimeline } from '@/lib/queries/clinical';
 import { formatDate, formatDateTime } from '@/lib/units';
@@ -25,7 +27,11 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
   const patient = await getPatient(actor.organisationId, id);
   if (!patient) notFound();
 
-  const allergies = await getAllergies(patient.id);
+  const [allergies, enrolments, repeatServices] = await Promise.all([
+    getAllergies(patient.id),
+    getEnrolments(patient.id),
+    getRepeatServices(actor.organisationId),
+  ]);
 
   const timeline = await getPatientTimeline(actor.organisationId, id);
 
@@ -75,6 +81,12 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
       </div>
 
       <AllergiesPanel patientId={patient.id} allergies={allergies} />
+
+      <EnrolmentPanel
+        patientId={patient.id}
+        enrolments={enrolments}
+        services={repeatServices}
+      />
 
       <h2 className="mb-3 font-mono text-[10.5px] uppercase tracking-[0.09em] text-ink-faint">
         History

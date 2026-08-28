@@ -23,7 +23,7 @@
 
 import {
   pgTable, pgEnum, uuid, text, timestamp, jsonb, integer,
-  boolean, date, index, uniqueIndex, primaryKey,
+  boolean, date, numeric, index, uniqueIndex, primaryKey,
 } from 'drizzle-orm/pg-core';
 
 // ─────────────────────────────────────────────────────────────
@@ -442,6 +442,49 @@ export const consultationAddendum = pgTable('consultation_addendum', {
   corrections: jsonb('corrections').$type<Record<string, unknown>>().default({}).notNull(),
   occurredAt: timestamp('occurred_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [index('consultation_addendum_idx').on(t.consultationId, t.occurredAt)]);
+
+export const repeatEnrolmentStatusEnum = pgEnum('repeat_enrolment_status', [
+  'ACTIVE', 'PAUSED', 'STOPPED',
+]);
+
+/**
+ * A patient authorised into Repeat Care.
+ *
+ * His GLP-1 workflow begins with a pharmacist enrolling someone and creating a
+ * baseline, and the system had no such step. Two things depend on it:
+ *
+ *   · The rules are relative. "Weight loss of at least 2% since last supply",
+ *     "three weeks on the current dose", "no skipping strengths" — none of them
+ *     can be evaluated without a known starting point and a known current dose.
+ *   · It is the safety gate. His first rule is that a patient not in the Repeat
+ *     Care database is sent to book an appointment rather than served, which is
+ *     what stops someone never assessed requesting a GLP-1 online.
+ */
+export const repeatEnrolment = pgTable('repeat_enrolment', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  patientId: uuid('patient_id').notNull().references(() => patient.id),
+  serviceId: uuid('service_id').notNull().references(() => service.id),
+  status: repeatEnrolmentStatusEnum('status').default('ACTIVE').notNull(),
+  /** Their id in Pharmadoctor, which is how he identifies these patients. */
+  externalRef: text('external_ref'),
+  heightCm: numeric('height_cm', { precision: 5, scale: 1 }),
+  startingWeightKg: numeric('starting_weight_kg', { precision: 5, scale: 1 }),
+  startingWaistCm: numeric('starting_waist_cm', { precision: 5, scale: 1 }),
+  medicine: text('medicine'),
+  strength: text('strength'),
+  /** When the CURRENT strength started — the 3-week and 6-week rules. */
+  strengthSince: date('strength_since'),
+  lastSuppliedAt: timestamp('last_supplied_at', { withTimezone: true }),
+  lastWeightKg: numeric('last_weight_kg', { precision: 5, scale: 1 }),
+  notes: text('notes'),
+  enrolledBy: uuid('enrolled_by').references(() => appUser.id),
+  enrolledAt: timestamp('enrolled_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('repeat_enrolment_unique_idx').on(t.patientId, t.serviceId),
+  index('repeat_enrolment_org_idx').on(t.organisationId, t.status),
+]);
 
 export const notificationChannelEnum = pgEnum('notification_channel', [
   'EMAIL', 'SMS', 'WHATSAPP',
