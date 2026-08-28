@@ -28,6 +28,7 @@ import { action } from '@/lib/actions';
 import { db } from '@/lib/db/client';
 import {
   submission, formVersion, service, rulesetVersion, ruleEvaluation, reviewEvent,
+  statusHistory,
 } from '@/lib/db/schema';
 import { pruneHiddenAnswers, collectMetadata } from '@/lib/forms/runtime';
 import { evaluateRuleset, type RulesetDefinition } from '@/lib/rules/engine';
@@ -70,11 +71,27 @@ const amend = action<AmendInput>('consultations:edit').handler(
       .limit(1);
 
     if (!row) throw new Error('That submission no longer exists.');
-    if (row.status === 'COMPLETED') {
-      // Once a vaccine is in someone's arm, the form that justified it is part
-      // of the clinical record. Correcting it afterwards would rewrite history.
+
+    /*
+     * §20 — after approval the questionnaire is historical clinical data.
+     *
+     * The line the specification draws is between silent modification and a
+     * recorded correction, not between editable and frozen: it asks that a
+     * patient cannot quietly change an approved form, while a permitted
+     * administrative correction creates an audit event or a revision.
+     *
+     * Patients already cannot: the resume token is destroyed at submission, so
+     * the only route in is a member of staff with `consultations:edit`, and
+     * every amendment writes an audit entry naming them and listing exactly
+     * which answers moved. What remains is to stop amendment where the record
+     * is genuinely finished, and to leave a revision marker on the history so
+     * an approved record that was later corrected says so on its own timeline.
+     */
+    if (row.status === 'COMPLETED' || row.status === 'CANCELLED') {
       throw new Error(
-        'This consultation is already complete. Its answers form part of the clinical record and cannot be changed.',
+        row.status === 'COMPLETED'
+          ? 'This consultation is already complete. Its answers form part of the clinical record and cannot be changed.'
+          : 'This request was cancelled. Its answers cannot be changed.',
       );
     }
 
@@ -181,6 +198,25 @@ const amend = action<AmendInput>('consultations:edit').handler(
       userId: actor.userId,
       action: 'AMENDED',
       note: input.reason.trim(),
+    });
+
+    /*
+     * The revision marker §20 asks for.
+     *
+     * Status does not move — an amended approval is still approved — but the
+     * timeline has to show that the answers behind it were corrected after the
+     * fact, and by whom. Reading the record later, "approved, then amended" and
+     * "approved" must not look identical.
+     */
+    await tx.insert(statusHistory).values({
+      organisationId: actor.organisationId,
+      entityType: 'SUBMISSION',
+      entityId: row.id,
+      fromStatus: row.status,
+      toStatus: row.status,
+      changedBy: actor.userId,
+      changedByLabel: actor.fullName,
+      reason: `Answers amended: ${input.reason.trim()}`,
     });
 
     return {

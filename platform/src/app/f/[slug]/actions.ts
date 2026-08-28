@@ -19,6 +19,7 @@ import { eq, and, desc } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   service, formVersion, rulesetVersion, submission, ruleEvaluation, auditEvent,
+  statusHistory,
   appointment,
 } from '@/lib/db/schema';
 import { sealAuditEntry } from '@/lib/audit';
@@ -29,6 +30,7 @@ import { evaluateRuleset, type RulesetDefinition } from '@/lib/rules/engine';
 import { alertPharmacist } from '@/lib/notifications/alerts';
 import { deriveValues } from '@/lib/clinical/derived';
 import { loadPreviousSupply } from '@/lib/clinical/previous-supply';
+import { changeSubmissionStatus, recordInitialStatus } from '@/lib/workflow/history';
 import type { FormSchema, Answers } from '@/types/form-schema';
 
 export interface SubmitResult {
@@ -237,6 +239,33 @@ export async function submitPublicForm(
 
       if (!row) throw new Error('Could not save the submission.');
 
+      /*
+       * Record how it arrived before anything triages it.
+       *
+       * A resumed draft moves DRAFT -> SUBMITTED; a walk-up at the counter has
+       * no earlier state, so its history opens here. The patient is a real
+       * actor and is not an app_user, which is why the label carries who it was
+       * and the id is null.
+       */
+      if (existing) {
+        await tx.insert(statusHistory).values({
+          organisationId: svc.organisationId,
+          entityType: 'SUBMISSION',
+          entityId: row.id,
+          fromStatus: 'DRAFT',
+          toStatus: 'SUBMITTED',
+          changedByLabel: 'Patient',
+          branchId: existing.branchId ?? null,
+        });
+      } else {
+        await recordInitialStatus(tx, {
+          organisationId: svc.organisationId,
+          submissionId: row.id,
+          status: 'SUBMITTED',
+          by: { label: 'Patient' },
+        });
+      }
+
       // Triage, if this service has published rules.
       let outcome: 'GREEN' | 'AMBER' | 'RED' | undefined;
       let patientMessage: string | undefined;
@@ -267,10 +296,20 @@ export async function submitPublicForm(
           outcome = evaluation.outcome;
           patientMessage = evaluation.patientMessage;
 
-          await tx
-            .update(submission)
-            .set({ status: outcome === 'GREEN' ? 'APPROVED' : 'IN_REVIEW' })
-            .where(eq(submission.id, row.id));
+          /*
+           * The engine's verdict is a status change like any other, and it is
+           * the system making it — so the history says so, rather than
+           * attributing an automatic decision to whoever happens to look next.
+           */
+          await changeSubmissionStatus(tx, {
+            organisationId: svc.organisationId,
+            submissionId: row.id,
+            to: outcome === 'GREEN' ? 'APPROVED' : 'IN_REVIEW',
+            by: { label: 'Decision engine' },
+            reason: evaluation.decidingRuleId
+              ? `Rule: ${evaluation.decidingRuleId}`
+              : 'No rule matched — default outcome',
+          });
         }
       }
 

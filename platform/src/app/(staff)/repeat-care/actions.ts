@@ -19,6 +19,8 @@ import { action } from '@/lib/actions';
 import { submission, reviewEvent, service, patient } from '@/lib/db/schema';
 import { db } from '@/lib/db/client';
 import { requestPayment } from '@/lib/payments/lifecycle';
+import { changeSubmissionStatus } from '@/lib/workflow/history';
+import { IllegalTransitionError } from '@/lib/workflow/status';
 
 export type ReviewAction = 'APPROVED' | 'REJECTED' | 'INFO_REQUESTED';
 
@@ -40,14 +42,6 @@ interface DecideInput {
 const decide = action<DecideInput>('repeat_care:edit')
   .scopedTo((input) => ({ branchId: input.branchId ?? null, companyId: input.companyId ?? null }))
   .handler(async (input, { tx, actor }) => {
-    const [before] = await tx
-      .select({ status: submission.status })
-      .from(submission)
-      .where(eq(submission.id, input.submissionId))
-      .limit(1);
-
-    if (!before) throw new Error('That request no longer exists.');
-
     await tx.insert(reviewEvent).values({
       organisationId: actor.organisationId,
       submissionId: input.submissionId,
@@ -56,20 +50,30 @@ const decide = action<DecideInput>('repeat_care:edit')
       note: input.note.trim() || null,
     });
 
-    const [after] = await tx
-      .update(submission)
-      .set({ status: STATUS_FOR[input.decision], updatedAt: new Date() })
-      .where(eq(submission.id, input.submissionId))
-      .returning({ status: submission.status });
+    /*
+     * The status moves through the workflow helper, never by writing the
+     * column. That is what guarantees a history row exists for every decision
+     * and that an illegal move — approving something already rejected, say —
+     * fails here rather than quietly producing a record whose path cannot be
+     * explained afterwards.
+     */
+    const moved = await changeSubmissionStatus(tx, {
+      organisationId: actor.organisationId,
+      submissionId: input.submissionId,
+      to: STATUS_FOR[input.decision],
+      by: { userId: actor.userId, label: actor.fullName },
+      reason: input.note,
+      branchId: input.branchId ?? null,
+    });
 
     return {
-      result: { status: after?.status ?? STATUS_FOR[input.decision] },
+      result: { status: moved.to },
       audit: {
         action: `submission.${input.decision.toLowerCase()}`,
         entityType: 'submission',
         entityId: input.submissionId,
-        before: { status: before.status },
-        after: { status: after?.status, note: input.note.trim() || null },
+        before: { status: moved.from },
+        after: { status: moved.to, note: input.note.trim() || null },
       },
     };
   });
@@ -154,9 +158,11 @@ export async function reviewSubmission(input: DecideInput & { outcome?: string |
     return {
       ok: false as const,
       error:
-        error instanceof Error && error.name === 'AuthorisationError'
-          ? 'You do not have permission to review repeat requests.'
-          : 'Could not save that decision. Please try again.',
+        error instanceof IllegalTransitionError
+          ? `${error.message} Refresh — someone may have decided this already.`
+          : error instanceof Error && error.name === 'AuthorisationError'
+            ? 'You do not have permission to review repeat requests.'
+            : 'Could not save that decision. Please try again.',
     };
   }
 }

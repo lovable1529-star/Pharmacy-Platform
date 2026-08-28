@@ -22,6 +22,8 @@ import {
 } from '@/lib/db/schema';
 import { queueNotification } from '@/lib/notifications/outbox';
 import { resolveAppUrl } from '@/lib/app-url';
+import { changeSubmissionStatus } from '@/lib/workflow/history';
+import { canTransition, type SubmissionStatus } from '@/lib/workflow/status';
 import {
   generatePaymentToken, paymentExpiry, activeProvider, formatMoney,
   buildPaymentUrl, isDemoMode, type PaymentProvider,
@@ -198,15 +200,38 @@ export async function settlePayment(input: {
      * The condition in the WHERE clause is what makes this safe rather than the
      * check being somewhere a future caller can skip.
      */
-    await db
-      .update(submission)
-      .set({ status: 'APPROVED', updatedAt: new Date() })
-      .where(
-        and(
-          eq(submission.id, settled.submissionId),
-          ne(submission.status, 'DRAFT'),
-        ),
-      );
+    /*
+     * Approving on payment goes through the workflow like every other move, so
+     * the history shows that payment is what approved it rather than leaving a
+     * status that changed with nothing to explain it.
+     *
+     * The DRAFT guard survives as the WHERE clause it always was: a payment
+     * must never approve a questionnaire the patient never finished sending,
+     * and keeping that condition in SQL is what makes it safe against a future
+     * caller rather than a check somebody can forget.
+     */
+    // Captured so the narrowing above survives into the closure.
+    const submissionId = settled.submissionId;
+    const organisationId = settled.organisationId;
+
+    await db.transaction(async (tx) => {
+      const [current] = await tx
+        .select({ status: submission.status })
+        .from(submission)
+        .where(and(eq(submission.id, submissionId), ne(submission.status, 'DRAFT')))
+        .limit(1);
+
+      if (!current) return;
+      if (!canTransition(current.status as SubmissionStatus, 'APPROVED')) return;
+
+      await changeSubmissionStatus(tx, {
+        organisationId,
+        submissionId,
+        to: 'APPROVED',
+        by: { label: 'Payment received' },
+        reason: 'Payment settled',
+      });
+    });
 
     const [context] = await db
       .select({

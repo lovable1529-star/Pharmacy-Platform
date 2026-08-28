@@ -34,6 +34,10 @@ export const outcomeEnum = pgEnum('outcome', ['GREEN', 'AMBER', 'RED']);
 
 export const submissionStatusEnum = pgEnum('submission_status', [
   'DRAFT', 'SUBMITTED', 'IN_REVIEW', 'APPROVED', 'REJECTED', 'INFO_REQUESTED', 'COMPLETED',
+  // Added for the specification's state machine: a rejected case that has been
+  // corrected comes back as RESUBMITTED carrying its rejection, and a case can
+  // be stopped outright without pretending it was rejected on clinical grounds.
+  'RESUBMITTED', 'CANCELLED',
 ]);
 
 export const consultationStatusEnum = pgEnum('consultation_status', [
@@ -703,4 +707,49 @@ export const appointment = pgTable('appointment', {
   index('appointment_branch_start_idx').on(t.branchId, t.startsAt),
   index('appointment_org_idx').on(t.organisationId, t.startsAt),
   uniqueIndex('appointment_reference_idx').on(t.organisationId, t.reference),
+]);
+
+// ─────────────────────────────────────────────────────────────
+// Status history
+//
+// The specification is emphatic that a status must never simply be
+// overwritten: "who moved this to rejected, when, and why" has to be
+// answerable, and rejection reasons, pharmacist decisions and signatures are
+// listed among the things that must not be silently replaced.
+//
+// Until now every status lived in one column and each write destroyed the
+// previous value. The audit log recorded that something changed, but the
+// clinical question — what path did this case take — could only be
+// reconstructed by inference.
+//
+// One table for every entity that has a lifecycle, rather than one per entity,
+// because the questions asked of it are the same in each case and a rejection
+// on an appointment reads exactly like a rejection on a submission.
+// ─────────────────────────────────────────────────────────────
+
+export const statusEntityEnum = pgEnum('status_entity', [
+  'SUBMISSION', 'APPOINTMENT', 'CONSULTATION', 'PRESCRIPTION',
+]);
+
+export const statusHistory = pgTable('status_history', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  entityType: statusEntityEnum('entity_type').notNull(),
+  entityId: uuid('entity_id').notNull(),
+  /** Null on the first entry — nothing preceded the record being created. */
+  fromStatus: text('from_status'),
+  toStatus: text('to_status').notNull(),
+  /**
+   * Null where the actor is the patient or the system, both of which are real
+   * and neither of which is an `app_user`. `changedByLabel` carries who it was.
+   */
+  changedBy: uuid('changed_by').references(() => appUser.id),
+  changedByLabel: text('changed_by_label').notNull(),
+  /** Required by the spec for a rejection; optional elsewhere. */
+  reason: text('reason'),
+  branchId: uuid('branch_id').references(() => branch.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('status_history_entity_idx').on(t.entityType, t.entityId, t.createdAt),
+  index('status_history_org_idx').on(t.organisationId, t.createdAt),
 ]);
