@@ -1,0 +1,824 @@
+<title>Platform Rebuild Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap">
+
+<style>
+  /* ── Tokens ─────────────────────────────────────────────────────
+     Blueprint neutrals — cooler and darker than the other three
+     documents, because this one is the build spec rather than
+     something a client reads. Triage colours keep their product
+     meaning and are used for nothing decorative. */
+  :root {
+    --ink:       #10151F;
+    --ink-soft:  #39435A;
+    --ink-faint: #6A7488;
+    --paper:     #F4F6F9;
+    --surface:   #FFFFFF;
+    --sunk:      #EAEEF4;
+    --line:      #DDE3EC;
+    --line-soft: #EBEFF5;
+    --brand:     #6B4FBB;
+    --brand-dim: #F0EBFB;
+    --keep:      #2E7D52;
+    --keep-dim:  #E5F2EA;
+    --extend:    #A96A08;
+    --extend-dim:#FAF0DC;
+    --build:     #B3261E;
+    --build-dim: #FBE9E7;
+    --code-bg:   #141A26;
+    --code-ink:  #DCE3EE;
+    --sh-sm:     0 1px 2px rgba(16,21,31,.05);
+    --sh:        0 1px 2px rgba(16,21,31,.05), 0 12px 30px -16px rgba(16,21,31,.28);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink:       #E7EBF2;
+      --ink-soft:  #AAB4C4;
+      --ink-faint: #7C8698;
+      --paper:     #0B0E15;
+      --surface:   #141924;
+      --sunk:      #1D2331;
+      --line:      #28303F;
+      --line-soft: #202634;
+      --brand:     #B79EF2;
+      --brand-dim: #231D38;
+      --keep:      #74D3A0;
+      --keep-dim:  #14261C;
+      --extend:    #E8B063;
+      --extend-dim:#2B2013;
+      --build:     #F29A92;
+      --build-dim: #2E1817;
+      --code-bg:   #1D2331;
+      --code-ink:  #DCE3EE;
+      --sh-sm:     0 1px 2px rgba(0,0,0,.5);
+      --sh:        0 1px 2px rgba(0,0,0,.5), 0 12px 30px -16px rgba(0,0,0,.75);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink:       #E7EBF2;
+    --ink-soft:  #AAB4C4;
+    --ink-faint: #7C8698;
+    --paper:     #0B0E15;
+    --surface:   #141924;
+    --sunk:      #1D2331;
+    --line:      #28303F;
+    --line-soft: #202634;
+    --brand:     #B79EF2;
+    --brand-dim: #231D38;
+    --keep:      #74D3A0;
+    --keep-dim:  #14261C;
+    --extend:    #E8B063;
+    --extend-dim:#2B2013;
+    --build:     #F29A92;
+    --build-dim: #2E1817;
+    --code-bg:   #1D2331;
+    --code-ink:  #DCE3EE;
+    --sh-sm:     0 1px 2px rgba(0,0,0,.5);
+    --sh:        0 1px 2px rgba(0,0,0,.5), 0 12px 30px -16px rgba(0,0,0,.75);
+  }
+
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: Figtree, ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px; line-height: 1.62; -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1180px; margin: 0 auto; padding: 0 28px 100px;
+    display: grid; grid-template-columns: 214px minmax(0,1fr);
+    gap: 52px; align-items: start;
+  }
+  header.mast { grid-column: 1/-1; padding: 62px 0 32px; }
+  .kick {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 500;
+    letter-spacing: .17em; text-transform: uppercase; color: var(--brand); margin: 0 0 16px;
+  }
+  h1 {
+    font-family: "Instrument Serif", ui-serif, Georgia, serif; font-weight: 400;
+    font-size: clamp(38px, 6.2vw, 66px); line-height: 1.02;
+    letter-spacing: -.012em; text-wrap: balance; margin: 0 0 20px;
+  }
+  h1 em { font-style: italic; color: var(--brand); }
+  .stand { font-size: 18.5px; color: var(--ink-soft); max-width: 62ch; margin: 0 0 24px; }
+  .src {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    color: var(--ink-faint); display: grid; gap: 4px;
+    border-top: 1px solid var(--line); padding-top: 16px;
+  }
+
+  nav.rail { position: sticky; top: 24px; }
+  nav.rail h2 {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 12px;
+  }
+  nav.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+  nav.rail a {
+    display: grid; grid-template-columns: 22px minmax(0,1fr); gap: 8px;
+    padding: 6px 8px; border-radius: 6px; text-decoration: none;
+    color: var(--ink-soft); font-size: 13px; line-height: 1.34;
+  }
+  nav.rail a:hover { background: var(--sunk); color: var(--ink); }
+  nav.rail a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  nav.rail .n { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--ink-faint); }
+
+  main { min-width: 0; }
+  section { padding: 44px 0; border-top: 1px solid var(--line); scroll-margin-top: 20px; }
+  section:first-child { border-top: 0; padding-top: 8px; }
+  .secn {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 12px;
+  }
+  h2 {
+    font-family: "Instrument Serif", ui-serif, Georgia, serif; font-weight: 400;
+    font-size: clamp(28px, 3.8vw, 40px); line-height: 1.1;
+    letter-spacing: -.01em; text-wrap: balance; margin: 0 0 18px;
+  }
+  h3 { font-weight: 600; font-size: 17px; margin: 32px 0 10px; letter-spacing: -.002em; }
+  h4 {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600;
+    letter-spacing: .1em; text-transform: uppercase; color: var(--ink-faint); margin: 24px 0 8px;
+  }
+  p { margin: 0 0 15px; max-width: 70ch; }
+  .col ul, .col ol { margin: 0 0 15px; padding-left: 21px; max-width: 68ch; }
+  li { margin-bottom: 6px; }
+
+  code {
+    font-family: "IBM Plex Mono", monospace; font-size: .85em;
+    background: var(--sunk); border: 1px solid var(--line-soft);
+    border-radius: 4px; padding: 1px 5px;
+  }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); border-radius: 9px;
+    padding: 15px 17px; overflow-x: auto; margin: 0 0 20px;
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; line-height: 1.6;
+    box-shadow: var(--sh);
+  }
+  pre .c { color: #8792A6; }
+
+  .note {
+    border: 1px solid var(--line); border-left: 3px solid var(--brand);
+    background: var(--surface); border-radius: 9px; padding: 15px 18px;
+    margin: 0 0 20px; max-width: 70ch;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .tag {
+    display: block; font-family: "IBM Plex Mono", monospace; font-size: 10px;
+    font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--brand); margin-bottom: 6px;
+  }
+  .note.stop { border-left-color: var(--build); background: var(--build-dim); }
+  .note.stop .tag { color: var(--build); }
+  .note.warn { border-left-color: var(--extend); background: var(--extend-dim); }
+  .note.warn .tag { color: var(--extend); }
+  .note.go   { border-left-color: var(--keep); background: var(--keep-dim); }
+  .note.go .tag { color: var(--keep); }
+
+  .tw {
+    overflow-x: auto; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--surface); margin: 22px 0 26px; box-shadow: var(--sh-sm);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 10px 13px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 600;
+    letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint);
+    background: var(--sunk); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: 0; }
+
+  .pill {
+    display: inline-block; font-family: "IBM Plex Mono", monospace; font-size: 9.5px;
+    font-weight: 600; letter-spacing: .05em; text-transform: uppercase;
+    padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+  }
+  .pill.keep   { background: var(--keep-dim);   color: var(--keep); }
+  .pill.extend { background: var(--extend-dim); color: var(--extend); }
+  .pill.build  { background: var(--build-dim);  color: var(--build); }
+  .pill.brand  { background: var(--brand-dim);  color: var(--brand); }
+
+  .ws {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 11px;
+    padding: 19px 21px; margin: 0 0 14px; box-shadow: var(--sh-sm);
+  }
+  .ws-top { display: flex; flex-wrap: wrap; align-items: baseline; gap: 9px 13px; margin-bottom: 10px; }
+  .ws-n {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600;
+    color: var(--brand); background: var(--brand-dim); padding: 3px 8px; border-radius: 5px;
+  }
+  .ws h3 { margin: 0; font-size: 17.5px; flex: 1 1 240px; }
+  .eff { font-family: "IBM Plex Mono", monospace; font-size: 11px; color: var(--ink-faint); white-space: nowrap; }
+  .ws p { margin: 0 0 8px; font-size: 14.5px; color: var(--ink-soft); }
+  .ws ul { margin: 8px 0 0; padding-left: 19px; }
+  .ws li { font-size: 14px; color: var(--ink-soft); margin-bottom: 5px; }
+
+  figure {
+    margin: 26px 0 30px; padding: 22px 18px 15px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--sh);
+  }
+  .fs { overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; }
+  figcaption {
+    margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--line-soft);
+    font-size: 13px; color: var(--ink-faint); line-height: 1.5;
+  }
+  figcaption b { color: var(--ink-soft); font-weight: 600; }
+  .st { font-family: Figtree, sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--ink); }
+  .ss { font-family: Figtree, sans-serif; font-size: 11px; fill: var(--ink-faint); }
+  .sm { font-family: "IBM Plex Mono", monospace; font-size: 9.5px; font-weight: 500; fill: var(--ink-faint); letter-spacing: .06em; }
+
+  footer { grid-column: 1/-1; border-top: 1px solid var(--line); padding-top: 22px; font-size: 13px; color: var(--ink-faint); }
+
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: minmax(0,1fr); gap: 0; padding: 0 20px 76px; }
+    nav.rail { position: static; margin-bottom: 38px; padding: 15px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="kick">Karsons Pharmacy Platform · Build specification</p>
+    <h1>Rebuilding around <em>one</em> patient lifecycle</h1>
+    <p class="stand">
+      The partner's specification, read against the code that exists. What
+      survives, what is quietly wrong today, what has to be built, and the order
+      to build it in. Services and the form designer are out of scope by
+      instruction — everything else is on the table.
+    </p>
+    <div class="src">
+      <span>SPEC · Custom_Clinical_Platform_GLP1_and_Flu_Vaccine_v3.html — 30 sections</span>
+      <span>PRIOR · GLP1_Repeat_Care_Scope_of_Work.docx · Flu Vaccine Development Overview.docx</span>
+      <span>CODE · 29 tables, 12 staff modules, live database checked 30 August 2026</span>
+    </div>
+  </header>
+
+  <nav class="rail" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#settled"><span class="n">01</span><span>What is settled</span></a></li>
+      <li><a href="#spine"><span class="n">02</span><span>The one idea</span></a></li>
+      <li><a href="#audit"><span class="n">03</span><span>Keep / extend / build</span></a></li>
+      <li><a href="#wrong"><span class="n">04</span><span>Wrong right now</span></a></li>
+      <li><a href="#data"><span class="n">05</span><span>Data model</span></a></li>
+      <li><a href="#work"><span class="n">06</span><span>Workstreams</span></a></li>
+      <li><a href="#order"><span class="n">07</span><span>Build order</span></a></li>
+      <li><a href="#decisions"><span class="n">08</span><span>Decisions needed</span></a></li>
+      <li><a href="#scope"><span class="n">09</span><span>Not in scope</span></a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section id="settled">
+    <p class="secn">01 · Position</p>
+    <h2>What the partner settled</h2>
+
+    <div class="col">
+      <p><strong>Services and the form designer stay.</strong> Confirmed as
+      working and out of scope. That is a meaningful result: it means the form
+      schema, the versioned form engine, the 21 field types, conditional reveals
+      and the patient-facing runtime are all proven and can be built on rather
+      than replaced.</p>
+      <p>Everything else is to be reworked against the new specification.</p>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">One judgement I owe you before we start</span>
+      <p>“Rework everything else” should not mean “delete the database and
+      start again.” Several foundations already match the new specification
+      closely — the audit log, role-based permissions, branch scoping, the
+      notification outbox, the patient record. Rebuilding those from scratch
+      would cost weeks and land in the same place.</p>
+      <p>So this plan sorts every module into <strong>keep</strong>,
+      <strong>extend</strong> or <strong>build</strong>, with the reason stated.
+      If you want something rebuilt anyway, say which and I will — but I would
+      rather you make that call knowing what it costs.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section id="spine">
+    <p class="secn">02 · Architecture</p>
+    <h2>The one idea the whole spec turns on</h2>
+
+    <div class="col">
+      <p>Section 23 of the specification is the important paragraph, and it is
+      aimed squarely at what is wrong with the current build:</p>
+      <p style="padding-left:17px;border-left:3px solid var(--brand);color:var(--ink-soft)">
+        “The system should be built around one connected patient/appointment
+        lifecycle, not as a collection of independent forms.”
+      </p>
+      <p>That is precisely the fault already found and partly patched here:
+      booking, questionnaire, arrival and consultation were four islands with
+      unpopulated link columns, which is why appointments once read “no form
+      yet” however carefully a patient filled one in. The fix so far has been to
+      join them case by case. The specification asks for the spine to be the
+      design instead.</p>
+    </div>
+
+    <figure>
+      <div class="fs">
+        <svg viewBox="0 0 960 250" role="img" aria-label="The lifecycle spine: patient, appointment, clinical assessment, pharmacist review, decision, prescription, document, dispensing — with status history, audit log and notifications running across every stage.">
+          <defs>
+            <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-faint)"></path>
+            </marker>
+          </defs>
+
+          <text class="sm" x="8" y="20">THE SPINE — EVERY RECORD HANGS OFF THIS</text>
+
+          <g>
+            <rect x="8"   y="34" width="106" height="58" rx="9" fill="var(--brand-dim)" stroke="var(--brand)" stroke-width="1.5"></rect>
+            <text class="st" x="61"  y="59" text-anchor="middle">Patient</text>
+            <text class="ss" x="61"  y="77" text-anchor="middle">persistent</text>
+
+            <rect x="128" y="34" width="106" height="58" rx="9" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="st" x="181" y="59" text-anchor="middle">Appointment</text>
+            <text class="ss" x="181" y="77" text-anchor="middle">or walk-in</text>
+
+            <rect x="248" y="34" width="118" height="58" rx="9" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="st" x="307" y="59" text-anchor="middle">Assessment</text>
+            <text class="ss" x="307" y="77" text-anchor="middle">the questionnaire</text>
+
+            <rect x="380" y="34" width="112" height="58" rx="9" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="st" x="436" y="59" text-anchor="middle">Review</text>
+            <text class="ss" x="436" y="77" text-anchor="middle">pharmacist</text>
+
+            <rect x="506" y="34" width="104" height="58" rx="9" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="st" x="558" y="59" text-anchor="middle">Decision</text>
+            <text class="ss" x="558" y="77" text-anchor="middle">and payment</text>
+
+            <rect x="624" y="34" width="112" height="58" rx="9" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="st" x="680" y="59" text-anchor="middle">Prescription</text>
+            <text class="ss" x="680" y="77" text-anchor="middle">locked PDF</text>
+
+            <rect x="750" y="34" width="202" height="58" rx="9" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="st" x="851" y="59" text-anchor="middle">Dispensing &amp; collection</text>
+            <text class="ss" x="851" y="77" text-anchor="middle">sign-off · stock · GP notified</text>
+          </g>
+
+          <g stroke="var(--ink-faint)" stroke-width="1.4" fill="none" marker-end="url(#a1)">
+            <path d="M118 63 H124"></path>
+            <path d="M238 63 H244"></path>
+            <path d="M370 63 H376"></path>
+            <path d="M496 63 H502"></path>
+            <path d="M614 63 H620"></path>
+            <path d="M740 63 H746"></path>
+          </g>
+
+          <g>
+            <rect x="8" y="112" width="944" height="30" rx="7" fill="var(--sunk)"></rect>
+            <text class="sm" x="24" y="131">STATUS HISTORY</text>
+            <text class="ss" x="148" y="131">every transition, who made it, why — never overwritten</text>
+
+            <rect x="8" y="150" width="944" height="30" rx="7" fill="var(--sunk)"></rect>
+            <text class="sm" x="24" y="169">AUDIT LOG</text>
+            <text class="ss" x="148" y="169">user, action, entity, old value, new value, timestamp</text>
+
+            <rect x="8" y="188" width="944" height="30" rx="7" fill="var(--sunk)"></rect>
+            <text class="sm" x="24" y="207">NOTIFICATIONS</text>
+            <text class="ss" x="148" y="207">patient, pharmacy and GP, each with a delivery result</text>
+          </g>
+
+          <text class="ss" x="8" y="240">Two clinical services run through this: GLP-1 repeat care and flu vaccination. Only the middle three boxes differ between them.</text>
+        </svg>
+      </div>
+      <figcaption>
+        <b>Everything else is a detail of this.</b> The three bands are not
+        features bolted on at the end — the spec requires them to span every
+        stage, which is why they are designed in first rather than retrofitted.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section id="audit">
+    <p class="secn">03 · Inventory of what exists</p>
+    <h2>Keep, extend, build</h2>
+
+    <div class="col">
+      <p>Every area of the specification against the code as it stands today.
+      <span class="pill keep">Keep</span> means it already meets the spec.
+      <span class="pill extend">Extend</span> means the foundation is right and
+      the gap is additive. <span class="pill build">Build</span> means there is
+      nothing there.</p>
+    </div>
+
+    <div class="tw">
+      <table>
+        <thead>
+          <tr><th>Spec area</th><th></th><th>What exists, and what is missing</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Form designer · services</td><td><span class="pill keep">Keep</span></td>
+            <td>Out of scope by instruction. Versioned schema, 21 field types, conditional reveals, published-version binding.</td>
+          </tr>
+          <tr>
+            <td>Roles &amp; permissions (§1, §16)</td><td><span class="pill keep">Keep</span></td>
+            <td>Role, permission and per-branch assignment tables exist and are enforced server-side by the <code>action()</code> wrapper. Spec's four roles map onto it.</td>
+          </tr>
+          <tr>
+            <td>Audit log (§16.3)</td><td><span class="pill extend">Extend</span></td>
+            <td>Hash-chained append-only log with nightly verification. Missing the spec's <code>old_value</code> / <code>new_value</code> pair and IP address.</td>
+          </tr>
+          <tr>
+            <td>Patient profile (§11)</td><td><span class="pill extend">Extend</span></td>
+            <td>Patient record, allergies, timeline and duplicate matching exist. Missing weight/BMI history as a first-class series and the follow-up comparison view.</td>
+          </tr>
+          <tr>
+            <td>Decision engine (§5)</td><td><span class="pill extend">Extend</span></td>
+            <td>Pure, traced, versioned per service, 24 GLP-1 rules. Four never fire — see next section. Holiday supply and the read-only System Recommendation are absent.</td>
+          </tr>
+          <tr>
+            <td>Repeat care enrolment (§4.1)</td><td><span class="pill extend">Extend</span></td>
+            <td><code>repeat_enrolment</code> already holds baseline medicine, strength, <code>strength_since</code>, last weight and last supply date. Missing the ID + email access gate (§4.2) and the authorising-pharmacist field.</td>
+          </tr>
+          <tr>
+            <td>Pharmacist review (§6)</td><td><span class="pill extend">Extend</span></td>
+            <td>Review queue with worst-first ordering and approve / reject / request-info exists. Missing the separated queues, the urgent RED task list, and the payment/prescription queues.</td>
+          </tr>
+          <tr>
+            <td>Inventory (§9, §28)</td><td><span class="pill extend">Extend</span></td>
+            <td>Products, batches, stock levels, movements and batch recall exist. Missing adjustment / return / expired / damaged transaction types, expiry blocking at selection, and the item-category layer.</td>
+          </tr>
+          <tr>
+            <td>GP master (§12)</td><td><span class="pill extend">Extend</span></td>
+            <td><code>gp_surgery</code> exists and the nightly per-surgery batch email works. Missing the full practice master fields and the delivery-result log.</td>
+          </tr>
+          <tr>
+            <td>Appointment slots (§12)</td><td><span class="pill extend">Extend</span></td>
+            <td><code>availability</code> plus timezone-correct slot generation. Missing breaks, closed dates and max-per-slot.</td>
+          </tr>
+          <tr>
+            <td>Notifications (§15)</td><td><span class="pill extend">Extend</span></td>
+            <td>Outbox with atomic claim, email and SMS channels. Missing templates as records and the per-event triggers the spec lists.</td>
+          </tr>
+          <tr>
+            <td>Status state machine (§7)</td><td><span class="pill build">Build</span></td>
+            <td>No <code>status_history</code> table anywhere. Statuses are overwritten in place, so “who moved this to rejected, when, and why” cannot be answered. The spec makes this mandatory.</td>
+          </tr>
+          <tr>
+            <td>Prescription lifecycle (§8, §18)</td><td><span class="pill build">Build</span></td>
+            <td>A PDF is generated and numbered, but there is no <code>prescriptions</code> table, no dispensing sign-off, no collection sign-off and no lifecycle state.</td>
+          </tr>
+          <tr>
+            <td>Vaccine administration (§27)</td><td><span class="pill build">Build</span></td>
+            <td>Nothing. Needs the full record — branch, pharmacist, vaccine, batch, expiry, injection type, site, payment type, adverse reaction — with master-data snapshots.</td>
+          </tr>
+          <tr>
+            <td>Consent as a record (§8A, §25.6)</td><td><span class="pill build">Build</span></td>
+            <td>Consent is currently an answer inside the questionnaire. The spec requires a separate versioned record with a text snapshot, so what was agreed stays provable.</td>
+          </tr>
+          <tr>
+            <td>Documents module (§10)</td><td><span class="pill build">Build</span></td>
+            <td>Private file storage exists; a documents register with categories, linked to patient and appointment, does not.</td>
+          </tr>
+          <tr>
+            <td>Medicine master (§12)</td><td><span class="pill build">Build</span></td>
+            <td>Medicine and strength are free text on the enrolment row. The spec wants a master with strengths and an ordered strength ladder — which is also what the dose-step rule needs.</td>
+          </tr>
+          <tr>
+            <td>Calendar (§14)</td><td><span class="pill build">Build</span></td>
+            <td>Appointments are a list. Month / week / day views with status colouring do not exist.</td>
+          </tr>
+          <tr>
+            <td>Pharmacist search-first home (§26.1)</td><td><span class="pill build">Build</span></td>
+            <td>The flu workflow starts from a patient search by name or date of birth. Today staff navigate lists instead.</td>
+          </tr>
+          <tr>
+            <td>Quick appointment (§19)</td><td><span class="pill build">Build</span></td>
+            <td>Counter booking exists but not the reduced-field quick path that still creates the same central record.</td>
+          </tr>
+          <tr>
+            <td>Reporting (§21)</td><td><span class="pill build">Build</span></td>
+            <td>One report screen with a CSV export. The spec lists ten reports including pharmacist activity, medicine usage and weight/BMI progress.</td>
+          </tr>
+          <tr>
+            <td>Record locking (§20)</td><td><span class="pill build">Build</span></td>
+            <td>Nothing prevents an approved questionnaire being edited. The spec requires it to become historical clinical data.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section id="wrong">
+    <p class="secn">04 · Defects</p>
+    <h2>Wrong in production right now</h2>
+
+    <div class="col">
+      <p>Three things found while checking this plan against the live database.
+      None is a design question; all three are live.</p>
+    </div>
+
+    <div class="note stop">
+      <span class="tag">1 · No repeat request can be auto-approved</span>
+      <p>On submission the system computes derived values from the form's own
+      answers but never reads the patient's previous weight or previous
+      strength — even though <code>repeat_enrolment</code> stores both. So
+      <code>weightLossPercent</code> and <code>doseStepChange</code> are always
+      null, and four rules are skipped: <code>dose-skip</code> (RED),
+      <code>stable-continue</code> (GREEN), <code>increase-supported</code>
+      (GREEN) and <code>weight-loss-below-target</code> (AMBER).</p>
+      <p>Both GREEN routes are among them, so everything falls to the AMBER
+      default and a pharmacist reviews one hundred per cent of requests. The
+      “only same or ±1 strength” block the spec marks BLOCK has also never run.
+      Roughly half a day to fix.</p>
+    </div>
+
+    <div class="note stop">
+      <span class="tag">2 · A test question is live on the flu form</span>
+      <p>The published flu questionnaire (v3) contains a <em>Feedback</em> step
+      with a <strong>required</strong> question: “Was it difficult to fill the
+      form ?”. Every patient completing the form must answer it before they can
+      submit. It is a leftover from trying out the designer.</p>
+    </div>
+
+    <div class="note stop">
+      <span class="tag">3 · The flu form does not match the specification</span>
+      <p>Against §25.4's nine questions, the live form is missing
+      <strong>breastfeeding</strong>, <strong>bleeding disorder /
+      anticoagulants</strong>, and <strong>current medication</strong> with its
+      conditional detail field. It also asks pregnancy unconditionally rather
+      than driven by gender as §25.3 requires.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section id="data">
+    <p class="secn">05 · Data model</p>
+    <h2>What has to be added</h2>
+
+    <div class="col">
+      <p>29 tables exist. The specification implies roughly fifteen more. Listed
+      by the workstream that needs them, not alphabetically, because the order
+      is the dependency order.</p>
+    </div>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>Table</th><th>For</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td><code>status_history</code></td><td>§7.5</td><td>Entity, from, to, changed by, reason, timestamp. Underpins the whole state machine; nothing else should be built before it.</td></tr>
+          <tr><td><code>medicine</code> · <code>medicine_strength</code></td><td>§12</td><td>Master with an <strong>ordered</strong> strength ladder — the ±1 step rule needs position, not a text label.</td></tr>
+          <tr><td><code>consent_record</code></td><td>§8A, §25.6</td><td>Version, full text snapshot, accepted-at, captured-by, privacy version. Written per submission, never edited.</td></tr>
+          <tr><td><code>prescription</code></td><td>§18</td><td>A row of its own rather than columns on the consultation: patient, pharmacist, medicine, strength, quantity, directions, status, signature snapshot.</td></tr>
+          <tr><td><code>dispensing_signoff</code> · <code>collection_signoff</code></td><td>§8.3, §8.4</td><td>Who dispensed, who collected, when, signature.</td></tr>
+          <tr><td><code>document</code></td><td>§10</td><td>Register with a category, linked to patient and appointment, pointing at private storage.</td></tr>
+          <tr><td><code>vaccine_administration</code></td><td>§27, §29.5</td><td>With snapshot columns for vaccine name, batch, expiry, pharmacist name and registration number.</td></tr>
+          <tr><td><code>gp_notification</code></td><td>§8.6</td><td>Per-event log with delivery status and result, replacing the single column on the consultation.</td></tr>
+          <tr><td><code>urgent_task</code></td><td>§6.3</td><td>The RED queue, with follow-up call recorded.</td></tr>
+          <tr><td><code>notification_template</code></td><td>§15</td><td>Editable templates rather than strings in code.</td></tr>
+          <tr><td><code>inventory_category</code></td><td>§9</td><td>The category layer above the existing product table.</td></tr>
+          <tr><td><code>pharmacist_declaration</code></td><td>§26.4</td><td>Each declaration stored as its own timestamped confirmation against the consultation.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note">
+      <span class="tag">The snapshot rule, applied everywhere</span>
+      <p>§29.5 states it for vaccination and it should be the rule for the whole
+      system: when a record completes, copy the master data into it — vaccine
+      name, batch, expiry, pharmacist name, registration number, medicine,
+      strength, price, consent wording. Editing a master record next year must
+      never change what a historical record says happened.</p>
+      <p>The form engine already works this way, binding a submission to the
+      version it was answered against. Extending the same principle to master
+      data is the single most valuable structural decision in this rebuild.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section id="work">
+    <p class="secn">06 · Workstreams</p>
+    <h2>Nine pieces of work</h2>
+
+    <div class="ws">
+      <div class="ws-top"><span class="ws-n">A</span><h3>Repair what is live</h3><span class="eff">~1 day</span></div>
+      <p>The three defects above, done first because they are cheap and two of
+      them are visible to patients today.</p>
+      <ul>
+        <li>Feed previous weight and strength into the derived values.</li>
+        <li>Remove the feedback step from the flu form and republish.</li>
+        <li>Re-evaluate historical submissions so later comparisons have a true baseline.</li>
+      </ul>
+    </div>
+
+    <div class="ws">
+      <div class="ws-top"><span class="ws-n">B</span><h3>The lifecycle spine</h3><span class="eff">~5–7 days</span></div>
+      <p>Status history, the state machine, and record locking. Everything else
+      depends on this, so it goes in before any screen is rebuilt.</p>
+      <ul>
+        <li><code>status_history</code>, written by every transition rather than by callers who remember to.</li>
+        <li>Draft → Pending → Approved / Rejected → Resubmitted, enforced server-side; illegal transitions refused.</li>
+        <li>Mark-as-pending as a deliberate pharmacist action (§7.2), not only an initial state.</li>
+        <li>Rejection requires reason, pharmacist, GPhC number and signature.</li>
+        <li>Approved questionnaires lock; corrections create a revision and an audit event.</li>
+      </ul>
+    </div>
+
+    <div class="ws">
+      <div class="ws-top"><span class="ws-n">C</span><h3>Masters and configuration</h3><span class="eff">~4–5 days</span></div>
+      <p>Everything the spec says must be configurable rather than coded —
+      including its own note that unconfirmed clinical values belong in the admin
+      panel, not in the source.</p>
+      <ul>
+        <li>Medicine master with an ordered strength ladder; GP practice master; pharmacist master with registration numbers.</li>
+        <li>Vaccine products and batches with expiry, quantity and branch.</li>
+        <li>Slot configuration: working days, breaks, closed dates, max per slot.</li>
+        <li>Seed from the lists supplied in the spec, all editable afterwards.</li>
+      </ul>
+    </div>
+
+    <div class="ws">
+      <div class="ws-top"><span class="ws-n">D</span><h3>GLP-1 repeat care, end to end</h3><span class="eff">~8–10 days</span></div>
+      <p>The largest clinical workstream, and the one with the most detail
+      already specified.</p>
+      <ul>
+        <li>Enrolment gate: Repeat Care ID + email must match an <em>active</em> record before the form opens (§4.2).</li>
+        <li>Repeat request form rebuilt to §4.3, with dose options constrained to ±1 step from the last actual supply.</li>
+        <li>System Recommendation shown read-only to the patient before their own request (§4.3).</li>
+        <li>Holiday supply rules (§5.5) — entirely new.</li>
+        <li>Separated dashboard queues and the urgent RED task list (§6.1, §6.3).</li>
+        <li>Internal pharmacy repeat form so a counter supply still writes history (§6.5).</li>
+      </ul>
+    </div>
+
+    <div class="ws">
+      <div class="ws-top"><span class="ws-n">E</span><h3>Flu vaccination, end to end</h3><span class="eff">~6–8 days</span></div>
+      <p>Built as a reusable vaccination engine, because §28.2 is explicit that
+      COVID, hepatitis, shingles and the rest follow through the same machinery.</p>
+      <ul>
+        <li>Questionnaire corrected to §25.4, with the gender-driven pregnancy and breastfeeding logic.</li>
+        <li>Pharmacist search-first home: find by name or date of birth, open or start (§26.1).</li>
+        <li>Administration record to §27, including the site-of-administration rule that hides injection type for oral, nasal and topical.</li>
+        <li>Pharmacist declarations stored as timestamped confirmations.</li>
+        <li>Batch deduction on completion, expired batches unselectable, stock never negative.</li>
+      </ul>
+    </div>
+
+    <div class="ws">
+      <div class="ws-top"><span class="ws-n">F</span><h3>Prescription and dispensing</h3><span class="eff">~5–6 days</span></div>
+      <p>The prescription becomes a record with a lifecycle rather than a
+      generated file.</p>
+      <ul>
+        <li>Prescription table, statuses, and generation gated on the payment condition being satisfied.</li>
+        <li>Front and back content to §8.2, including price and paid / pay-on-collection.</li>
+        <li>Dispensing sign-off, collection sign-off, branch routing.</li>
+        <li>Patient questions flagged prominently at dispensing (§6.4).</li>
+      </ul>
+    </div>
+
+    <div class="ws">
+      <div class="ws-top"><span class="ws-n">G</span><h3>Documents, calendar, dashboard</h3><span class="eff">~5–6 days</span></div>
+      <ul>
+        <li>Document register with categories, linked to patient and appointment, private storage throughout.</li>
+        <li>Month / week / day calendar with status colouring and click-through.</li>
+        <li>Dashboard counts and quick appointment.</li>
+      </ul>
+    </div>
+
+    <div class="ws">
+      <div class="ws-top"><span class="ws-n">H</span><h3>Notifications and reporting</h3><span class="eff">~4–5 days</span></div>
+      <ul>
+        <li>Templates as editable records; the six trigger points in §15.</li>
+        <li>SMS kept free of clinical detail, as the spec requires.</li>
+        <li>The ten reports in §21, aggregated in the database rather than truncated in the client.</li>
+      </ul>
+    </div>
+
+    <div class="ws">
+      <div class="ws-top"><span class="ws-n">I</span><h3>Configurable rules</h3><span class="eff">~8–10 days</span></div>
+      <p>Already planned in detail separately. The spec reinforces it — “these
+      should be configurable in the admin panel rather than hard-coded” — so it
+      moves from a nice-to-have to a stated requirement.</p>
+    </div>
+
+    <div class="note go">
+      <span class="tag">Total</span>
+      <p>Roughly <strong>46 to 57 working days</strong> of focused work, or about
+      nine to twelve weeks single-handed. Workstream A is one day and should go
+      in this week regardless of what else is agreed.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section id="order">
+    <p class="secn">07 · Sequence</p>
+    <h2>Build order, and why</h2>
+
+    <div class="col">
+      <p>The spec's own order (§22) starts with authentication and roles, which
+      already exist here. Reordered for this codebase and for dependency:</p>
+    </div>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>#</th><th>Workstream</th><th>Why here</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>A · Repair what is live</td><td>One day; two defects are patient-facing today.</td></tr>
+          <tr><td>2</td><td>B · Lifecycle spine</td><td>Status history and locking must exist before any screen writes a status, or every screen gets rewritten twice.</td></tr>
+          <tr><td>3</td><td>C · Masters</td><td>The medicine strength ladder is a hard dependency of the GLP-1 dose rules; vaccine batches are a hard dependency of flu.</td></tr>
+          <tr><td>4</td><td>E · Flu vaccination</td><td>Before GLP-1 deliberately: smaller, fully specified, no payment coupling, and its season starts sooner. It proves the spine end to end on the easier service.</td></tr>
+          <tr><td>5</td><td>D · GLP-1 repeat care</td><td>The largest and most conditional; benefits from the spine being proven first.</td></tr>
+          <tr><td>6</td><td>F · Prescription &amp; dispensing</td><td>Needs D's decision outcomes and C's medicine master.</td></tr>
+          <tr><td>7</td><td>G · Documents, calendar, dashboard</td><td>Presentation over data that by now exists.</td></tr>
+          <tr><td>8</td><td>H · Notifications &amp; reporting</td><td>Reports are only meaningful once the records they read are correct.</td></tr>
+          <tr><td>9</td><td>I · Configurable rules</td><td>Last, and best done once there is real data to replay a draft ruleset against.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">The one sequencing call worth challenging</span>
+      <p>Flu before GLP-1 is a deliberate inversion of the emphasis in the
+      specification. Flu is smaller, has no payment or prescription coupling,
+      and its questionnaire is fully written out — so it is the cheapest way to
+      prove the spine works before committing the larger workstream to it. If
+      the client's priority is GLP-1, say so and I will swap them, accepting
+      that the spine gets proven on the harder service.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section id="decisions">
+    <p class="secn">08 · Blocking questions</p>
+    <h2>What I need answered</h2>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>Question</th><th>Why it blocks</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Weeks on current dose</strong> — patient's answer, or our supply record?</td>
+            <td>Nearly every dose and supply rule depends on it. <code>repeat_enrolment.strength_since</code> already exists, and the record is not gameable. The prior scope of work worries explicitly about patients circumventing checks.</td>
+          </tr>
+          <tr>
+            <td>Does <strong>Repeat Care ID</strong> stay the Pharmadoctor ID?</td>
+            <td>The current field is <code>external_ref</code>. If they are moving off Pharmadoctor, we should issue our own identifier now rather than migrate later.</td>
+          </tr>
+          <tr>
+            <td><strong>Payment</strong> — still simulated, or real for this build?</td>
+            <td>§8.1 makes prescription generation conditional on payment. Simulation is fine for the workflow, but the condition has to be honest about which mode it is in.</td>
+          </tr>
+          <tr>
+            <td>Do <strong>appointments</strong> and <strong>consultations</strong> merge?</td>
+            <td>The spec treats “appointment” as the central record carrying clinical status. We have both. Keeping two risks re-creating the island problem the spec exists to solve.</td>
+          </tr>
+          <tr>
+            <td>Which <strong>flu clinical rules</strong>, if any, are automatic?</td>
+            <td>§25.4 is explicit: do not invent eligibility logic beyond what the pharmacy approves. So flu ships with pharmacist judgement unless Muka's clinical lead signs off specific rules.</td>
+          </tr>
+          <tr>
+            <td>Confirm the <strong>four roles</strong> map onto ours.</td>
+            <td>Spec lists Patient, Admin, Pharmacist, Reception. Patients currently have no account at all — forms are anonymous by design. §16.1 assumes patients log in to view their own status.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note stop">
+      <span class="tag">The biggest of these</span>
+      <p>The patient-account question changes the shape of the build. Today a
+      questionnaire needs no login, which was a deliberate decision — a health
+      form that demands registration does not get filled in. But §16.1 requires
+      patients to view their own status and permitted edits, which needs
+      accounts, ownership checks and password reset. That is a workstream in
+      itself and it is not costed above. I need a decision before B starts.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section id="scope">
+    <p class="secn">09 · Boundaries</p>
+    <h2>What this plan does not include</h2>
+
+    <div class="col">
+      <ul>
+        <li><strong>Services and the form designer</strong> — untouched by instruction, beyond correcting the flu questionnaire's content through the designer itself.</li>
+        <li><strong>Real payment processing</strong> — the workflow and conditions are built; the gateway waits on the NMS and GPhC position.</li>
+        <li><strong>Front CMS</strong> (§2) — listed as a module with no requirements given anywhere in the document.</li>
+        <li><strong>Patient accounts</strong> — excluded until the question above is answered, then costed separately.</li>
+        <li><strong>Database region move</strong> — unrelated to this spec, but still the largest single speed improvement available and worth doing during a rebuild rather than after.</li>
+      </ul>
+      <p>Two clinical caveats the specification states and this plan inherits:
+      final eligibility rules, PGDs and mandatory-field decisions must be
+      confirmed by the pharmacy's clinical lead before production; and no
+      automatic flu eligibility logic will be invented beyond what they approve.</p>
+    </div>
+  </section>
+
+  </main>
+
+  <footer>
+    Karsons Pharmacy Platform · rebuild plan · 30 August 2026 ·
+    Written against the partner's specification, the two client scope documents,
+    and the live database. Companion to <code>docs/rules-plan.html</code>.
+  </footer>
+
+</div>
