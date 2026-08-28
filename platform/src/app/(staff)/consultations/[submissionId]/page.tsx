@@ -8,6 +8,7 @@
  */
 
 import { eq, and, gt } from 'drizzle-orm';
+import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { db } from '@/lib/db/client';
 import {
@@ -51,7 +52,19 @@ export default async function ConsultationPage({
     .from(submission)
     .innerJoin(service, eq(submission.serviceId, service.id))
     .innerJoin(formVersion, eq(submission.formVersionId, formVersion.id))
-    .innerJoin(patient, eq(submission.patientId, patient.id))
+    /*
+     * LEFT join, not inner.
+     *
+     * A submission can legitimately reach a submitted state with no patient
+     * attached: the record is only created when the answers carry a first name,
+     * a last name AND a valid date of birth, so any service whose form does not
+     * collect all three produces exactly this.
+     *
+     * With an inner join that row vanished and the page called notFound(), so a
+     * pharmacist pressing "Start consultation" on a real, arrived patient met a
+     * bare 404 with nothing to act on.
+     */
+    .leftJoin(patient, eq(submission.patientId, patient.id))
     .where(and(eq(submission.id, submissionId), eq(submission.organisationId, actor.organisationId)))
     .limit(1);
 
@@ -86,6 +99,73 @@ export default async function ConsultationPage({
     );
   }
 
+  /*
+   * No patient record behind this submission.
+   *
+   * A consultation cannot be recorded against free text — consultation.patientId
+   * is NOT NULL, and rightly so. But the honest response is to say which piece
+   * is missing and how to supply it, not to pretend the page does not exist.
+   */
+  /*
+   * Built once and guarded as a whole.
+   *
+   * Narrowing `patientId` alone tells the compiler nothing about the sibling
+   * columns, and a left join makes every one of them nullable. Checking what
+   * the screen actually needs is both honest and what makes the types work.
+   */
+  const patientRecord =
+    row.patientId && row.firstName && row.lastName && row.dateOfBirth
+      ? {
+          id: row.patientId,
+          fullName: `${row.firstName} ${row.lastName}`,
+          dateOfBirth: row.dateOfBirth,
+          addressLine1: row.addressLine1,
+          postcode: row.postcode,
+        }
+      : null;
+
+  if (!patientRecord) {
+    const answers = (row.answers ?? {}) as Record<string, unknown>;
+    const named = [answers.firstName, answers.lastName]
+      .filter((v) => typeof v === 'string' && v.trim())
+      .join(' ');
+
+    return (
+      <div className="mx-auto max-w-[620px] px-6 py-20">
+        <div className="rounded-panel border border-review-200 bg-review-50 px-6 py-6">
+          <h1 className="mb-2 font-display text-[21px] text-ink">
+            No patient record yet
+          </h1>
+          <p className="text-[14.5px] leading-relaxed text-ink-soft">
+            {named
+              ? `This form was completed by ${named}, but it is not linked to a patient record.`
+              : 'This form is not linked to a patient record.'}{' '}
+            A consultation has to be recorded against one, so that comes first.
+          </p>
+          <p className="mt-3 text-[13.5px] leading-relaxed text-ink-faint">
+            A record is created automatically when a form carries a first name, a
+            last name and a date of birth. If this service does not ask for all
+            three, add the patient by hand and the two will be joined up.
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link
+              href="/patients/new"
+              className="rounded-control bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700"
+            >
+              Add this patient
+            </Link>
+            <Link
+              href="/appointments"
+              className="rounded-control border border-line bg-surface px-3.5 py-2 text-[13.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+            >
+              Back to appointments
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const clinicians = await db
     .select({ id: clinician.id, fullName: clinician.fullName, gphcNumber: clinician.gphcNumber })
     .from(clinician)
@@ -112,7 +192,7 @@ export default async function ConsultationPage({
   const recorded = await db
     .select({ substance: allergy.substance })
     .from(allergy)
-    .where(eq(allergy.patientId, row.patientId));
+    .where(eq(allergy.patientId, patientRecord.id));
 
   return (
     <ConsultationClient
@@ -122,13 +202,7 @@ export default async function ConsultationPage({
       branchId={activeBranch.id}
       companyId={activeBranch.companyId}
       branchName={activeBranch.name}
-      patient={{
-        id: row.patientId,
-        fullName: `${row.firstName} ${row.lastName}`,
-        dateOfBirth: row.dateOfBirth,
-        addressLine1: row.addressLine1,
-        postcode: row.postcode,
-      }}
+      patient={patientRecord}
       schema={row.schema as unknown as FormSchema}
       patientAnswers={(row.answers ?? {}) as Answers}
       clinicians={clinicians}

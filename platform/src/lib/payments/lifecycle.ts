@@ -15,7 +15,7 @@ import 'server-only';
  * and the follow-on work only runs for the caller that actually moved it.
  */
 
-import { and, eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   payment, submission, service, patient, branch, organisation,
@@ -184,10 +184,28 @@ export async function settlePayment(input: {
 
   // ── What payment unlocks ───────────────────────────────
   if (settled.submissionId) {
+    /*
+     * Never approve a form that was never submitted.
+     *
+     * In the intended flow a payment is only raised after a pharmacist has
+     * approved the request, so the submission is already past DRAFT. Setting
+     * APPROVED unconditionally meant that a payment settled against a draft —
+     * however it came to exist — marked an unfinished questionnaire as
+     * clinically approved, and the worklist then offered to start a
+     * consultation on answers the patient had not sent.
+     *
+     * The condition in the WHERE clause is what makes this safe rather than the
+     * check being somewhere a future caller can skip.
+     */
     await db
       .update(submission)
       .set({ status: 'APPROVED', updatedAt: new Date() })
-      .where(eq(submission.id, settled.submissionId));
+      .where(
+        and(
+          eq(submission.id, settled.submissionId),
+          ne(submission.status, 'DRAFT'),
+        ),
+      );
 
     const [context] = await db
       .select({
