@@ -199,3 +199,95 @@ describe('steps', () => {
     expect(visibleSteps(FLU, BASE).map((s) => s.id)).toEqual(['about-you', 'health', 'consent']);
   });
 });
+
+// ─────────────────────────────────────────────────────────────
+// Reveals hung off a DROPDOWN, not just Yes/No.
+//
+// The designer could only create Yes/No follow-ups, so "Gender → Other → how
+// would you describe it" existed in the seeded forms and could not be rebuilt
+// through the UI. These pin the behaviour the designer now writes.
+// ─────────────────────────────────────────────────────────────
+
+describe('follow-ups on a dropdown answer', () => {
+  const gender: FormField = {
+    id: 'gender',
+    type: 'select',
+    label: 'Gender',
+    options: [
+      { value: 'female', label: 'Female' },
+      { value: 'male', label: 'Male' },
+      { value: 'other', label: 'Other' },
+    ],
+    reveals: [
+      {
+        whenValue: 'other',
+        fields: [
+          {
+            id: 'genderSelfDescribed',
+            type: 'shortText',
+            label: 'How would you describe your gender?',
+            required: true,
+          },
+        ],
+      },
+    ],
+  };
+
+  it('stays hidden for an answer with no follow-up', () => {
+    const ids = expandField(gender, { gender: 'female' }).map((f) => f.id);
+    expect(ids).toEqual(['gender']);
+  });
+
+  it('appears for the answer it is attached to', () => {
+    const ids = expandField(gender, { gender: 'other' }).map((f) => f.id);
+    expect(ids).toEqual(['gender', 'genderSelfDescribed']);
+  });
+
+  it('is hidden again when the answer changes away', () => {
+    expect(expandField(gender, { gender: 'other' })).toHaveLength(2);
+    expect(expandField(gender, { gender: 'male' })).toHaveLength(1);
+  });
+
+  it('is hidden while the question is unanswered', () => {
+    expect(expandField(gender, {}).map((f) => f.id)).toEqual(['gender']);
+  });
+});
+
+describe('follow-ups on Yes/No use the string the control writes', () => {
+  // The designer previously hardcoded whenValue: 'yes'. That happens to be
+  // right — the pill control writes 'yes'/'no', not booleans — and this test
+  // exists so a future change to either side breaks loudly rather than
+  // producing a follow-up that is configured and never appears.
+  const allergy: FormField = {
+    id: 'hasAllergy',
+    type: 'yesNo',
+    label: 'Do you have any allergies?',
+    reveals: [
+      {
+        whenValue: 'yes',
+        fields: [
+          { id: 'allergyDetail', type: 'longText', label: 'Which ones?', required: true },
+        ],
+      },
+    ],
+  };
+
+  it('reveals on the string "yes"', () => {
+    expect(expandField(allergy, { hasAllergy: 'yes' }).map((f) => f.id)).toEqual([
+      'hasAllergy',
+      'allergyDetail',
+    ]);
+  });
+
+  it('does not reveal on a boolean true', () => {
+    expect(expandField(allergy, { hasAllergy: true }).map((f) => f.id)).toEqual([
+      'hasAllergy',
+    ]);
+  });
+
+  it('does not reveal on "no"', () => {
+    expect(expandField(allergy, { hasAllergy: 'no' }).map((f) => f.id)).toEqual([
+      'hasAllergy',
+    ]);
+  });
+});

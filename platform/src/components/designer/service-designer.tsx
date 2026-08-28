@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FormWizard } from '@/components/form/wizard';
+import { RevealsEditor } from './reveals-editor';
 import type {
   FormField, FormSchema, FormStep, FieldType, FieldOption,
 } from '@/types/form-schema';
@@ -192,31 +193,6 @@ export function ServiceDesigner({ initialSchema, serviceName, onPublish }: Desig
   }
 
   /** The client's single most common pattern: Yes → tell us more. */
-  function addFollowUp() {
-    if (!selected) return;
-    mutate((draft) => {
-      const walk = (fields: FormField[]): boolean => {
-        for (const f of fields) {
-          if (f.id === selectedId) {
-            const id = newFieldId(`${f.id}_detail`, collectIds(draft));
-            f.reveals = [
-              ...(f.reveals ?? []),
-              {
-                whenValue: 'yes',
-                fields: [{ id, type: 'longText', label: 'Please tell us more', required: true }],
-              },
-            ];
-            return true;
-          }
-          for (const r of f.reveals ?? []) if (walk(r.fields)) return true;
-        }
-        return false;
-      };
-      draft.steps.forEach((s) => walk(s.fields));
-      return draft;
-    });
-  }
-
   function addStep() {
     mutate((draft) => {
       draft.steps.push({
@@ -492,15 +468,19 @@ export function ServiceDesigner({ initialSchema, serviceName, onPublish }: Desig
                 </Labelled>
               ) : null}
 
-              {selected.type === 'yesNo' ? (
-                <button
-                  type="button"
-                  onClick={addFollowUp}
-                  className="flex items-center justify-center gap-1.5 rounded-[7px] border border-dashed border-line px-3 py-2.5 text-[13px] font-medium text-ink-soft transition-colors hover:border-brand-400 hover:text-brand-700"
-                >
-                  <Plus size={13} strokeWidth={2.2} />
-                  Add a follow-up when they answer Yes
-                </button>
+              {/* Follow-ups for ANY answerable question, not just Yes/No.
+                  A dropdown with an "Other" option is the commonest case in his
+                  forms and previously had no way to reveal anything. */}
+              {selected.options || selected.type === 'yesNo' || selected.type === 'yesNoNa' ? (
+                <Labelled label="Follow-up questions">
+                  <RevealsEditor
+                    field={selected}
+                    usedIds={collectIds(schema)}
+                    selectedId={selectedId}
+                    onSelectField={setSelectedId}
+                    onChange={(reveals) => updateSelected({ reveals })}
+                  />
+                </Labelled>
               ) : null}
 
               <div className="flex items-center gap-1.5 border-t border-line-soft pt-3">
