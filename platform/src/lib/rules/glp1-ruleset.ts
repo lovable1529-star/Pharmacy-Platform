@@ -311,6 +311,64 @@ export const GLP1_REPEAT_RULESET: RulesetDefinition = {
       advice:
         'Try to drink at least 1.5 to 2 litres of water a day. It helps with constipation, headaches and dizziness, which are common on this medicine.',
     },
+    /*
+     * ── Holiday supply — §5.5 ────────────────────────────────
+     *
+     * Absent from the earlier scope of work entirely, and the one place where a
+     * patient asking for MORE is routine rather than suspicious: people go away.
+     *
+     * Priorities sit above the ordinary supply-length rules, because a holiday
+     * request that also breaks the stability rule should be judged as a holiday
+     * request. Ranked worst first among themselves — two strengths across a long
+     * supply is a stockpile whatever else is true about it.
+     */
+    {
+      id: 'holiday-two-strengths',
+      label: 'Holiday supply spanning two strengths',
+      priority: 930,
+      outcome: 'RED',
+      when: {
+        all: [
+          { field: 'answers.holidaySupply', op: 'eq', value: 'yes' },
+          { field: 'answers.holidayTwoStrengths', op: 'eq', value: 'yes' },
+          { field: 'answers.supplyQuantity', op: 'in', value: ['2', '3'] },
+        ],
+      },
+      message:
+        'Two months or more covering two different strengths. This needs a pharmacist before any supply.',
+      patientMessage:
+        'We need to see you before we can supply this much across two different strengths.',
+    },
+    {
+      id: 'holiday-increase-and-two-months',
+      label: 'Holiday supply with a strength change',
+      priority: 620,
+      outcome: 'AMBER',
+      when: {
+        all: [
+          { field: 'answers.holidaySupply', op: 'eq', value: 'yes' },
+          { field: 'answers.supplyQuantity', op: 'in', value: ['2', '3'] },
+          { field: 'answers.doseRequest', op: 'neq', value: 'same' },
+        ],
+      },
+      message: 'Changing strength and requesting two months together — confirm before supply.',
+    },
+    {
+      id: 'holiday-same-strength-stable',
+      label: 'Holiday supply, same strength, stable dose',
+      priority: 480,
+      outcome: 'GREEN',
+      when: {
+        all: [
+          { field: 'answers.holidaySupply', op: 'eq', value: 'yes' },
+          { field: 'answers.doseRequest', op: 'eq', value: 'same' },
+          { field: 'derived.weeksOnDose', op: 'gte', value: 4 },
+          { field: 'answers.adverseEffects', op: 'in', value: ['none', 'mild'] },
+        ],
+      },
+      message: 'Early or extra supply of the same strength, on a stable dose.',
+      advice: 'Take your pen in hand luggage and keep it cool. It does not need to be frozen.',
+    },
     {
       id: 'hydration-good',
       label: 'Good fluid intake',
