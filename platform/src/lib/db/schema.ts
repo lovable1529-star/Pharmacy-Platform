@@ -849,3 +849,89 @@ export const scheduleClosure = pgTable('schedule_closure', {
   endMinute: integer('end_minute'),
   reason: text('reason'),
 }, (t) => [index('schedule_closure_date_idx').on(t.closedOn, t.branchId)]);
+
+// ─────────────────────────────────────────────────────────────
+// Vaccination
+//
+// Built as a general vaccination engine rather than a flu one, because §28.2
+// is explicit that COVID, hepatitis, shingles, varicella and the rest follow
+// through the same machinery. Nothing here says "flu".
+//
+// §29.5's snapshot rule is the important part and it applies to every master
+// this record touches: vaccine name, batch number, expiry, pharmacist name and
+// registration number are COPIED IN at completion. Editing a master record next
+// year must never change what a historical record says happened — a batch
+// renumbered in 2027 cannot retroactively alter what went into someone's arm
+// in 2026.
+// ─────────────────────────────────────────────────────────────
+
+export const injectionTypeEnum = pgEnum('injection_type', [
+  'INTRAMUSCULAR', 'SUBCUTANEOUS', 'SUBDERMAL',
+]);
+
+export const administrationSiteEnum = pgEnum('administration_site', [
+  'RIGHT_DELTOID', 'LEFT_DELTOID', 'RIGHT_THIGH', 'LEFT_THIGH',
+  'ORAL', 'NASAL', 'TOPICAL', 'SELF_INJECTION',
+]);
+
+export const vaccineAdministration = pgTable('vaccine_administration', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  /** The questionnaire that justified it. */
+  submissionId: uuid('submission_id').references(() => submission.id),
+  consultationId: uuid('consultation_id').references(() => consultation.id),
+  patientId: uuid('patient_id').notNull().references(() => patient.id),
+  branchId: uuid('branch_id').notNull().references(() => branch.id),
+  clinicianId: uuid('clinician_id').notNull().references(() => clinician.id),
+  productId: uuid('product_id').notNull().references(() => product.id),
+  batchId: uuid('batch_id').notNull().references(() => batch.id),
+
+  // ── Snapshots, per §29.5 ────────────────────────────────
+  clinicianNameSnapshot: text('clinician_name_snapshot').notNull(),
+  registrationNumberSnapshot: text('registration_number_snapshot').notNull(),
+  vaccineNameSnapshot: text('vaccine_name_snapshot').notNull(),
+  batchNumberSnapshot: text('batch_number_snapshot').notNull(),
+  expiryDateSnapshot: date('expiry_date_snapshot').notNull(),
+
+  administeredOn: date('administered_on').notNull(),
+  /**
+   * Null for oral, nasal and topical routes. §27.4 is explicit that an
+   * injection type must not be demanded where nothing is injected.
+   */
+  injectionType: injectionTypeEnum('injection_type'),
+  site: administrationSiteEnum('site').notNull(),
+  paymentType: text('payment_type'),
+  adverseReaction: text('adverse_reaction'),
+  notes: text('notes'),
+  completedAt: timestamp('completed_at', { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('vaccine_admin_patient_idx').on(t.patientId, t.administeredOn),
+  index('vaccine_admin_branch_idx').on(t.branchId, t.administeredOn),
+  index('vaccine_admin_batch_idx').on(t.batchId),
+  uniqueIndex('vaccine_admin_submission_idx').on(t.submissionId),
+]);
+
+/**
+ * §26.4 — each declaration stored as its own timestamped confirmation.
+ *
+ * A row per statement rather than a single boolean, because "the pharmacist
+ * confirmed four things" and "the pharmacist ticked a box" are different
+ * claims, and only the first survives being asked about later. The wording is
+ * snapshotted for the same reason the vaccine name is.
+ */
+export const clinicianDeclaration = pgTable('clinician_declaration', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  submissionId: uuid('submission_id').references(() => submission.id),
+  administrationId: uuid('administration_id').references(() => vaccineAdministration.id),
+  clinicianId: uuid('clinician_id').references(() => clinician.id),
+  /** Stable key, so reporting survives a rewording. */
+  declarationKey: text('declaration_key').notNull(),
+  declarationTextSnapshot: text('declaration_text_snapshot').notNull(),
+  confirmed: boolean('confirmed').default(true).notNull(),
+  confirmedAt: timestamp('confirmed_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('clinician_declaration_admin_idx').on(t.administrationId),
+  index('clinician_declaration_submission_idx').on(t.submissionId),
+]);
