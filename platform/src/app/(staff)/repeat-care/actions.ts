@@ -14,7 +14,7 @@
  */
 
 import { eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
 import { submission, reviewEvent, service, patient } from '@/lib/db/schema';
 import { db } from '@/lib/db/client';
@@ -147,7 +147,7 @@ export async function reviewSubmission(input: DecideInput & { outcome?: string |
       paymentUrl = await requestPaymentForSubmission(input.submissionId);
     }
 
-    revalidatePath('/repeat-care');
+    revalidateStaffViews();
     return { ok: true as const, ...result, paymentUrl };
   } catch (error) {
     console.error('reviewSubmission failed', error);

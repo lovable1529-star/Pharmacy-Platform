@@ -13,7 +13,7 @@
 
 import { getStaffContext } from '@/lib/auth/context';
 import { StaffShell } from '@/components/shell/staff-shell';
-import { getReviewQueue } from '@/lib/queries/reviews';
+import { getReviewQueueCount } from '@/lib/queries/reviews';
 import { can } from '@/lib/tenancy/scope';
 
 export const dynamic = 'force-dynamic';
@@ -21,11 +21,16 @@ export const dynamic = 'force-dynamic';
 export default async function StaffLayout({ children }: { children: React.ReactNode }) {
   const { actor, branches, permissions, roleLabel } = await getStaffContext();
 
-  // A badge on Repeat care is worth a query; skip it for users who cannot review.
+  // A badge on Repeat care is worth a COUNT; skip it for users who cannot review.
+  //
+  // This used to call getReviewQueue() and read `.length`, which meant every
+  // page in the app — Patients, Services, Appointments — fetched the entire
+  // review queue, JSONB answers and rules traces included, to display one
+  // integer it then discarded. See getReviewQueueCount.
   let outstanding = 0;
   if (can(actor, 'repeat_care:edit')) {
     try {
-      outstanding = (await getReviewQueue(actor.organisationId)).length;
+      outstanding = await getReviewQueueCount(actor.organisationId);
     } catch {
       outstanding = 0;
     }

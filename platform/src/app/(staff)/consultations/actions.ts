@@ -18,7 +18,7 @@
  */
 
 import { eq, and, sql } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
 import {
   consultation, submission, stockLevel, stockMovement, batch, appointment,
@@ -149,10 +149,7 @@ const complete = action<CompleteConsultationInput>('consultations:add')
 export async function completeConsultation(input: CompleteConsultationInput) {
   try {
     const result = await complete(input);
-    revalidatePath('/');
-    revalidatePath('/consultations');
-    revalidatePath('/appointments');
-    revalidatePath('/patients');
+    revalidateStaffViews();
     return { ok: true as const, ...result };
   } catch (error) {
     console.error('completeConsultation failed', error);

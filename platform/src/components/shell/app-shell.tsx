@@ -293,6 +293,21 @@ export function AppShell({
                   <Link
                     key={item.href}
                     href={item.href}
+                    /*
+                     * Fetch the whole page, not just its loading state.
+                     *
+                     * Next's default for a dynamic route prefetches only as far
+                     * as the nearest loading boundary, so the click still waits
+                     * on the server for the data. `prefetch` fetches the
+                     * rendered payload, which is what turns a navigation
+                     * between these screens into a paint rather than a request.
+                     *
+                     * Affordable because the sidebar is a fixed dozen links and
+                     * the fetches happen while the user is reading the page
+                     * they are already on. It is only useful in combination
+                     * with `staleTimes.dynamic` — see next.config.mjs.
+                     */
+                    prefetch
                     aria-current={active ? 'page' : undefined}
                     // Collapsed, the label is off-screen but still in the DOM,
                     // so the tooltip is what makes the icon rail usable for a

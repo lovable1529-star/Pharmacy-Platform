@@ -12,7 +12,7 @@
  */
 
 import { and, eq, gte, isNull, lte, ne } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
 import { db } from '@/lib/db/client';
 import { appointment, availability, branch, service, submission } from '@/lib/db/schema';
@@ -71,7 +71,7 @@ const arrive = action<{ appointmentId: string }>('appointments:edit').handler(
 export async function markArrived(appointmentId: string) {
   try {
     await arrive({ appointmentId });
-    revalidatePath('/appointments');
+    revalidateStaffViews();
     return { ok: true as const };
   } catch (error) {
     console.error('markArrived failed', error);
@@ -108,7 +108,7 @@ const noShow = action<{ appointmentId: string }>('appointments:edit').handler(
 export async function markNoShow(appointmentId: string) {
   try {
     await noShow({ appointmentId });
-    revalidatePath('/appointments');
+    revalidateStaffViews();
     return { ok: true as const };
   } catch (error) {
     console.error('markNoShow failed', error);
@@ -177,7 +177,7 @@ const cancel = action<{ appointmentId: string; reason: string }>(
 export async function cancelAppointment(appointmentId: string, reason: string) {
   try {
     await cancel({ appointmentId, reason });
-    revalidatePath('/appointments');
+    revalidateStaffViews();
     return { ok: true as const };
   } catch (error) {
     console.error('cancelAppointment failed', error);
@@ -466,7 +466,7 @@ export async function rescheduleAppointment(
       })();
     }
 
-    revalidatePath('/appointments');
+    revalidateStaffViews();
     return { ok: true as const };
   } catch (error) {
     console.error('rescheduleAppointment failed', error);
@@ -647,7 +647,7 @@ export async function bookAtCounterAction(input: CounterBookingInput) {
       );
     }
 
-    revalidatePath('/appointments');
+    revalidateStaffViews();
     return { ok: true as const, reference: booking.reference };
   } catch (error) {
     console.error('bookAtCounterAction failed', error);

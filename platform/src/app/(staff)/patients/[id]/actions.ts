@@ -16,7 +16,7 @@
  */
 
 import { eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
 import { patient } from '@/lib/db/schema';
 
@@ -110,8 +110,7 @@ export async function updatePatient(input: UpdatePatientInput) {
 
   try {
     const result = await update(input);
-    revalidatePath('/patients');
-    revalidatePath(`/patients/${input.id}`);
+    revalidateStaffViews();
     return { ok: true as const, ...result };
   } catch (error) {
     console.error('updatePatient failed', error);

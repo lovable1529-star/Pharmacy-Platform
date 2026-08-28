@@ -126,6 +126,37 @@ export async function getReviewQueue(organisationId: string): Promise<QueueItem[
   // re-sorting a truncated page was exactly what made the old cap unsafe.
 }
 
+/**
+ * How many are waiting — as a number, from the database.
+ *
+ * The staff layout renders a badge on "Repeat care" on EVERY page, and it used
+ * to get that number by calling `getReviewQueue()` and reading `.length`. That
+ * query pulls up to 500 rows across five joins and carries `answers`, `derived`
+ * and `trace` — the three largest JSONB columns in the schema, holding the full
+ * questionnaire and the whole rules trace for every waiting submission.
+ *
+ * So opening Patients paid for the complete clinical payload of the review
+ * queue, decoded it into objects, and threw all of it away to keep one integer.
+ * On a page that never shows any of it.
+ *
+ * Same predicate, no joins, no JSONB, counted in the database. It is also more
+ * honest than what it replaces: `.length` was capped by the query's 500 limit,
+ * so a genuinely long queue would have displayed "500" and stopped.
+ */
+export async function getReviewQueueCount(organisationId: string): Promise<number> {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(submission)
+    .where(
+      and(
+        eq(submission.organisationId, organisationId),
+        inArray(submission.status, ['SUBMITTED', 'IN_REVIEW', 'INFO_REQUESTED']),
+      ),
+    );
+
+  return row?.count ?? 0;
+}
+
 export interface ReviewHistoryEntry {
   id: string;
   action: string;

@@ -14,7 +14,7 @@
  */
 
 import { eq, and } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
 import { service, formVersion, rulesetVersion } from '@/lib/db/schema';
 
@@ -157,7 +157,7 @@ export async function duplicateService(input: DuplicateInput) {
 
   try {
     const result = await duplicate(input);
-    revalidatePath('/services');
+    revalidateStaffViews();
     return { ok: true as const, ...result };
   } catch (error) {
     console.error('duplicateService failed', error);

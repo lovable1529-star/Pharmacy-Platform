@@ -24,7 +24,7 @@
  */
 
 import { and, desc, eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
 import { db } from '@/lib/db/client';
 import { consultation, consultationAddendum, appUser } from '@/lib/db/schema';
@@ -94,8 +94,7 @@ export async function addAddendum(input: AddendumInput) {
 
   try {
     await append(input);
-    revalidatePath(`/consultations/record/${input.consultationId}`);
-    revalidatePath('/consultations');
+    revalidateStaffViews();
     return { ok: true as const };
   } catch (error) {
     console.error('addAddendum failed', error);

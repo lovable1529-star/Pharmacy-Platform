@@ -23,7 +23,7 @@
  */
 
 import { and, desc, eq } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
 import { db } from '@/lib/db/client';
 import {
@@ -206,8 +206,7 @@ export async function amendSubmission(input: AmendInput) {
 
   try {
     const result = await amend(input);
-    revalidatePath(`/consultations/${input.submissionId}`);
-    revalidatePath('/repeat-care');
+    revalidateStaffViews();
     return { ok: true as const, ...result };
   } catch (error) {
     console.error('amendSubmission failed', error);

@@ -1,6 +1,6 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
 import { patient } from '@/lib/db/schema';
 
@@ -74,7 +74,7 @@ export async function createPatient(input: NewPatientInput) {
 
   try {
     const result = await create(input);
-    revalidatePath('/patients');
+    revalidateStaffViews();
     return { ok: true as const, ...result };
   } catch (error) {
     console.error('createPatient failed', error);

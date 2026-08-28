@@ -13,7 +13,7 @@
  */
 
 import { eq, desc } from 'drizzle-orm';
-import { revalidatePath } from 'next/cache';
+import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
 import { formVersion, service } from '@/lib/db/schema';
 import type { FormSchema } from '@/types/form-schema';
@@ -63,7 +63,7 @@ const publish = action<{ serviceId: string; schema: FormSchema }>('services:edit
 export async function publishFormVersion(serviceId: string, schema: FormSchema) {
   try {
     const result = await publish({ serviceId, schema });
-    revalidatePath('/services');
+    revalidateStaffViews();
     return { ok: true as const, ...result };
   } catch (error) {
     console.error('publishFormVersion failed', error);

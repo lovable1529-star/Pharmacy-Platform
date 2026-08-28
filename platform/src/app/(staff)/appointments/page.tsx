@@ -45,7 +45,7 @@ export default async function AppointmentsPage() {
   const from = new Date(Date.now() - 24 * 60 * 60_000);
   const to = new Date(Date.now() + 14 * 24 * 60 * 60_000);
 
-  const rows = await db
+  const rowsPromise = db
     .select({
       id: appointment.id,
       reference: appointment.reference,
@@ -85,6 +85,18 @@ export default async function AppointmentsPage() {
     )
     .orderBy(appointment.startsAt);
 
+  /*
+   * The two reads do not depend on each other, so they go together.
+   *
+   * The branch list used to be awaited AFTER the appointment query had already
+   * resolved, which made a page that needs one round trip take two — and over a
+   * hosted database that second trip is most of the wait, not a rounding error.
+   */
+  const [rows, branches] = await Promise.all([
+    rowsPromise,
+    getBranchesForActor(actor),
+  ]);
+
   // An unstarted draft is not "in progress" — the row exists because the
   // booking created it, not because the patient typed anything.
   const view = rows.map((r) => {
@@ -114,10 +126,6 @@ export default async function AppointmentsPage() {
       answers: undefined,
     };
   });
-
-  // Every branch this user can work at, so somebody who walked into the wrong
-  // shop can be moved rather than cancelled and rebooked.
-  const branches = await getBranchesForActor(actor);
 
   return (
     <AppointmentsView
