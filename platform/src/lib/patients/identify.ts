@@ -11,13 +11,9 @@
  * records for the same person, which in a pharmacy means a vaccination history
  * split across two files and a genuine clinical risk.
  *
- * So the match is deliberately conservative:
- *
- *   - Date of birth must match exactly. Never fuzzy.
- *   - Surname and forename must match case-insensitively, trimmed.
- *   - Anything less certain creates nothing and returns null, leaving a human
- *     to decide. A missed match costs someone thirty seconds; a wrong match
- *     puts one patient's allergies on another patient's record.
+ * The rule itself lives in ./matching, kept pure so it can be tested
+ * exhaustively: name and date of birth, then phone, then email, with a
+ * contradiction in any comparable identifier meaning two different people.
  *
  * Nicknames are not resolved here on purpose. "Dave" and "David" with the same
  * date of birth are probably the same person — and probably is not good enough
@@ -28,6 +24,7 @@ import { and, eq, sql, isNull } from 'drizzle-orm';
 import type { Tx } from '@/lib/actions';
 import { patient } from '@/lib/db/schema';
 import type { Answers } from '@/types/form-schema';
+import { chooseMatch } from './matching';
 
 export interface PatientIdentity {
   firstName: string;
@@ -82,11 +79,21 @@ export async function matchOrCreatePatient(
     identity: PatientIdentity;
     registeredBranchId?: string | null;
   },
-): Promise<{ id: string; created: boolean }> {
+): Promise<{ id: string; created: boolean; confirmedBy: ('phone' | 'email')[] }> {
   const { organisationId, identity } = input;
 
-  const [existing] = await tx
-    .select({ id: patient.id })
+  // Everyone who shares the name and date of birth — not just the first.
+  // Taking `limit(1)` here was the bug: where two people genuinely shared both,
+  // whichever row Postgres returned first silently absorbed the other.
+  const candidates = await tx
+    .select({
+      id: patient.id,
+      firstName: patient.firstName,
+      lastName: patient.lastName,
+      dateOfBirth: patient.dateOfBirth,
+      phone: patient.phone,
+      email: patient.email,
+    })
     .from(patient)
     .where(
       and(
@@ -96,10 +103,11 @@ export async function matchOrCreatePatient(
         sql`lower(trim(${patient.lastName})) = lower(${identity.lastName.trim()})`,
         isNull(patient.archivedAt),
       ),
-    )
-    .limit(1);
+    );
 
-  if (existing) {
+  const chosen = chooseMatch(candidates, identity);
+
+  if (chosen) {
     // Fill in contact details we did not have before, but never overwrite what
     // staff have already corrected by hand — the form is the less reliable
     // source once a human has touched the record.
@@ -111,12 +119,15 @@ export async function matchOrCreatePatient(
           ...(identity.phone ? { phone: sql`coalesce(${patient.phone}, ${identity.phone})` } : {}),
           updatedAt: new Date(),
         })
-        .where(eq(patient.id, existing.id));
+        .where(eq(patient.id, chosen.match.id));
     }
 
-    return { id: existing.id, created: false };
+    return { id: chosen.match.id, created: false, confirmedBy: chosen.confirmedBy };
   }
 
+  // Candidates existed but every one of them contradicted on phone or email.
+  // These are different people who happen to share a name and a birthday, and
+  // creating a second record is the correct outcome rather than a failure.
   const [created] = await tx
     .insert(patient)
     .values({
@@ -132,5 +143,5 @@ export async function matchOrCreatePatient(
 
   if (!created) throw new Error('Could not create the patient record.');
 
-  return { id: created.id, created: true };
+  return { id: created.id, created: true, confirmedBy: [] };
 }

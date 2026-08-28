@@ -18,7 +18,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Calendar, Loader2, FileText, UserCheck, MoreHorizontal, Link2, CalendarClock,
-  XCircle, UserX, Check, Plus,
+  XCircle, UserX, Check, Plus, Clock, MessageSquare, Search,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
@@ -35,6 +35,8 @@ export interface AppointmentRow {
   startsAt: Date;
   endsAt: Date;
   status: string;
+  arrivedAt: Date | null;
+  hasQuestion: string | null;
   bookedName: string;
   bookedEmail: string | null;
   bookedPhone: string | null;
@@ -61,6 +63,49 @@ function time(date: Date): string {
   return new Intl.DateTimeFormat('en-GB', {
     hour: '2-digit', minute: '2-digit', hour12: false, timeZone: PHARMACY_TIMEZONE,
   }).format(date);
+}
+
+/**
+ * How late they are, or how long they have been waiting.
+ *
+ * Both matter and they are different questions. Before check-in, "late" is
+ * about the patient; after it, "waiting" is about us — and his GLP-1 brief
+ * names 20-minute waits as a live complaint. Nothing could measure either
+ * until arrival started being timestamped.
+ */
+function minutesBetween(from: Date, to: Date): number {
+  return Math.floor((to.getTime() - from.getTime()) / 60_000);
+}
+
+function WaitBadge({ row, now }: { row: AppointmentRow; now: Date }) {
+  if (row.status === 'ARRIVED' && row.arrivedAt) {
+    const waiting = minutesBetween(new Date(row.arrivedAt), now);
+    if (waiting < 10) return null;
+    return (
+      <span
+        className={cn(
+          'flex items-center gap-1 rounded-[5px] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide',
+          waiting >= 20 ? 'bg-stop-100 text-stop-700' : 'bg-review-100 text-review-700',
+        )}
+      >
+        <Clock size={10} strokeWidth={2.4} />
+        Waiting {waiting}m
+      </span>
+    );
+  }
+
+  if (row.status === 'BOOKED') {
+    const late = minutesBetween(new Date(row.startsAt), now);
+    if (late < 5) return null;
+    return (
+      <span className="flex items-center gap-1 rounded-[5px] bg-review-100 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-review-700">
+        <Clock size={10} strokeWidth={2.4} />
+        {late}m late
+      </span>
+    );
+  }
+
+  return null;
 }
 
 /** What the questionnaire looks like from behind the counter. */
@@ -104,10 +149,12 @@ function FormBadge({ row }: { row: AppointmentRow }) {
 }
 
 export function AppointmentsView({
-  rows, branchName, appUrl,
+  rows, branchName, branchId, branches, appUrl,
 }: {
   rows: AppointmentRow[];
   branchName: string;
+  branchId: string;
+  branches: { id: string; name: string }[];
   appUrl: string;
 }) {
   const router = useRouter();
@@ -116,8 +163,31 @@ export function AppointmentsView({
   const [rescheduling, setRescheduling] = useState<AppointmentRow | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
 
-  const days = rows.reduce<Map<string, AppointmentRow[]>>((map, row) => {
+  // Recomputed on render rather than ticking, so the page does not re-render
+  // every second for a badge nobody is watching. A refresh updates it.
+  const now = new Date();
+
+  const needle = query.trim().toLowerCase();
+  const visible = needle
+    ? rows.filter((r) =>
+        [
+          r.bookedName,
+          r.patientFirstName && r.patientLastName
+            ? `${r.patientFirstName} ${r.patientLastName}`
+            : null,
+          r.reference,
+          r.serviceName,
+          r.bookedPhone,
+          r.bookedEmail,
+        ]
+          .filter(Boolean)
+          .some((field) => String(field).toLowerCase().includes(needle)),
+      )
+    : rows;
+
+  const days = visible.reduce<Map<string, AppointmentRow[]>>((map, row) => {
     const key = dayKey(row.startsAt);
     const list = map.get(key);
     if (list) list.push(row);
@@ -166,9 +236,35 @@ export function AppointmentsView({
         </Link>
       </div>
 
+      {rows.length > 0 ? (
+        <div className="relative mb-4">
+          <Search
+            size={14}
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-faint"
+          />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Find by name, reference, service or phone…"
+            aria-label="Filter appointments"
+            className="w-full rounded-[8px] border border-line bg-surface py-2 pl-9 pr-3 text-[14px] text-ink outline-none focus:border-brand-400"
+          />
+        </div>
+      ) : null}
+
       {error ? (
         <div className="mb-4 rounded-[9px] border border-stop-200 bg-stop-50 px-4 py-2.5 text-[13.5px] text-stop-700">
           {error}
+        </div>
+      ) : null}
+
+      {rows.length > 0 && visible.length === 0 ? (
+        <div className="rounded-[10px] border border-line bg-surface px-6 py-12 text-center">
+          <p className="text-[14.5px] text-ink">Nothing matches “{query}”</p>
+          <p className="mt-1 text-[13px] text-ink-faint">
+            Only the next two weeks at this branch are listed here.
+          </p>
         </div>
       ) : null}
 
@@ -230,6 +326,17 @@ export function AppointmentsView({
                       </span>
                     </span>
 
+                    {row.hasQuestion ? (
+                      <span
+                        title={row.hasQuestion}
+                        className="flex items-center gap-1 rounded-[5px] bg-brand-100 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-brand-700"
+                      >
+                        <MessageSquare size={10} strokeWidth={2.4} />
+                        Asked
+                      </span>
+                    ) : null}
+
+                    <WaitBadge row={row} now={now} />
                     <FormBadge row={row} />
 
                     {done ? (
@@ -370,11 +477,15 @@ export function AppointmentsView({
       {rescheduling ? (
         <RescheduleDialog
           appointment={rescheduling}
+          branches={branches}
+          currentBranchId={branchId}
           onClose={() => setRescheduling(null)}
-          onConfirm={async (startsAt, notify) => {
+          onConfirm={async (startsAt, notify, targetBranchId) => {
             const id = rescheduling.id;
             setRescheduling(null);
-            await run(id, () => rescheduleAppointment(id, startsAt, notify));
+            await run(id, () =>
+              rescheduleAppointment(id, startsAt, notify, targetBranchId),
+            );
           }}
         />
       ) : null}

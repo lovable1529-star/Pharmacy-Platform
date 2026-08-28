@@ -21,7 +21,8 @@
 
 import { useMemo, useState } from 'react';
 import {
-  AlertTriangle, Check, ChevronDown, ChevronRight, Loader2, Paperclip, Pencil, X,
+  AlertTriangle, Check, ChevronDown, ChevronRight, Loader2, MessageSquare,
+  Paperclip, Pencil, X,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Control } from '@/components/form/wizard';
@@ -36,6 +37,21 @@ import type { Answers, FormField, FormSchema } from '@/types/form-schema';
  * the designer never changes it, so this survives the client rewording his own
  * form, which he does often.
  */
+/**
+ * Free-text the patient wrote TO the pharmacy, as opposed to answers about
+ * themselves.
+ *
+ * His GLP-1 brief asks for exactly this: "some way of alerting the dispensing
+ * pharmacist if a patient has asked a question, or needs to be seen, so they
+ * can highlight it at the point of dispensing". It already prints on the
+ * prescription; this is so it is seen before the medicine is handed over rather
+ * than after.
+ */
+const QUESTION_FIELDS = new Set([
+  'questionsForPharmacist', 'questions', 'patientQuestion', 'notesForPharmacist',
+  'anythingElse',
+]);
+
 const SAFETY_FIELDS = new Set([
   'allergies', 'allergyDetails', 'vaccineAllergy', 'vaccineAllergyDetails',
   'otherAllergies', 'otherAllergyDetails', 'anaphylaxis',
@@ -122,10 +138,18 @@ export function AnswerReview({ schema, answers, onAmend }: Props) {
   const steps = visibleSteps(numbered, answers, { includeClinicianOnly: false });
 
   const flagged: { field: FormField; value: unknown }[] = [];
+  const questions: { field: FormField; value: string }[] = [];
+
   for (const step of steps) {
     for (const field of visibleFieldsForStep(step, answers, { includeClinicianOnly: false })) {
       if (isConcerning(field, answers[field.id])) {
         flagged.push({ field, value: answers[field.id] });
+      }
+      if (QUESTION_FIELDS.has(field.id)) {
+        const asked = answers[field.id];
+        if (typeof asked === 'string' && asked.trim()) {
+          questions.push({ field, value: asked.trim() });
+        }
       }
     }
   }
@@ -164,6 +188,23 @@ export function AnswerReview({ schema, answers, onAmend }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
+      {/* ── The patient asked us something ──────────────── */}
+      {questions.map(({ field, value }) => (
+        <div
+          key={field.id}
+          className="rounded-[10px] border border-brand-200 bg-brand-50 px-4 py-3.5"
+        >
+          <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-brand-700">
+            <MessageSquare size={12} strokeWidth={2.4} />
+            The patient asked
+          </p>
+          <p className="m-0 text-[14px] italic text-ink">“{value}”</p>
+          <p className="mt-1 text-[12.5px] text-ink-faint">
+            Answer this before they leave. It also prints on their prescription.
+          </p>
+        </div>
+      ))}
+
       {/* ── Safety summary ──────────────────────────────── */}
       {flagged.length > 0 ? (
         <div className="rounded-[10px] border border-review-200 bg-review-50 px-4 py-3.5">

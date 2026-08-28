@@ -38,13 +38,23 @@ function dateKey(day: Date): string {
 
 export function RescheduleDialog({
   appointment,
+  branches,
+  currentBranchId,
   onClose,
   onConfirm,
 }: {
   appointment: AppointmentRow;
+  /** Every branch this user can work at, so a patient can be moved between them. */
+  branches: { id: string; name: string }[];
+  currentBranchId: string;
   onClose: () => void;
-  onConfirm: (startsAt: string, notify: boolean) => void | Promise<void>;
+  onConfirm: (
+    startsAt: string,
+    notify: boolean,
+    branchId: string | null,
+  ) => void | Promise<void>;
 }) {
+  const [branchId, setBranchId] = useState(currentBranchId);
   const [days, setDays] = useState<DaySlots[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedDay, setSelectedDay] = useState<Date | undefined>();
@@ -53,7 +63,9 @@ export function RescheduleDialog({
 
   useEffect(() => {
     let live = true;
-    getRescheduleSlots(appointment.id).then((result) => {
+    setDays(null);
+    setSelectedSlot(null);
+    getRescheduleSlots(appointment.id, 21, branchId).then((result) => {
       if (!live) return;
       if (result.ok && result.days) setDays(result.days);
       else setError(result.error ?? 'Could not load available times.');
@@ -61,7 +73,7 @@ export function RescheduleDialog({
     return () => {
       live = false;
     };
-  }, [appointment.id]);
+  }, [appointment.id, branchId]);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -99,6 +111,32 @@ export function RescheduleDialog({
         </div>
 
         <div className="px-5 py-4">
+          {branches.length > 1 ? (
+            <div className="mb-4">
+              <label
+                htmlFor="reschedule-branch"
+                className="mb-1.5 block text-[13px] font-medium text-ink-soft"
+              >
+                Branch
+              </label>
+              <select
+                id="reschedule-branch"
+                value={branchId}
+                onChange={(e) => setBranchId(e.target.value)}
+                className="w-full rounded-[7px] border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-brand-400"
+              >
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+              {branchId !== currentBranchId ? (
+                <p className="mt-1 text-[12.5px] text-review-700">
+                  Moving sites. Their questionnaire and answers come with them.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           {error ? (
             <p className="rounded-[8px] border border-stop-200 bg-stop-50 px-3 py-2 text-[13.5px] text-stop-700">
               {error}
@@ -182,7 +220,14 @@ export function RescheduleDialog({
             <button
               type="button"
               disabled={!selectedSlot}
-              onClick={() => selectedSlot && onConfirm(selectedSlot, notify)}
+              onClick={() =>
+                selectedSlot &&
+                onConfirm(
+                  selectedSlot,
+                  notify,
+                  branchId === currentBranchId ? null : branchId,
+                )
+              }
               className={cn(
                 'rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700',
                 !selectedSlot && 'cursor-not-allowed opacity-40 hover:bg-brand-600',

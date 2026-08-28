@@ -412,11 +412,74 @@ export const consultation = pgTable('consultation', {
   identityVerified: boolean('identity_verified').default(false).notNull(),
   declarationsAccepted: jsonb('declarations_accepted').$type<string[]>().default([]).notNull(),
   notes: text('notes'),
+  /** When the GP practice was last told. Null means they have not been. */
+  gpNotifiedAt: timestamp('gp_notified_at', { withTimezone: true }),
+  /** Sends so far — a resend after a correction is a second send, not a first. */
+  gpNotifyCount: integer('gp_notify_count').default(0).notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index('consultation_branch_idx').on(t.branchId, t.scheduledFor),
   index('consultation_patient_idx').on(t.patientId),
+]);
+
+/**
+ * A correction to a consultation that is already complete.
+ *
+ * Appended, never applied in place. The answers behind an administered vaccine
+ * are the justification for having administered it, so editing them afterwards
+ * rewrites history — but "we recorded the wrong batch and noticed an hour
+ * later" is a real event, and a recall list built from a wrong batch number is
+ * dangerous. Both the original and the correction stand, which is how clinical
+ * amendment works on paper.
+ */
+export const consultationAddendum = pgTable('consultation_addendum', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  consultationId: uuid('consultation_id').notNull().references(() => consultation.id),
+  userId: uuid('user_id').references(() => appUser.id),
+  reason: text('reason').notNull(),
+  corrections: jsonb('corrections').$type<Record<string, unknown>>().default({}).notNull(),
+  occurredAt: timestamp('occurred_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [index('consultation_addendum_idx').on(t.consultationId, t.occurredAt)]);
+
+export const notificationChannelEnum = pgEnum('notification_channel', [
+  'EMAIL', 'SMS', 'WHATSAPP',
+]);
+
+export const notificationStatusEnum = pgEnum('notification_status', [
+  'QUEUED', 'SENDING', 'SENT', 'FAILED', 'UNAVAILABLE',
+]);
+
+/**
+ * Outbox for anything the system sends.
+ *
+ * Email goes out through Resend today; his briefs also ask for WhatsApp alerts
+ * to the pharmacist and SMS reminders to patients, neither of which has
+ * credentials yet. Queueing everything here first means adding Twilio later is
+ * one adapter rather than rewiring every call site — and until it exists,
+ * messages for those channels queue as UNAVAILABLE rather than vanishing.
+ */
+export const notification = pgTable('notification', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  channel: notificationChannelEnum('channel').notNull(),
+  /** Email address or E.164 number, depending on the channel. */
+  recipient: text('recipient').notNull(),
+  template: text('template').notNull(),
+  subject: text('subject'),
+  body: text('body').notNull(),
+  entityType: text('entity_type'),
+  entityId: uuid('entity_id'),
+  status: notificationStatusEnum('status').default('QUEUED').notNull(),
+  attempts: integer('attempts').default(0).notNull(),
+  lastError: text('last_error'),
+  scheduledFor: timestamp('scheduled_for', { withTimezone: true }).defaultNow().notNull(),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('notification_due_idx').on(t.scheduledFor),
+  index('notification_entity_idx').on(t.entityType, t.entityId),
 ]);
 
 /** Discrete, attributable review events — never one accumulating text blob. */
@@ -517,6 +580,10 @@ export const appointment = pgTable('appointment', {
   status: appointmentStatusEnum('status').default('BOOKED').notNull(),
   startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
   endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+  /** When they actually walked in. Status said THAT they had, never WHEN. */
+  arrivedAt: timestamp('arrived_at', { withTimezone: true }),
+  /** Recorded here, not inferred from the mail log, so it sends exactly once. */
+  reminderSentAt: timestamp('reminder_sent_at', { withTimezone: true }),
   /** Captured at booking, before any patient record exists. */
   bookedName: text('booked_name').notNull(),
   bookedEmail: text('booked_email'),

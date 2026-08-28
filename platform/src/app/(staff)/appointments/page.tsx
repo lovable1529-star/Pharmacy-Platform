@@ -17,6 +17,7 @@
 
 import { and, eq, gte, lte, ne } from 'drizzle-orm';
 import { getStaffContext } from '@/lib/auth/context';
+import { getBranchesForActor } from '@/lib/auth/actor';
 import { db } from '@/lib/db/client';
 import {
   appointment, service, patient, submission, ruleEvaluation,
@@ -51,6 +52,7 @@ export default async function AppointmentsPage() {
       startsAt: appointment.startsAt,
       endsAt: appointment.endsAt,
       status: appointment.status,
+      arrivedAt: appointment.arrivedAt,
       bookedName: appointment.bookedName,
       bookedEmail: appointment.bookedEmail,
       bookedPhone: appointment.bookedPhone,
@@ -89,7 +91,17 @@ export default async function AppointmentsPage() {
     const answers = (r.answers ?? {}) as Record<string, unknown>;
     const touched = Object.keys(answers).filter((k) => k !== '_metadata').length > 0;
 
+    // Did they write us a question? It prints on the prescription, but the
+    // counter needs to know before the medicine is handed over, not after.
+    const asked = [
+      'questionsForPharmacist', 'questions', 'patientQuestion',
+      'notesForPharmacist', 'anythingElse',
+    ]
+      .map((key) => answers[key])
+      .find((v) => typeof v === 'string' && v.trim().length > 0);
+
     return {
+      hasQuestion: typeof asked === 'string' ? asked.trim() : null,
       ...r,
       formState:
         r.submissionStatus == null
@@ -103,10 +115,16 @@ export default async function AppointmentsPage() {
     };
   });
 
+  // Every branch this user can work at, so somebody who walked into the wrong
+  // shop can be moved rather than cancelled and rebooked.
+  const branches = await getBranchesForActor(actor);
+
   return (
     <AppointmentsView
       rows={view}
       branchName={activeBranch.name}
+      branchId={activeBranch.id}
+      branches={branches.map((b) => ({ id: b.id, name: b.name }))}
       appUrl={process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3100'}
     />
   );

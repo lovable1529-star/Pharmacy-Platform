@@ -42,7 +42,9 @@ const arrive = action<{ appointmentId: string }>('appointments:edit').handler(
   async (input, { tx }) => {
     const [updated] = await tx
       .update(appointment)
-      .set({ status: 'ARRIVED', updatedAt: new Date() })
+      // The clock, not just the flag. Status said THAT they had arrived and
+      // never WHEN, so nothing could measure the wait his brief complains about.
+      .set({ status: 'ARRIVED', arrivedAt: new Date(), updatedAt: new Date() })
       .where(
         and(
           eq(appointment.id, input.appointmentId),
@@ -245,6 +247,8 @@ export interface DaySlots {
 export async function getRescheduleSlots(
   appointmentId: string,
   days = 21,
+  /** Look at a different branch, for a patient who walked into the wrong shop. */
+  branchOverride: string | null = null,
 ): Promise<{ ok: boolean; days?: DaySlots[]; error?: string }> {
   try {
     const [row] = await db
@@ -259,26 +263,30 @@ export async function getRescheduleSlots(
 
     if (!row) return { ok: false, error: 'That appointment no longer exists.' };
 
+    const branchId = branchOverride ?? row.branchId;
+    const movingBranch = branchId !== row.branchId;
+
     const from = new Date();
     const to = new Date(Date.now() + (days + 1) * 24 * 60 * 60_000);
 
     const [windows, bookings] = await Promise.all([
-      loadWindows(row.branchId),
-      loadBookings(row.branchId, from, to),
+      loadWindows(branchId),
+      loadBookings(branchId, from, to),
     ]);
 
     // The slot it currently occupies must appear free — otherwise the booking
-    // blocks itself and the patient cannot be moved by fifteen minutes.
-    const others = bookings.filter(
-      (b) => b.startsAt.getTime() !== row.startsAt.getTime(),
-    );
+    // blocks itself and the patient cannot be moved by fifteen minutes. That
+    // only applies at its own branch; elsewhere the slot is somebody else's.
+    const others = movingBranch
+      ? bookings
+      : bookings.filter((b) => b.startsAt.getTime() !== row.startsAt.getTime());
 
     const generated = generateSlotsForRange({
       windows,
       bookings: others,
       from,
       days,
-      branchId: row.branchId,
+      branchId,
       serviceId: row.serviceId,
       leadTimeMinutes: LEAD_TIME_MINUTES,
     });
@@ -301,9 +309,13 @@ export async function getRescheduleSlots(
   }
 }
 
-const reschedule = action<{ appointmentId: string; startsAt: string; notify: boolean }>(
-  'appointments:edit',
-).handler(async (input, { tx }) => {
+const reschedule = action<{
+  appointmentId: string;
+  startsAt: string;
+  notify: boolean;
+  /** Moving sites, when a patient turns up at the wrong shop. */
+  branchId?: string | null;
+}>('appointments:edit').handler(async (input, { tx }) => {
   const startsAt = new Date(input.startsAt);
   if (Number.isNaN(startsAt.getTime())) throw new Error('That time is not valid.');
 
@@ -328,6 +340,11 @@ const reschedule = action<{ appointmentId: string; startsAt: string; notify: boo
     throw new Error('A completed appointment cannot be moved.');
   }
 
+  // A patient who books at Onchan and walks into Kirk Michael should be moved,
+  // not cancelled and rebooked — cancelling would throw away the questionnaire
+  // they have already filled in.
+  const targetBranchId = input.branchId ?? before.branchId;
+
   // Re-check the destination inside the transaction against fresh bookings.
   // The list the receptionist clicked was a snapshot; two people moving
   // patients into the last free slot is exactly how a double booking happens.
@@ -335,19 +352,22 @@ const reschedule = action<{ appointmentId: string; startsAt: string; notify: boo
   const dayTo = new Date(startsAt.getTime() + 24 * 60 * 60_000);
 
   const [windows, bookings] = await Promise.all([
-    loadWindows(before.branchId),
-    loadBookings(before.branchId, dayFrom, dayTo),
+    loadWindows(targetBranchId),
+    loadBookings(targetBranchId, dayFrom, dayTo),
   ]);
 
-  const others = bookings.filter(
-    (b) => b.startsAt.getTime() !== before.startsAt.getTime(),
-  );
+  // Only exclude the appointment's own slot when it is not changing branch —
+  // at a different site that slot belongs to somebody else.
+  const others =
+    targetBranchId === before.branchId
+      ? bookings.filter((b) => b.startsAt.getTime() !== before.startsAt.getTime())
+      : bookings;
 
   const check = isSlotBookable({
     windows,
     bookings: others,
     startsAt,
-    branchId: before.branchId,
+    branchId: targetBranchId,
     serviceId: before.serviceId,
     leadTimeMinutes: LEAD_TIME_MINUTES,
   });
@@ -359,7 +379,14 @@ const reschedule = action<{ appointmentId: string; startsAt: string; notify: boo
 
   const [updated] = await tx
     .update(appointment)
-    .set({ startsAt, endsAt, updatedAt: new Date() })
+    .set({
+      startsAt,
+      endsAt,
+      branchId: targetBranchId,
+      // A moved appointment has not been reminded about at its new time.
+      reminderSentAt: null,
+      updatedAt: new Date(),
+    })
     .where(eq(appointment.id, input.appointmentId))
     .returning({ id: appointment.id });
 
@@ -372,7 +399,7 @@ const reschedule = action<{ appointmentId: string; startsAt: string; notify: boo
       name: before.bookedName,
       reference: before.reference,
       startsAt,
-      branchId: before.branchId,
+      branchId: targetBranchId,
       serviceId: before.serviceId,
       notify: input.notify,
     },
@@ -380,8 +407,12 @@ const reschedule = action<{ appointmentId: string; startsAt: string; notify: boo
       action: 'appointment.rescheduled',
       entityType: 'appointment',
       entityId: updated.id,
-      before: { startsAt: before.startsAt.toISOString() },
-      after: { startsAt: startsAt.toISOString(), reference: before.reference },
+      before: { startsAt: before.startsAt.toISOString(), branchId: before.branchId },
+      after: {
+        startsAt: startsAt.toISOString(),
+        branchId: targetBranchId,
+        reference: before.reference,
+      },
     },
   };
 });
@@ -390,9 +421,10 @@ export async function rescheduleAppointment(
   appointmentId: string,
   startsAt: string,
   notify = true,
+  branchId: string | null = null,
 ) {
   try {
-    const moved = await reschedule({ appointmentId, startsAt, notify });
+    const moved = await reschedule({ appointmentId, startsAt, notify, branchId });
 
     if (moved.notify && moved.email) {
       // Best effort. A booking that moved must not be reported as failed
