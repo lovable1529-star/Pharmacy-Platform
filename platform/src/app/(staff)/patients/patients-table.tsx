@@ -9,7 +9,8 @@
  */
 
 import { useRouter } from 'next/navigation';
-import { DataTable, PageHeader, type Column } from '@/components/ui/data-table';
+import { UserPlus } from 'lucide-react';
+import { ActionLink, DataTable, PageHeader, type Column } from '@/components/ui/data-table';
 import { formatDate } from '@/lib/units';
 import { ageInYears } from '@/lib/patients/search';
 import type { PatientRow } from '@/lib/queries/clinical';
@@ -44,6 +45,11 @@ export function PatientsTable({ rows }: { rows: PatientRow[] }) {
       <PageHeader
         title="Patients"
         subtitle="Everyone registered with the group, findable from either branch."
+        actions={
+          <ActionLink href="/patients/new" icon={<UserPlus size={14} strokeWidth={2.4} />}>
+            Add patient
+          </ActionLink>
+        }
       />
       <DataTable
         rows={rows}

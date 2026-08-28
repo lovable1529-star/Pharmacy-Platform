@@ -357,6 +357,15 @@ export const submission = pgTable('submission', {
   /** Exact consent wording agreed to, captured at submit time. */
   consentVersion: text('consent_version'),
   signatureUrl: text('signature_url'),
+  /**
+   * Lets a patient return to a half-finished questionnaire.
+   *
+   * A health form has no account behind it, so this token IS the credential —
+   * it is 32 random bytes, never sequential, and grants access to exactly one
+   * submission. Someone holding it can finish that one form and nothing else.
+   */
+  resumeToken: text('resume_token'),
+  resumeExpiresAt: timestamp('resume_expires_at', { withTimezone: true }),
   submittedAt: timestamp('submitted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),

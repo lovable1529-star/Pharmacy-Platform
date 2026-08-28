@@ -14,7 +14,7 @@
  * asks about.
  */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Lock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import {
@@ -78,6 +78,14 @@ export interface WizardProps {
   clinicianMode?: boolean;
   initialAnswers?: Answers;
   onSubmit?: (answers: Answers) => Promise<void> | void;
+  /**
+   * Called whenever an answer changes, for autosave.
+   *
+   * Fires on every keystroke, so whatever is passed here must do its own
+   * debouncing — this deliberately does not batch, because the wizard should
+   * not be deciding how often a patient's answers reach the database.
+   */
+  onAnswersChange?: (answers: Answers) => void;
   submitLabel?: string;
   /** Preview mode is read-only and never submits. */
   preview?: boolean;
@@ -88,6 +96,7 @@ export function FormWizard({
   clinicianMode = false,
   initialAnswers = {},
   onSubmit,
+  onAnswersChange,
   submitLabel = 'Submit',
   preview = false,
 }: WizardProps) {
@@ -101,6 +110,21 @@ export function FormWizard({
   const [showErrors, setShowErrors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+
+  // Autosave notification lives in an effect, not in the state updater —
+  // React may invoke an updater twice, and a double POST per keystroke is a
+  // real cost when a patient is on a phone with poor signal.
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    onAnswersChange?.(answers);
+    // onAnswersChange is intentionally not a dependency: callers pass an inline
+    // closure, and depending on it would re-fire the save on every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [answers]);
 
   const options = { includeClinicianOnly: clinicianMode };
   const steps = visibleSteps(schema, answers, options);

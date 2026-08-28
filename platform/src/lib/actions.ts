@@ -36,7 +36,7 @@ import {
   assertCan, type Actor, type Permission, type ScopeTarget,
 } from '@/lib/tenancy/scope';
 
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
+export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
 export interface ActionContext {
   actor: Actor;

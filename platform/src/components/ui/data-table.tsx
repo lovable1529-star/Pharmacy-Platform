@@ -1,5 +1,7 @@
 'use client';
 
+import Link from 'next/link';
+
 /**
  * The one table pattern.
  *
@@ -259,6 +261,27 @@ export function DataTable<T>({
 }
 
 /** Consistent page heading across every staff screen. */
+/**
+ * The primary action on a list page.
+ *
+ * Shared rather than hand-rolled per screen: an "Add patient" that sits in a
+ * different place, or is missing entirely, on each list is the single loudest
+ * signal that software was assembled screen by screen rather than designed.
+ */
+export function ActionLink({
+  href, children, icon,
+}: { href: string; children: React.ReactNode; icon?: React.ReactNode }) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700"
+    >
+      {icon}
+      {children}
+    </Link>
+  );
+}
+
 export function PageHeader({
   title, subtitle, actions,
 }: { title: string; subtitle?: string; actions?: React.ReactNode }) {

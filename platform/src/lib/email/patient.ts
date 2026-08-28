@@ -89,13 +89,16 @@ export function bookingConfirmation(input: {
   reference: string;
   branch: BranchDetails;
   formUrl?: string | null;
+  /** Reused for reschedules — "confirmed" would be a lie when it moved. */
+  heading?: string;
 }): PatientEmail {
   const when = formatWhen(input.startsAt);
+  const heading = input.heading ?? 'Appointment confirmed';
 
   return {
-    subject: `Your ${input.serviceName} appointment — ${when}`,
+    subject: `${heading} — ${input.serviceName}, ${when}`,
     html: shell(
-      'Appointment confirmed',
+      heading,
       `<p style="margin:0 0 14px;">Hello ${escape(input.patientName)},</p>
        <p style="margin:0 0 6px;">Your appointment is booked for:</p>
        <p style="margin:0 0 4px;font-size:17px;font-weight:600;">${escape(when)}</p>

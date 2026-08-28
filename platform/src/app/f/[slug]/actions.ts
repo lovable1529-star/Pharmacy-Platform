@@ -5,9 +5,10 @@
  *
  * This is the one write path with no signed-in user, so it does not go through
  * the scoped action wrapper — there is no actor to scope. It is deliberately
- * narrow instead: it accepts a service slug and a set of answers, and it can do
- * nothing else. It cannot read a patient record, cannot update one, and cannot
- * touch any other organisation's data.
+ * narrow instead: it accepts a service slug, a set of answers, and optionally a
+ * resume token, and it can do nothing else. It cannot read a patient record it
+ * was not given, cannot reach another organisation's data, and cannot be talked
+ * into returning anything clinical.
  *
  * It still writes an audit entry, with a null user and the branch the patient
  * chose, so a submission that arrives at 2am from a phone is as traceable as one
@@ -18,9 +19,12 @@ import { eq, and, desc } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   service, formVersion, rulesetVersion, submission, ruleEvaluation, auditEvent,
+  appointment,
 } from '@/lib/db/schema';
 import { sealAuditEntry } from '@/lib/audit';
 import { pruneHiddenAnswers, collectMetadata } from '@/lib/forms/runtime';
+import { isExpired } from '@/lib/forms/draft';
+import { matchOrCreatePatient, readIdentity } from '@/lib/patients/identify';
 import { evaluateRuleset, type RulesetDefinition } from '@/lib/rules/engine';
 import { deriveValues } from '@/lib/clinical/derived';
 import type { FormSchema, Answers } from '@/types/form-schema';
@@ -43,9 +47,60 @@ function siValue(answers: Answers, key: string): number | null {
   return typeof value === 'number' ? value : null;
 }
 
+/**
+ * Autosave.
+ *
+ * Called as the patient works through the questionnaire. It writes answers and
+ * nothing else — no triage, no patient record, no audit entry. Autosave firing
+ * every few seconds must not put thousands of rows in a tamper-evident clinical
+ * log; the audited event is the SUBMISSION, which is the point at which the
+ * patient asserts the answers are true.
+ *
+ * It also refuses to touch anything that is no longer a draft, so a stale tab
+ * left open cannot overwrite answers a pharmacist has since acted on.
+ */
+export async function saveFormDraft(
+  token: string,
+  rawAnswers: Answers,
+): Promise<{ ok: boolean; error?: string }> {
+  if (!token) return { ok: false, error: 'Missing token.' };
+
+  try {
+    const [draft] = await db
+      .select({
+        id: submission.id,
+        status: submission.status,
+        expiresAt: submission.resumeExpiresAt,
+      })
+      .from(submission)
+      .where(eq(submission.resumeToken, token))
+      .limit(1);
+
+    if (!draft) return { ok: false, error: 'Not found.' };
+    if (draft.status !== 'DRAFT') return { ok: false, error: 'Already submitted.' };
+    if (isExpired(draft.expiresAt)) return { ok: false, error: 'Expired.' };
+
+    // Files are not JSON-serialisable and are handled separately.
+    const answers = Object.fromEntries(
+      Object.entries(rawAnswers).filter(([, v]) => !(v instanceof File)),
+    ) as Answers;
+
+    await db
+      .update(submission)
+      .set({ answers: answers as Record<string, unknown>, updatedAt: new Date() })
+      .where(eq(submission.id, draft.id));
+
+    return { ok: true };
+  } catch (error) {
+    console.error('saveFormDraft failed', error);
+    return { ok: false, error: 'Could not save.' };
+  }
+}
+
 export async function submitPublicForm(
   slug: string,
   rawAnswers: Answers,
+  token?: string | null,
 ): Promise<SubmitResult> {
   try {
     const [svc] = await db
@@ -81,20 +136,84 @@ export async function submitPublicForm(
     });
 
     const result = await db.transaction(async (tx) => {
-      const [row] = await tx
-        .insert(submission)
-        .values({
+      // ── Find the draft, or start fresh ────────────────────
+      //
+      // A token means this questionnaire was created when the appointment was
+      // booked, and we complete that row. Without one this is a walk-up at the
+      // counter, which is still allowed.
+      let existing: { id: string; branchId: string | null } | null = null;
+
+      if (token) {
+        const [draft] = await tx
+          .select({
+            id: submission.id,
+            status: submission.status,
+            branchId: submission.branchId,
+            expiresAt: submission.resumeExpiresAt,
+          })
+          .from(submission)
+          .where(eq(submission.resumeToken, token))
+          .limit(1);
+
+        if (!draft) return { error: 'That link is no longer valid.' };
+        if (isExpired(draft.expiresAt)) {
+          return { error: 'That link has expired. Please call the pharmacy.' };
+        }
+        // Submitting twice must not create a second record for one appointment.
+        if (draft.status !== 'DRAFT') {
+          return { error: 'Those answers have already been sent to us.' };
+        }
+
+        existing = { id: draft.id, branchId: draft.branchId };
+      }
+
+      // ── Identify the patient ──────────────────────────────
+      const identity = readIdentity(answers);
+      let patientId: string | null = null;
+
+      if (identity) {
+        const matched = await matchOrCreatePatient(tx, {
           organisationId: svc.organisationId,
-          serviceId: svc.id,
-          formVersionId: version.id,
-          branchId: null,
-          status: 'SUBMITTED',
-          answers: { ...answers, _metadata: metadata } as Record<string, unknown>,
-          derived: derived as unknown as Record<string, unknown>,
-          consentVersion: `v${version.version}`,
-          submittedAt: new Date(),
-        })
-        .returning();
+          identity,
+          registeredBranchId: existing?.branchId ?? null,
+        });
+        patientId = matched.id;
+      }
+
+      const payload = {
+        answers: { ...answers, _metadata: metadata } as Record<string, unknown>,
+        derived: derived as unknown as Record<string, unknown>,
+        patientId,
+        status: 'SUBMITTED' as const,
+        consentVersion: `v${version.version}`,
+        submittedAt: new Date(),
+        updatedAt: new Date(),
+        // The token dies with the submission. A confirmation email sitting in an
+        // inbox must not stay a live key to a completed medical form.
+        resumeToken: null,
+        resumeExpiresAt: null,
+      };
+
+      let row: { id: string } | undefined;
+
+      if (existing) {
+        [row] = await tx
+          .update(submission)
+          .set(payload)
+          .where(eq(submission.id, existing.id))
+          .returning({ id: submission.id });
+      } else {
+        [row] = await tx
+          .insert(submission)
+          .values({
+            organisationId: svc.organisationId,
+            serviceId: svc.id,
+            formVersionId: version.id,
+            branchId: null,
+            ...payload,
+          })
+          .returning({ id: submission.id });
+      }
 
       if (!row) throw new Error('Could not save the submission.');
 
@@ -135,6 +254,17 @@ export async function submitPublicForm(
         }
       }
 
+      // ── Link the appointment ──────────────────────────────
+      //
+      // This is the step whose absence made every appointment read "no form
+      // yet" no matter how carefully the patient filled it in.
+      if (existing) {
+        await tx
+          .update(appointment)
+          .set({ patientId, updatedAt: new Date() })
+          .where(eq(appointment.submissionId, existing.id));
+      }
+
       // Audit, with the same hash chain every other write uses.
       const previous = await tx
         .select({ hash: auditEvent.hash })
@@ -147,11 +277,16 @@ export async function submitPublicForm(
         {
           organisationId: svc.organisationId,
           userId: null,
-          branchId: null,
+          branchId: existing?.branchId ?? null,
           action: 'submission.created',
           entityType: 'submission',
           entityId: row.id,
-          after: { serviceId: svc.id, formVersionId: version.id, outcome: outcome ?? null },
+          after: {
+            serviceId: svc.id,
+            formVersionId: version.id,
+            outcome: outcome ?? null,
+            patientId,
+          },
         },
         { id: crypto.randomUUID(), occurredAt: new Date(), previousHash: previous[0]?.hash ?? null },
       );
@@ -160,7 +295,7 @@ export async function submitPublicForm(
         id: sealed.id,
         organisationId: sealed.organisationId,
         userId: null,
-        branchId: null,
+        branchId: sealed.branchId ?? null,
         action: sealed.action,
         entityType: sealed.entityType,
         entityId: sealed.entityId ?? null,
@@ -172,6 +307,8 @@ export async function submitPublicForm(
 
       return { submissionId: row.id, outcome, patientMessage };
     });
+
+    if ('error' in result && result.error) return { ok: false, error: result.error };
 
     return { ok: true, ...result };
   } catch (error) {

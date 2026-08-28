@@ -21,7 +21,7 @@ import { eq, and, sql } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { action } from '@/lib/actions';
 import {
-  consultation, submission, stockLevel, stockMovement, batch, branch,
+  consultation, submission, stockLevel, stockMovement, batch, appointment,
 } from '@/lib/db/schema';
 
 export interface CompleteConsultationInput {
@@ -115,6 +115,21 @@ const complete = action<CompleteConsultationInput>('consultations:add')
       .set({ status: 'COMPLETED', updatedAt: now })
       .where(eq(submission.id, input.submissionId));
 
+    // Close the loop back to the appointment.
+    //
+    // Without this the booking sat at ARRIVED forever: the consultation was
+    // recorded, but the worklist never learned it had been, so the patient
+    // stayed on the counter's screen as though still waiting.
+    await tx
+      .update(appointment)
+      .set({
+        consultationId: created.id,
+        status: 'COMPLETED',
+        patientId: input.patientId,
+        updatedAt: now,
+      })
+      .where(eq(appointment.submissionId, input.submissionId));
+
     return {
       result: { consultationId: created.id },
       audit: {
@@ -136,6 +151,8 @@ export async function completeConsultation(input: CompleteConsultationInput) {
     const result = await complete(input);
     revalidatePath('/');
     revalidatePath('/consultations');
+    revalidatePath('/appointments');
+    revalidatePath('/patients');
     return { ok: true as const, ...result };
   } catch (error) {
     console.error('completeConsultation failed', error);

@@ -18,9 +18,11 @@ import { db } from '@/lib/db/client';
 import {
   appointment, availability, branch, company, service, auditEvent,
 } from '@/lib/db/schema';
+import { buildFormUrl } from '@/lib/forms/draft';
+import { createBooking } from '@/lib/scheduling/book';
 import { sealAuditEntry } from '@/lib/audit';
 import {
-  isSlotBookable, buildAppointmentReference,
+  generateSlotsForRange,
   type AvailabilityWindow, type ExistingBooking,
 } from '@/lib/scheduling/slots';
 import { bookingConfirmation } from '@/lib/email/patient';
@@ -131,7 +133,6 @@ export async function getAvailableSlots(
   fromIso: string,
   days = 14,
 ): Promise<DaySlots[]> {
-  const { generateSlotsForRange } = await import('@/lib/scheduling/slots');
 
   const from = new Date(fromIso);
   from.setHours(0, 0, 0, 0);
@@ -188,6 +189,7 @@ export async function bookAppointment(input: BookInput): Promise<BookResult> {
         serviceName: service.name,
         serviceSlug: service.slug,
         organisationId: service.organisationId,
+        publishedFormVersionId: service.publishedFormVersionId,
         branchName: branch.name,
         branchCode: branch.code,
         branchAddress: branch.addressLine1,
@@ -206,51 +208,21 @@ export async function bookAppointment(input: BookInput): Promise<BookResult> {
     if (!ctx) return { ok: false, error: 'That service is not available at this branch.' };
 
     const result = await db.transaction(async (tx) => {
-      // Re-read inside the transaction. This is the check that matters; the
-      // slot list on screen was only ever a hint.
-      const dayStart = new Date(startsAt);
-      dayStart.setHours(0, 0, 0, 0);
-      const dayEnd = new Date(startsAt);
-      dayEnd.setHours(23, 59, 59, 999);
-
-      const [windows, bookings] = await Promise.all([
-        loadWindows(input.branchId),
-        loadBookings(input.branchId, dayStart, dayEnd),
-      ]);
-
-      const check = isSlotBookable({
-        windows, bookings, startsAt,
+      // The shared booking core: slot re-check inside the transaction, the
+      // appointment row, and the questionnaire draft. Identical to what the
+      // counter runs, so the two paths cannot drift apart.
+      const outcome = await createBooking(tx, {
+        organisationId: ctx.organisationId,
         branchId: input.branchId,
         serviceId: input.serviceId,
+        startsAt,
+        name: input.name,
+        email: input.email,
+        phone: input.phone,
         leadTimeMinutes: LEAD_TIME_MINUTES,
       });
 
-      if (!check.ok) return { conflict: check.reason };
-
-      const window = windows.find((w) => w.weekday === startsAt.getDay());
-      const endsAt = new Date(startsAt.getTime() + (window?.slotMinutes ?? 15) * 60_000);
-
-      const id = crypto.randomUUID();
-      const reference = buildAppointmentReference(ctx.branchCode, id);
-
-      const [created] = await tx
-        .insert(appointment)
-        .values({
-          id,
-          organisationId: ctx.organisationId,
-          companyId: ctx.companyId,
-          branchId: input.branchId,
-          serviceId: input.serviceId,
-          startsAt,
-          endsAt,
-          bookedName: input.name.trim(),
-          bookedEmail: input.email.trim(),
-          bookedPhone: input.phone.trim() || null,
-          reference,
-        })
-        .returning();
-
-      if (!created) return { conflict: 'Could not save that booking.' };
+      if (!outcome.ok) return { conflict: outcome.reason };
 
       const previous = await tx
         .select({ hash: auditEvent.hash })
@@ -266,8 +238,13 @@ export async function bookAppointment(input: BookInput): Promise<BookResult> {
           branchId: input.branchId,
           action: 'appointment.booked',
           entityType: 'appointment',
-          entityId: created.id,
-          after: { reference, startsAt: startsAt.toISOString(), serviceId: input.serviceId },
+          entityId: outcome.booking.id,
+          after: {
+            reference: outcome.booking.reference,
+            startsAt: startsAt.toISOString(),
+            serviceId: input.serviceId,
+            bookedBy: 'patient',
+          },
         },
         {
           id: crypto.randomUUID(),
@@ -289,13 +266,22 @@ export async function bookAppointment(input: BookInput): Promise<BookResult> {
         occurredAt: sealed.occurredAt,
       });
 
-      return { reference, created };
+      return {
+        reference: outcome.booking.reference,
+        resumeToken: outcome.booking.resumeToken,
+      };
     });
 
     if ('conflict' in result) return { ok: false, error: result.conflict };
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3100';
-    const formUrl = `${appUrl}/f/${ctx.serviceSlug}?ref=${result.reference}`;
+
+    // The token, never the reference. ONC-3JBX4 is printed on the confirmation
+    // and read out over the phone; if it also unlocked the questionnaire, every
+    // receipt would be a key to someone's medical answers.
+    const formUrl = result.resumeToken
+      ? buildFormUrl(appUrl, ctx.serviceSlug, result.resumeToken)
+      : `${appUrl}/f/${ctx.serviceSlug}`;
 
     // Confirmation is best-effort — a booking that saved must not be reported as
     // failed because a mail server was slow.

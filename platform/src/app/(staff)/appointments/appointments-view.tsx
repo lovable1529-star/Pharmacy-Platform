@@ -1,11 +1,33 @@
 'use client';
 
+/**
+ * The counter's worklist.
+ *
+ * Ordered by what someone standing at the till needs: who is next, have they
+ * filled the form in, and what is the one action to take right now. Everything
+ * else lives behind the row menu.
+ *
+ * The form state matters more than it looks. "Has a submission row" is not the
+ * same as "has answered" — booking online creates the draft immediately, so
+ * existence alone would mark every new booking complete. Staff need STARTED vs
+ * FINISHED, because the answer changes what they say to the patient.
+ */
+
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Calendar, Loader2, FileText, UserCheck } from 'lucide-react';
+import {
+  Calendar, Loader2, FileText, UserCheck, MoreHorizontal, Link2, CalendarClock,
+  XCircle, UserX, Check, Plus,
+} from 'lucide-react';
 import { cn } from '@/lib/cn';
-import { markArrived } from './actions';
+import { PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
+import {
+  markArrived, markNoShow, cancelAppointment, rescheduleAppointment,
+} from './actions';
+import { RescheduleDialog } from './reschedule-dialog';
+
+export type FormState = 'none' | 'not-started' | 'started' | 'submitted';
 
 export interface AppointmentRow {
   id: string;
@@ -17,28 +39,83 @@ export interface AppointmentRow {
   bookedEmail: string | null;
   bookedPhone: string | null;
   serviceName: string;
+  serviceSlug: string;
   submissionId: string | null;
+  submissionStatus: string | null;
+  resumeToken: string | null;
+  outcome: string | null;
+  formState: FormState;
+  patientId: string | null;
   patientFirstName: string | null;
   patientLastName: string | null;
+  consultationId: string | null;
 }
 
 function dayKey(date: Date): string {
   return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/Isle_of_Man',
+    weekday: 'long', day: 'numeric', month: 'long', timeZone: PHARMACY_TIMEZONE,
   }).format(date);
 }
 
 function time(date: Date): string {
   return new Intl.DateTimeFormat('en-GB', {
-    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Isle_of_Man',
+    hour: '2-digit', minute: '2-digit', hour12: false, timeZone: PHARMACY_TIMEZONE,
   }).format(date);
 }
 
+/** What the questionnaire looks like from behind the counter. */
+function FormBadge({ row }: { row: AppointmentRow }) {
+  if (row.formState === 'submitted') {
+    const tone =
+      row.outcome === 'RED'
+        ? 'bg-stop-100 text-stop-700'
+        : row.outcome === 'AMBER'
+          ? 'bg-review-100 text-review-700'
+          : 'bg-safe-100 text-safe-700';
+
+    return (
+      <span
+        className={cn(
+          'flex items-center gap-1.5 rounded-[5px] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide',
+          tone,
+        )}
+      >
+        <Check size={10} strokeWidth={2.6} />
+        {row.outcome ? `Form · ${row.outcome}` : 'Form in'}
+      </span>
+    );
+  }
+
+  if (row.formState === 'started') {
+    return (
+      <span className="flex items-center gap-1.5 rounded-[5px] bg-review-100 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-review-700">
+        <FileText size={10} strokeWidth={2.4} />
+        Part done
+      </span>
+    );
+  }
+
+  return (
+    <span className="flex items-center gap-1.5 rounded-[5px] bg-sunk px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-faint">
+      <FileText size={10} strokeWidth={2.2} />
+      No form
+    </span>
+  );
+}
+
 export function AppointmentsView({
-  rows, branchName,
-}: { rows: AppointmentRow[]; branchName: string }) {
+  rows, branchName, appUrl,
+}: {
+  rows: AppointmentRow[];
+  branchName: string;
+  appUrl: string;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  const [menu, setMenu] = useState<string | null>(null);
+  const [rescheduling, setRescheduling] = useState<AppointmentRow | null>(null);
+  const [copied, setCopied] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const days = rows.reduce<Map<string, AppointmentRow[]>>((map, row) => {
     const key = dayKey(row.startsAt);
@@ -48,30 +125,61 @@ export function AppointmentsView({
     return map;
   }, new Map());
 
-  async function arrive(id: string) {
+  async function run(id: string, fn: () => Promise<{ ok: boolean; error?: string }>) {
     setBusy(id);
-    await markArrived(id);
+    setError(null);
+    setMenu(null);
+    const result = await fn();
     setBusy(null);
-    router.refresh();
+    if (!result.ok) setError(result.error ?? 'Something went wrong.');
+    else router.refresh();
+  }
+
+  async function copyFormLink(row: AppointmentRow) {
+    if (!row.resumeToken) return;
+    const url = `${appUrl}/f/${row.serviceSlug}?s=${encodeURIComponent(row.resumeToken)}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopied(row.id);
+      setTimeout(() => setCopied(null), 2000);
+    } catch {
+      setError('Could not copy. The link is in the patient’s confirmation email.');
+    }
+    setMenu(null);
   }
 
   return (
-    <div className="mx-auto max-w-[900px] px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-[28px] leading-tight text-ink">Appointments</h1>
-        <p className="mt-1 text-[14px] text-ink-faint">
-          The next two weeks at {branchName}. One calendar across every service.
-        </p>
+    <div className="mx-auto max-w-[980px] px-6 py-8">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-[28px] leading-tight text-ink">Appointments</h1>
+          <p className="mt-1 text-[14px] text-ink-faint">
+            The next two weeks at {branchName}. One calendar across every service.
+          </p>
+        </div>
+        <Link
+          href="/appointments/new"
+          className="flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700"
+        >
+          <Plus size={14} strokeWidth={2.4} />
+          Book appointment
+        </Link>
       </div>
+
+      {error ? (
+        <div className="mb-4 rounded-[9px] border border-stop-200 bg-stop-50 px-4 py-2.5 text-[13.5px] text-stop-700">
+          {error}
+        </div>
+      ) : null}
 
       {rows.length === 0 ? (
         <div className="rounded-[10px] border border-line bg-surface px-6 py-14 text-center">
           <Calendar size={26} strokeWidth={1.6} className="mx-auto mb-3 text-ink-faint" />
           <p className="text-[15px] font-medium text-ink">Nothing booked</p>
           <p className="mt-1 text-[13.5px] text-ink-faint">
-            Bookings made at{' '}
-            <Link href="/book" className="text-brand-700 underline">/book</Link>{' '}
-            appear here. If patients cannot find a slot, add opening hours in Settings.
+            Book one above, or send patients to{' '}
+            <Link href="/book" className="text-brand-700 underline">/book</Link>. If
+            nobody can find a slot, add opening hours in Settings.
           </p>
         </div>
       ) : (
@@ -79,7 +187,7 @@ export function AppointmentsView({
           {[...days.entries()].map(([day, list]) => (
             <section
               key={day}
-              className="overflow-hidden rounded-[10px] border border-line bg-surface"
+              className="overflow-visible rounded-[10px] border border-line bg-surface"
             >
               <div className="border-b border-line bg-sunk px-4 py-2.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">
                 {day} · {list.length} appointment{list.length === 1 ? '' : 's'}
@@ -89,11 +197,16 @@ export function AppointmentsView({
                 const name = row.patientFirstName
                   ? `${row.patientFirstName} ${row.patientLastName}`
                   : row.bookedName;
+                const done = row.status === 'COMPLETED';
+                const missed = row.status === 'DID_NOT_ATTEND';
 
                 return (
                   <div
                     key={row.id}
-                    className="flex flex-wrap items-center gap-3 border-b border-line-soft px-4 py-3 last:border-b-0"
+                    className={cn(
+                      'relative flex flex-wrap items-center gap-3 border-b border-line-soft px-4 py-3 last:border-b-0',
+                      (done || missed) && 'opacity-60',
+                    )}
                   >
                     <span className="tabular w-[46px] shrink-0 font-mono text-[13px] font-medium text-ink-soft">
                       {time(row.startsAt)}
@@ -101,35 +214,59 @@ export function AppointmentsView({
 
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-[14.5px] font-medium text-ink">
-                        {name}
+                        {row.patientId ? (
+                          <Link
+                            href={`/patients/${row.patientId}`}
+                            className="hover:text-brand-700 hover:underline"
+                          >
+                            {name}
+                          </Link>
+                        ) : (
+                          name
+                        )}
                       </span>
                       <span className="block truncate text-[12.5px] text-ink-faint">
                         {row.serviceName} · {row.reference}
-                        {row.submissionId ? ' · form completed' : ' · form not completed'}
                       </span>
                     </span>
 
-                    {row.status === 'COMPLETED' ? (
+                    <FormBadge row={row} />
+
+                    {done ? (
                       <span className="rounded-[5px] bg-safe-100 px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-safe-700">
                         Done
                       </span>
+                    ) : missed ? (
+                      <span className="rounded-[5px] bg-sunk px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide text-ink-faint">
+                        No show
+                      </span>
                     ) : row.status === 'ARRIVED' ? (
-                      row.submissionId ? (
+                      row.submissionId && row.formState === 'submitted' ? (
                         <Link
                           href={`/consultations/${row.submissionId}`}
                           className="rounded-[6px] bg-brand-600 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700"
                         >
-                          Start
+                          Start consultation
                         </Link>
                       ) : (
-                        <span className="flex items-center gap-1.5 rounded-[6px] bg-review-100 px-2.5 py-1 font-mono text-[10.5px] uppercase text-review-700">
-                          <FileText size={11} strokeWidth={2.2} /> No form yet
-                        </span>
+                        // Arrived without a completed form. Rather than a dead
+                        // end, hand staff the tablet link so it can be filled in
+                        // at the counter — which is how most walk-ins go.
+                        <Link
+                          href={
+                            row.resumeToken
+                              ? `/f/${row.serviceSlug}?s=${encodeURIComponent(row.resumeToken)}`
+                              : `/f/${row.serviceSlug}`
+                          }
+                          className="rounded-[6px] border border-review-200 bg-review-50 px-3 py-1.5 text-[12.5px] font-semibold text-review-700 transition-colors hover:bg-review-100"
+                        >
+                          Fill form now
+                        </Link>
                       )
                     ) : (
                       <button
                         type="button"
-                        onClick={() => arrive(row.id)}
+                        onClick={() => run(row.id, () => markArrived(row.id))}
                         disabled={busy === row.id}
                         className={cn(
                           'flex items-center gap-1.5 rounded-[6px] border border-line px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink',
@@ -144,6 +281,84 @@ export function AppointmentsView({
                         Arrived
                       </button>
                     )}
+
+                    {/* Row menu */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        aria-label={`Actions for ${name}`}
+                        onClick={() => setMenu(menu === row.id ? null : row.id)}
+                        className="flex h-7 w-7 items-center justify-center rounded-[6px] border border-line text-ink-faint transition-colors hover:border-brand-300 hover:text-ink"
+                      >
+                        <MoreHorizontal size={14} />
+                      </button>
+
+                      {menu === row.id ? (
+                        <>
+                          <button
+                            type="button"
+                            aria-hidden
+                            tabIndex={-1}
+                            className="fixed inset-0 z-10 cursor-default"
+                            onClick={() => setMenu(null)}
+                          />
+                          <div className="absolute right-0 top-8 z-20 w-[212px] overflow-hidden rounded-[9px] border border-line bg-surface py-1 shadow-pop">
+                            {row.resumeToken ? (
+                              <button
+                                type="button"
+                                onClick={() => copyFormLink(row)}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-soft hover:bg-sunk"
+                              >
+                                <Link2 size={13} />
+                                {copied === row.id ? 'Link copied' : 'Copy form link'}
+                              </button>
+                            ) : null}
+
+                            {!done ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRescheduling(row);
+                                  setMenu(null);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-soft hover:bg-sunk"
+                              >
+                                <CalendarClock size={13} />
+                                Reschedule
+                              </button>
+                            ) : null}
+
+                            {!done && !missed ? (
+                              <button
+                                type="button"
+                                onClick={() => run(row.id, () => markNoShow(row.id))}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-left text-[13px] text-ink-soft hover:bg-sunk"
+                              >
+                                <UserX size={13} />
+                                Did not attend
+                              </button>
+                            ) : null}
+
+                            {!done ? (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const reason = window.prompt(
+                                    'Why is this appointment being cancelled?',
+                                  );
+                                  if (reason === null) return;
+                                  run(row.id, () => cancelAppointment(row.id, reason));
+                                }}
+                                className="flex w-full items-center gap-2 border-t border-line-soft px-3 py-2 text-left text-[13px] text-stop-700 hover:bg-stop-50"
+                              >
+                                <XCircle size={13} />
+                                Cancel appointment
+                              </button>
+                            ) : null}
+                          </div>
+                        </>
+                      ) : null}
+                    </div>
                   </div>
                 );
               })}
@@ -151,6 +366,18 @@ export function AppointmentsView({
           ))}
         </div>
       )}
+
+      {rescheduling ? (
+        <RescheduleDialog
+          appointment={rescheduling}
+          onClose={() => setRescheduling(null)}
+          onConfirm={async (startsAt, notify) => {
+            const id = rescheduling.id;
+            setRescheduling(null);
+            await run(id, () => rescheduleAppointment(id, startsAt, notify));
+          }}
+        />
+      ) : null}
     </div>
   );
 }

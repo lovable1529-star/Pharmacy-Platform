@@ -8,7 +8,7 @@
 
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ArrowLeft, Mail, Phone, MapPin, Stethoscope } from 'lucide-react';
+import { ArrowLeft, Mail, Phone, MapPin, Stethoscope, Pencil } from 'lucide-react';
 import { getStaffContext } from '@/lib/auth/context';
 import { getPatient, getPatientTimeline } from '@/lib/queries/clinical';
 import { formatDate, formatDateTime } from '@/lib/units';
@@ -32,9 +32,18 @@ export default async function PatientPage({ params }: { params: Promise<{ id: st
       </Link>
 
       <div className="mb-6 rounded-[10px] border border-line bg-surface px-5 py-5">
-        <h1 className="text-[26px] leading-tight text-ink">
-          {patient.firstName} {patient.lastName}
-        </h1>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h1 className="text-[26px] leading-tight text-ink">
+            {patient.firstName} {patient.lastName}
+          </h1>
+          <Link
+            href={`/patients/${patient.id}/edit`}
+            className="flex items-center gap-1.5 rounded-[7px] border border-line px-3 py-1.5 text-[13px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+          >
+            <Pencil size={13} strokeWidth={2.2} />
+            Edit details
+          </Link>
+        </div>
         <p className="tabular mt-1 font-mono text-[13px] text-ink-faint">
           {formatDate(patient.dateOfBirth)} · {ageInYears(patient.dateOfBirth)} years
           {patient.gender ? ` · ${patient.gender}` : ''}

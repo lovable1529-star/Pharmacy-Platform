@@ -93,6 +93,17 @@ function localWeekday(day: Date, timeZone: string): number {
   return toZonedTime(day, timeZone).getDay();
 }
 
+/**
+ * The weekday as the pharmacy sees it, not as the server does.
+ *
+ * Date#getDay() reads the server's zone. On a UTC+5:30 machine a 21:00 Sunday
+ * slot in Douglas is already Monday, so an availability lookup by weekday finds
+ * the wrong window — or none at all.
+ */
+export function localWeekdayOf(day: Date, timeZone = PHARMACY_TIMEZONE): number {
+  return localWeekday(day, timeZone);
+}
+
 /** The calendar date as the pharmacy sees it — YYYY-MM-DD. */
 export function localDateKey(day: Date, timeZone = PHARMACY_TIMEZONE): string {
   const local = toZonedTime(day, timeZone);

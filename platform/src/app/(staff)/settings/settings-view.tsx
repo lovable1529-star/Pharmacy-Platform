@@ -1,7 +1,9 @@
 'use client';
 
+import Link from 'next/link';
+
 import { useState } from 'react';
-import { Plus, Loader2, AlertTriangle } from 'lucide-react';
+import { Plus, Loader2, AlertTriangle, Clock, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { formatDate } from '@/lib/units';
 import { addBatch, addSurgery } from './actions';
@@ -40,6 +42,20 @@ export function SettingsView(props: Props) {
           The reference data behind every dropdown in the system. Yours to maintain.
         </p>
       </div>
+
+      <Link
+        href="/settings/hours"
+        className="mb-5 flex items-center gap-3 rounded-[10px] border border-line bg-surface px-4 py-3.5 transition-colors hover:border-brand-300"
+      >
+        <Clock size={17} strokeWidth={2} className="shrink-0 text-brand-600" />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[14.5px] font-medium text-ink">Opening hours</span>
+          <span className="block text-[13px] text-ink-faint">
+            When each branch takes appointments. Every bookable slot comes from here.
+          </span>
+        </span>
+        <ChevronRight size={16} className="shrink-0 text-ink-faint" />
+      </Link>
 
       <div className="mb-5 flex flex-wrap gap-1 rounded-[9px] bg-sunk p-1">
         {TABS.map((t) => (
