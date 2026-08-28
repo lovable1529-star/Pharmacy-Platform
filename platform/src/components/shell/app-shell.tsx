@@ -25,7 +25,7 @@ import Link from 'next/link';
 import {
   Search, LayoutDashboard, Users, Stethoscope, CalendarDays, RefreshCw,
   Package, Sparkles, Send, BarChart3, ShieldCheck, Settings, ChevronsUpDown, UserCog,
-  Check, Building2,
+  Check, Building2, Banknote,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import type { Permission } from '@/lib/tenancy/scope';
@@ -60,6 +60,7 @@ const NAV: NavItem[] = [
   { href: '/repeat-care', label: 'Repeat care', permission: 'repeat_care:view', icon: RefreshCw },
   { href: '/inventory', label: 'Inventory', permission: 'inventory:view', icon: Package },
   { href: '/services', label: 'Services', permission: 'services:view', icon: Sparkles },
+  { href: '/payments', label: 'Payments', permission: 'reports:view', icon: Banknote },
   { href: '/communications', label: 'Communications', permission: 'communications:view', icon: Send },
   { href: '/reports', label: 'Reports', permission: 'reports:view', icon: BarChart3 },
   { href: '/compliance', label: 'Compliance', permission: 'compliance:view', icon: ShieldCheck },

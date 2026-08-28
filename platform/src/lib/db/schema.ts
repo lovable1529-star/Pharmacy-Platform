@@ -443,6 +443,59 @@ export const consultationAddendum = pgTable('consultation_addendum', {
   occurredAt: timestamp('occurred_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [index('consultation_addendum_idx').on(t.consultationId, t.occurredAt)]);
 
+export const paymentStatusEnum = pgEnum('payment_status', [
+  'PENDING', 'PAID', 'CANCELLED', 'REFUNDED',
+]);
+
+/**
+ * DEMO is a first-class provider rather than a flag.
+ *
+ * Keeping it in the enum means a demonstration payment can never be quietly
+ * counted as a real one in a report or a reconciliation — the distinction
+ * survives every query, rather than depending on somebody remembering a
+ * boolean.
+ */
+export const paymentProviderEnum = pgEnum('payment_provider', [
+  'DEMO', 'STRIPE', 'IN_PERSON',
+]);
+
+/**
+ * A request for money.
+ *
+ * His GLP-1 flow is payment-gated: "GREEN/approved AMBER → secure payment link
+ * sent. Rx generated after payment." The prescription is issued on the
+ * transition to PAID, whichever provider reports it.
+ */
+export const payment = pgTable('payment', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  submissionId: uuid('submission_id').references(() => submission.id),
+  patientId: uuid('patient_id').references(() => patient.id),
+  branchId: uuid('branch_id').references(() => branch.id),
+  /** Integer pence. Never floats — 0.1 + 0.2 has no place near money. */
+  amountMinor: integer('amount_minor').notNull(),
+  currency: text('currency').default('GBP').notNull(),
+  description: text('description').notNull(),
+  status: paymentStatusEnum('status').default('PENDING').notNull(),
+  provider: paymentProviderEnum('provider').default('DEMO').notNull(),
+  providerRef: text('provider_ref'),
+  /**
+   * The unguessable half of the payment link. Same reasoning as the resume
+   * token: the patient has no account, so the link IS the credential and must
+   * not be derivable from anything printed on a receipt.
+   */
+  accessToken: text('access_token').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
+  paidAt: timestamp('paid_at', { withTimezone: true }),
+  cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('payment_token_idx').on(t.accessToken),
+  index('payment_submission_idx').on(t.submissionId),
+  index('payment_org_status_idx').on(t.organisationId, t.status),
+]);
+
 export const repeatEnrolmentStatusEnum = pgEnum('repeat_enrolment_status', [
   'ACTIVE', 'PAUSED', 'STOPPED',
 ]);

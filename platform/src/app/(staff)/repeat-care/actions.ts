@@ -16,7 +16,9 @@
 import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { action } from '@/lib/actions';
-import { submission, reviewEvent } from '@/lib/db/schema';
+import { submission, reviewEvent, service, patient } from '@/lib/db/schema';
+import { db } from '@/lib/db/client';
+import { requestPayment } from '@/lib/payments/lifecycle';
 
 export type ReviewAction = 'APPROVED' | 'REJECTED' | 'INFO_REQUESTED';
 
@@ -72,6 +74,49 @@ const decide = action<DecideInput>('repeat_care:edit')
     };
   });
 
+/**
+ * Raise the invoice for an approved request.
+ *
+ * Priced from the service, because that is where the pharmacy maintains it. A
+ * service with no price is not an error — plenty are NHS-funded — it simply
+ * means nothing to collect and the supply proceeds straight away.
+ */
+async function requestPaymentForSubmission(submissionId: string): Promise<string | null> {
+  try {
+    const [row] = await db
+      .select({
+        organisationId: submission.organisationId,
+        patientId: submission.patientId,
+        branchId: submission.branchId,
+        serviceName: service.name,
+        priceMinor: service.priceMinor,
+        email: patient.email,
+      })
+      .from(submission)
+      .innerJoin(service, eq(submission.serviceId, service.id))
+      .leftJoin(patient, eq(submission.patientId, patient.id))
+      .where(eq(submission.id, submissionId))
+      .limit(1);
+
+    if (!row || !row.priceMinor || row.priceMinor <= 0) return null;
+
+    const requested = await requestPayment({
+      organisationId: row.organisationId,
+      submissionId,
+      patientId: row.patientId,
+      branchId: row.branchId,
+      amountMinor: row.priceMinor,
+      description: row.serviceName,
+      email: row.email,
+    });
+
+    return requested?.url ?? null;
+  } catch (error) {
+    console.error('requestPaymentForSubmission failed', error);
+    return null;
+  }
+}
+
 export async function reviewSubmission(input: DecideInput & { outcome?: string | null }) {
   // A pharmacist overriding an AMBER must say why. Enforced server-side so it
   // holds regardless of what the browser sent.
@@ -91,8 +136,19 @@ export async function reviewSubmission(input: DecideInput & { outcome?: string |
 
   try {
     const result = await decide(input);
+
+    // Approval is what triggers the payment request. His flow: "GREEN/approved
+    // AMBER -> secure payment link sent. Rx generated after payment." Best
+    // effort — a decision that saved must never be reported as failed because
+    // an email was slow.
+    let paymentUrl: string | null = null;
+
+    if (input.decision === 'APPROVED') {
+      paymentUrl = await requestPaymentForSubmission(input.submissionId);
+    }
+
     revalidatePath('/repeat-care');
-    return { ok: true as const, ...result };
+    return { ok: true as const, ...result, paymentUrl };
   } catch (error) {
     console.error('reviewSubmission failed', error);
     return {

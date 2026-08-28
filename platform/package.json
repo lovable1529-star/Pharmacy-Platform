@@ -15,7 +15,9 @@
     "db:migrate": "node scripts/migrate.mjs",
     "db:seed": "tsx scripts/seed.ts",
     "verify": "pnpm typecheck && pnpm test",
-    "sql:export": "tsx scripts/export-sql.ts"
+    "sql:export": "tsx scripts/export-sql.ts",
+    "check:schema": "tsx scripts/check-schema.ts",
+    "sample:prescription": "tsx --tsconfig scripts/tsconfig.json scripts/sample-prescription.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
