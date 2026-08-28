@@ -13,6 +13,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Mail, AlertTriangle, ShieldCheck, Check } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import { inviteUser } from '../actions';
 
 const input =
@@ -120,17 +121,12 @@ export function InviteForm({
 
             <div className="sm:col-span-2">
               <label className={label} htmlFor="role">Role</label>
-              <select
+              <SearchSelect
                 id="role"
-                required
                 value={roleId}
-                onChange={(e) => setRoleId(e.target.value)}
-                className={input}
-              >
-                {roles.map((r) => (
-                  <option key={r.id} value={r.id}>{r.name}</option>
-                ))}
-              </select>
+                onChange={setRoleId}
+                options={roles.map((r) => ({ value: r.id, label: r.name }))}
+              />
               {chosenRole?.description ? (
                 <p className="mt-1.5 text-[12.5px] text-ink-faint">{chosenRole.description}</p>
               ) : null}
@@ -138,17 +134,13 @@ export function InviteForm({
 
             <div>
               <label className={label} htmlFor="branch">Branch</label>
-              <select
+              <SearchSelect
                 id="branch"
                 value={branchId}
-                onChange={(e) => setBranchId(e.target.value)}
-                className={input}
-              >
-                <option value="">All branches</option>
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
+                onChange={setBranchId}
+                emptyLabel="All branches"
+                options={branches.map((b) => ({ value: b.id, label: b.name }))}
+              />
               <p className="mt-1.5 text-[12.5px] text-ink-faint">
                 Restrict a locum to the site they are covering.
               </p>

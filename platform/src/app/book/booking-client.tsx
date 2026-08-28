@@ -25,7 +25,6 @@ import {
 } from './actions';
 
 import 'react-day-picker/style.css';
-import 'react-phone-number-input/style.css';
 
 const PHARMACY_TIMEZONE = 'Europe/Isle_of_Man';
 

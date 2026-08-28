@@ -21,6 +21,7 @@ import {
   UserPlus, Lock, CircleSlash,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import { formatDate } from '@/lib/units';
 import {
   PERM_MODULES, PERM_ACTIONS, permKey, toggleCell, setModuleRow, effectivePermissions,
@@ -514,33 +515,25 @@ function UserRowView({
       </td>
 
       <td className="px-4 py-3">
-        <select
+        <SearchSelect
           value={user.roleId ?? ''}
           disabled={!canEdit || disabled || busy}
-          onChange={(e) => change({ roleId: e.target.value })}
-          className={select}
+          onChange={(next) => change({ roleId: next })}
           aria-label={`Role for ${user.fullName}`}
-        >
-          {!user.roleId ? <option value="">No role</option> : null}
-          {roles.map((r) => (
-            <option key={r.id} value={r.id}>{r.name}</option>
-          ))}
-        </select>
+          {...(!user.roleId ? { emptyLabel: 'No role' } : {})}
+          options={roles.map((r) => ({ value: r.id, label: r.name }))}
+        />
       </td>
 
       <td className="px-4 py-3">
-        <select
+        <SearchSelect
           value={user.branchId ?? ''}
           disabled={!canEdit || disabled || busy}
-          onChange={(e) => change({ branchId: e.target.value || null })}
-          className={select}
+          onChange={(next) => change({ branchId: next || null })}
           aria-label={`Branch for ${user.fullName}`}
-        >
-          <option value="">All branches</option>
-          {branches.map((b) => (
-            <option key={b.id} value={b.id}>{b.name}</option>
-          ))}
-        </select>
+          emptyLabel="All branches"
+          options={branches.map((b) => ({ value: b.id, label: b.name }))}
+        />
       </td>
 
       <td className="tabular px-4 py-3 font-mono text-[12px] text-ink-faint">

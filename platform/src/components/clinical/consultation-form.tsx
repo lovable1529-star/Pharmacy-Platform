@@ -24,6 +24,7 @@
 import { useMemo, useState } from 'react';
 import { Check, ShieldCheck, Loader2, AlertTriangle, Syringe, ClipboardCheck } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import { matchAllergens } from '@/lib/clinical/allergens';
 import { AnswerReview } from '@/components/clinical/answer-review';
 import { visibleFieldsForStep, activeWarnings, numberQuestions } from '@/lib/forms/runtime';
@@ -242,10 +243,17 @@ export function ConsultationForm({
 
           <div>
             <label className={label} htmlFor="clinician">Pharmacist</label>
-            <select id="clinician" value={clinicianId} onChange={(e) => setClinicianId(e.target.value)} className={control}>
-              <option value="">Choose…</option>
-              {clinicians.map((c) => <option key={c.id} value={c.id}>{c.fullName}</option>)}
-            </select>
+            <SearchSelect
+              id="clinician"
+              value={clinicianId}
+              onChange={setClinicianId}
+              placeholder="Choose…"
+              options={clinicians.map((c) => ({
+                value: c.id,
+                label: c.fullName,
+                hint: `GPhC ${c.gphcNumber}`,
+              }))}
+            />
             {selectedClinician ? (
               <p className="tabular mt-1 font-mono text-[11.5px] text-ink-faint">
                 GPhC {selectedClinician.gphcNumber}
@@ -257,14 +265,23 @@ export function ConsultationForm({
             <>
               <div>
                 <label className={label} htmlFor="batch">Vaccine</label>
-                <select id="batch" value={batchId} onChange={(e) => setBatchId(e.target.value)} className={control}>
-                  <option value="">Choose…</option>
-                  {batches.map((b) => (
-                    <option key={b.id} value={b.id} disabled={b.quantity <= 0}>
-                      {b.productName}{b.quantity <= 0 ? ' — out of stock' : ''}
-                    </option>
-                  ))}
-                </select>
+                <SearchSelect
+                  id="batch"
+                  value={batchId}
+                  onChange={setBatchId}
+                  placeholder="Choose…"
+                  options={batches.map((b) => ({
+                    value: b.id,
+                    label: b.productName,
+                    // Batch and expiry on the row, so the right box can be
+                    // picked without selecting it first to find out.
+                    hint:
+                      b.quantity <= 0
+                        ? 'Out of stock'
+                        : `Batch ${b.batchNumber} · expires ${formatDate(b.expiryDate)} · ${b.quantity} left`,
+                    disabled: b.quantity <= 0,
+                  }))}
+                />
                 {selectedBatch ? (
                   <p className="tabular mt-1 font-mono text-[11.5px] text-ink-faint">
                     Batch {selectedBatch.batchNumber} · expires {formatDate(selectedBatch.expiryDate)} · {selectedBatch.quantity} in stock
@@ -285,18 +302,24 @@ export function ConsultationForm({
 
               <div>
                 <label className={label} htmlFor="site">Site of administration</label>
-                <select id="site" value={site} onChange={(e) => setSite(e.target.value)} className={control}>
-                  <option value="">Choose…</option>
-                  {ADMINISTRATION_SITES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <SearchSelect
+                  id="site"
+                  value={site}
+                  onChange={setSite}
+                  placeholder="Choose…"
+                  options={ADMINISTRATION_SITES.map((s) => ({ value: s, label: s }))}
+                />
               </div>
 
               <div>
                 <label className={label} htmlFor="injection">Type of injection</label>
-                <select id="injection" value={injectionType} onChange={(e) => setInjectionType(e.target.value)} className={control}>
-                  <option value="">Choose…</option>
-                  {INJECTION_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
-                </select>
+                <SearchSelect
+                  id="injection"
+                  value={injectionType}
+                  onChange={setInjectionType}
+                  placeholder="Choose…"
+                  options={INJECTION_TYPES.map((t) => ({ value: t, label: t }))}
+                />
               </div>
             </>
           ) : null}

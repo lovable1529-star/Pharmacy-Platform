@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Loader2, Plus, ShieldCheck, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import { addAllergy, removeAllergy } from './allergy-actions';
 import { SEVERITIES } from './allergy-severities';
 
@@ -179,17 +180,13 @@ export function AllergiesPanel({
               <label className="mb-1.5 block text-[12.5px] font-medium text-ink-soft" htmlFor="al-sev">
                 Severity
               </label>
-              <select
+              <SearchSelect
                 id="al-sev"
                 value={severity}
-                onChange={(e) => setSeverity(e.target.value)}
-                className={input}
-              >
-                <option value="">Not stated</option>
-                {SEVERITIES.map((s) => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
+                onChange={setSeverity}
+                emptyLabel="Not stated"
+                options={SEVERITIES.map((s) => ({ value: s, label: s }))}
+              />
             </div>
           </div>
 

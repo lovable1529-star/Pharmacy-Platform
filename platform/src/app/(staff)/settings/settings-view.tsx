@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Plus, Loader2, AlertTriangle, Clock, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import {
   AddBranchForm, AddPharmacistForm, AddProductForm, PharmacistRowActions,
 } from './entity-forms';
@@ -269,10 +270,13 @@ function AddBatchForm({
       </h3>
 
       <div className="grid gap-3 sm:grid-cols-4">
-        <select value={productId} onChange={(e) => setProductId(e.target.value)} required className={input}>
-          <option value="">Product…</option>
-          {products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-        </select>
+        <SearchSelect
+          value={productId}
+          onChange={setProductId}
+          placeholder="Product…"
+          aria-label="Product"
+          options={products.map((p) => ({ value: p.id, label: p.name }))}
+        />
         <input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)}
           placeholder="Batch number" required className={input} />
         <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)}

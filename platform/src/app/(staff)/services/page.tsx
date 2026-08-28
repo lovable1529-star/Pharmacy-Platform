@@ -9,7 +9,7 @@
 
 import Link from 'next/link';
 import { eq, and, isNull, desc } from 'drizzle-orm';
-import { PencilLine, ExternalLink, Scale } from 'lucide-react';
+import { PencilLine, ExternalLink, Scale , Eye} from 'lucide-react';
 import { NewServiceButton } from './new-service-button';
 import { getStaffContext } from '@/lib/auth/context';
 import { can } from '@/lib/tenancy/scope';
@@ -102,13 +102,15 @@ export default async function ServicesPage() {
                 </div>
 
                 <div className="flex shrink-0 gap-2">
+                  {/* Preview, not the live form. Checking the wording should not
+                      mean completing every mandatory field and leaving a real
+                      submission behind. */}
                   <Link
-                    href={`/f/${row.slug}`}
-                    target="_blank"
+                    href={`/services/${row.slug}/preview`}
                     className="flex items-center gap-1.5 rounded-[7px] border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
                   >
-                    <ExternalLink size={13} strokeWidth={2} />
-                    Patient view
+                    <Eye size={13} strokeWidth={2} />
+                    Preview
                   </Link>
                   {editable ? (
                     <Link

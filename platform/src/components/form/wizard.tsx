@@ -93,7 +93,18 @@ export interface WizardProps {
    */
   onAnswersChange?: (answers: Answers) => void;
   submitLabel?: string;
-  /** Preview mode is read-only and never submits. */
+  /**
+   * Preview: explorable, but nothing is recorded.
+   *
+   * Controls stay ENABLED on purpose. The point of a preview is to see what the
+   * form does — including the questions that only appear once somebody answers
+   * "yes" — and a preview with the inputs greyed out can never show that. It
+   * was also the reason a colleague checking a form had to make a real
+   * submission to see the whole thing.
+   *
+   * What preview removes is consequence: no validation blocking, no locked
+   * steps, no submit, nothing saved.
+   */
   preview?: boolean;
 }
 
@@ -148,11 +159,14 @@ export function FormWizard({
   }
 
   const stepValidation = step ? validateStep(step, answers, options) : { valid: true, issues: [] };
+  // Nothing is required of somebody who is only looking.
   const errorFor = (fieldId: string) =>
-    showErrors ? stepValidation.issues.find((i) => i.fieldId === fieldId)?.message : undefined;
+    showErrors && !preview
+      ? stepValidation.issues.find((i) => i.fieldId === fieldId)?.message
+      : undefined;
 
   function goNext() {
-    if (!stepValidation.valid) { setShowErrors(true); return; }
+    if (!preview && !stepValidation.valid) { setShowErrors(true); return; }
     setShowErrors(false);
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -202,22 +216,30 @@ export function FormWizard({
         {/* ── Step tabs ─────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2 border-b border-line bg-sunk px-5 py-3.5">
           {steps.map((s, i) => {
-            const unlocked = isStepUnlocked(s, answers);
+            // In preview every step is reachable, in any order. Someone
+            // checking a form should be able to jump straight to the consent
+            // page without answering their way there.
+            const unlocked = preview || isStepUnlocked(s, answers);
             const active = i === stepIndex;
-            const complete = i < stepIndex;
+            const complete = !preview && i < stepIndex;
+            const reachable = preview || (unlocked && i <= stepIndex);
             return (
               <button
                 key={s.id}
                 type="button"
-                disabled={!unlocked || i > stepIndex}
-                onClick={() => setStepIndex(i)}
+                disabled={!reachable}
+                onClick={() => {
+                  setShowErrors(false);
+                  setStepIndex(i);
+                }}
                 aria-current={active ? 'step' : undefined}
                 className={cn(
                   'flex items-center gap-2 rounded-full px-3.5 py-1.5 text-[13px] font-medium transition-colors',
                   active && 'bg-surface text-ink shadow-[0_1px_2px_rgba(25,20,40,0.10)]',
                   !active && complete && 'text-safe-700 hover:bg-surface',
                   !active && !complete && 'text-ink-faint',
-                  (!unlocked || i > stepIndex) && 'cursor-not-allowed',
+                  !reachable && 'cursor-not-allowed',
+                  preview && !active && 'text-ink-soft hover:bg-surface hover:text-ink',
                 )}
               >
                 <span
@@ -259,7 +281,7 @@ export function FormWizard({
                           value={answers[field.id]}
                           answers={answers}
                           onChange={(v) => setAnswer(field.id, v)}
-                          disabled={preview}
+                          disabled={false}
                         />
                         {fieldWarnings.map((w) => (
                           <FieldWarning key={w.message} message={w.message} severity={w.severity} />
@@ -284,15 +306,21 @@ export function FormWizard({
                     <span />
                   )}
 
-                  {isLastStep ? (
+                  {isLastStep && preview ? (
+                    // In preview the last step ends in a statement of fact, not
+                    // a disabled button somebody will try to click anyway.
+                    <span className="rounded-[8px] border border-line bg-sunk px-4 py-2.5 text-[13.5px] text-ink-faint">
+                      End of the form — nothing is submitted in preview
+                    </span>
+                  ) : isLastStep ? (
                     <button
                       type="button"
                       onClick={submit}
-                      disabled={preview || submitting || blocked}
+                      disabled={submitting || blocked}
                       className={cn(
                         'flex items-center gap-2 rounded-[8px] px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
                         blocked ? 'cursor-not-allowed bg-ink-faint' : 'bg-brand-600 hover:bg-brand-700',
-                        (preview || submitting) && 'opacity-60',
+                        submitting && 'opacity-60',
                       )}
                     >
                       {submitting ? <Loader2 size={15} className="animate-spin" /> : null}

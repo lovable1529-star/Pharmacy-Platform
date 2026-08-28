@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Clock, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import {
   saveOpeningWindow, removeOpeningWindow, type WindowRow,
 } from './actions';
@@ -232,16 +233,12 @@ export function OpeningHoursEditor({
                 <label className="mb-1.5 block text-[13px] font-medium text-ink-soft" htmlFor="weekday">
                   Day
                 </label>
-                <select
+                <SearchSelect
                   id="weekday"
-                  value={draft.weekday}
-                  onChange={(e) => setDraft({ ...draft, weekday: Number(e.target.value) })}
-                  className={cn(inputCls, 'w-full')}
-                >
-                  {DAYS.map((d, i) => (
-                    <option key={d} value={i}>{d}</option>
-                  ))}
-                </select>
+                  value={String(draft.weekday)}
+                  onChange={(next) => setDraft({ ...draft, weekday: Number(next) })}
+                  options={DAYS.map((d, i) => ({ value: String(i), label: d }))}
+                />
               </div>
 
               <div className="flex gap-3">
@@ -276,16 +273,15 @@ export function OpeningHoursEditor({
                   <label className="mb-1.5 block text-[13px] font-medium text-ink-soft" htmlFor="slot">
                     Appointment length
                   </label>
-                  <select
+                  <SearchSelect
                     id="slot"
-                    value={draft.slotMinutes}
-                    onChange={(e) => setDraft({ ...draft, slotMinutes: Number(e.target.value) })}
-                    className={cn(inputCls, 'w-full')}
-                  >
-                    {[5, 10, 15, 20, 30, 45, 60].map((m) => (
-                      <option key={m} value={m}>{m} minutes</option>
-                    ))}
-                  </select>
+                    value={String(draft.slotMinutes)}
+                    onChange={(next) => setDraft({ ...draft, slotMinutes: Number(next) })}
+                    options={[5, 10, 15, 20, 30, 45, 60].map((m) => ({
+                      value: String(m),
+                      label: `${m} minutes`,
+                    }))}
+                  />
                 </div>
                 <div className="flex-1">
                   <label className="mb-1.5 block text-[13px] font-medium text-ink-soft" htmlFor="capacity">
@@ -307,19 +303,13 @@ export function OpeningHoursEditor({
                 <label className="mb-1.5 block text-[13px] font-medium text-ink-soft" htmlFor="service">
                   Service
                 </label>
-                <select
+                <SearchSelect
                   id="service"
                   value={draft.serviceId ?? ''}
-                  onChange={(e) =>
-                    setDraft({ ...draft, serviceId: e.target.value || null })
-                  }
-                  className={cn(inputCls, 'w-full')}
-                >
-                  <option value="">All services</option>
-                  {services.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                  onChange={(next) => setDraft({ ...draft, serviceId: next || null })}
+                  emptyLabel="All services"
+                  options={services.map((s) => ({ value: s.id, label: s.name }))}
+                />
                 <p className="mt-1 text-[12.5px] text-ink-faint">
                   Leave as all services unless this window is reserved for one thing.
                 </p>

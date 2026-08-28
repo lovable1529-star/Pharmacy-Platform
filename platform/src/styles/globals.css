@@ -1,6 +1,17 @@
 @import "tailwindcss";
 
 /*
+ * Imported once, here, rather than per component.
+ *
+ * It was previously imported by three of the four places that render a phone
+ * field — and the one that missed it was the patient questionnaire, where the
+ * control then had no sizing rules at all and the country flag rendered at
+ * whatever size it liked. A stylesheet a component depends on should not be
+ * something each caller has to remember.
+ */
+@import "react-phone-number-input/style.css";
+
+/*
  * Karsons design tokens.
  *
  * Colour discipline — this is the rule that keeps clinical screens readable:
@@ -214,9 +225,19 @@ h4 {
 
 /* ── Phone input ─────────────────────────────────────────── */
 
+/*
+ * The flag is hidden deliberately.
+ *
+ * react-phone-number-input sizes its flag from the inherited font-size, and
+ * inside a large form control that produced something the size of a postage
+ * stamp sitting next to 15px text. It also earns nothing: the dial code already
+ * says which country this is, and a patient in Onchan is not choosing between
+ * two nations of the same code. What stays is the country selector itself, for
+ * the rare traveller with a foreign number.
+ */
 .karsons-phone {
-  --PhoneInputCountryFlag-height: 1em;
   --PhoneInputCountrySelectArrow-color: var(--color-ink-faint);
+  --PhoneInputCountrySelectArrow-opacity: 1;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -225,6 +246,35 @@ h4 {
   border-radius: var(--radius-control);
   background: var(--color-surface);
   padding: 0 12px;
+}
+
+.karsons-phone .PhoneInputCountryIcon {
+  display: none;
+}
+
+/*
+ * Without the flag the country block would collapse to a bare arrow with no
+ * hit area, so it keeps a deliberate width and reads as a control.
+ */
+.karsons-phone .PhoneInputCountry {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Without the flag this would collapse to a 6px arrow. A country picker
+     nobody can hit on a phone is worse than one that is slightly wide. */
+  min-width: 30px;
+  margin-right: 8px;
+  border-right: 1px solid var(--color-line-soft);
+  align-self: stretch;
+}
+
+.karsons-phone .PhoneInputCountrySelectArrow {
+  width: 6px;
+  height: 6px;
+  margin-left: 0;
+  border-style: solid;
+  border-color: var(--color-ink-faint);
+  border-width: 0 1.5px 1.5px 0;
 }
 
 .karsons-phone:focus-within {

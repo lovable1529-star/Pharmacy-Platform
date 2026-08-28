@@ -22,6 +22,7 @@ import { useMemo, useState } from 'react';
 import {
   Plus, Trash2, ChevronUp, ChevronDown, Eye, Settings2, CornerDownRight,
   Stethoscope, Check, Layers,
+  PanelLeftClose, PanelRightClose, PanelRightOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { FormWizard } from '@/components/form/wizard';
@@ -85,6 +86,9 @@ export function ServiceDesigner({ initialSchema, serviceName, onPublish }: Desig
   const [schema, setSchema] = useState<FormSchema>(initialSchema);
   const [stepIndex, setStepIndex] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  // Side panels start open; either can be folded away to give the form room.
+  const [paletteOpen, setPaletteOpen] = useState(true);
+  const [inspectorOpen, setInspectorOpen] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
 
@@ -264,13 +268,58 @@ export function ServiceDesigner({ initialSchema, serviceName, onPublish }: Desig
         </div>
       </div>
 
-      <div className="grid min-h-0 flex-1 lg:grid-cols-[220px_1fr_300px]">
+      {/*
+        Both side panels collapse.
+
+        The middle column is the form — the thing being worked on — and it was
+        being squeezed into a third of the screen by a palette you only need
+        when adding a question and an inspector you only need when one is
+        selected. Collapsing either gives the form the room it should have had.
+      */}
+      <div
+        className={cn(
+          'grid min-h-0 flex-1',
+          paletteOpen && inspectorOpen && 'lg:grid-cols-[220px_1fr_300px]',
+          paletteOpen && !inspectorOpen && 'lg:grid-cols-[220px_1fr_0px]',
+          !paletteOpen && inspectorOpen && 'lg:grid-cols-[44px_1fr_300px]',
+          !paletteOpen && !inspectorOpen && 'lg:grid-cols-[44px_1fr_0px]',
+        )}
+      >
         {/* ── Palette ───────────────────────────────────── */}
-        <aside className="hidden min-h-0 flex-col overflow-y-auto border-r border-line bg-surface p-3 lg:flex">
-          <h2 className="mb-2 px-1 font-mono text-[10.5px] uppercase tracking-[0.09em] text-ink-faint">
-            Add a question
-          </h2>
-          <div className="flex flex-col gap-1">
+        <aside
+          className={cn(
+            'hidden min-h-0 flex-col overflow-y-auto border-r border-line bg-surface lg:flex',
+            paletteOpen ? 'p-3' : 'items-center p-2',
+          )}
+        >
+          {paletteOpen ? (
+            <div className="mb-2 flex items-center gap-1 px-1">
+              <h2 className="font-mono text-[10.5px] uppercase tracking-[0.09em] text-ink-faint">
+                Add a question
+              </h2>
+              <button
+                type="button"
+                onClick={() => setPaletteOpen(false)}
+                aria-label="Collapse the question palette"
+                title="Collapse"
+                className="ml-auto rounded-[5px] p-1 text-ink-faint transition-colors hover:bg-sunk hover:text-ink"
+              >
+                <PanelLeftClose size={14} strokeWidth={2} />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              aria-label="Show the question palette"
+              title="Add a question"
+              className="mb-1 rounded-[7px] border border-line p-2 text-ink-faint transition-colors hover:border-brand-300 hover:text-ink"
+            >
+              <Plus size={15} strokeWidth={2.4} />
+            </button>
+          )}
+
+          <div className={cn('flex flex-col gap-1', !paletteOpen && 'hidden')}>
             {PALETTE.map((item) => (
               <button
                 key={item.type + item.label}
@@ -311,6 +360,20 @@ export function ServiceDesigner({ initialSchema, serviceName, onPublish }: Desig
             >
               <Plus size={13} strokeWidth={2.2} /> Step
             </button>
+
+            {/* The way back for a collapsed inspector. Lives here rather than
+                floating over the form, so it cannot cover a question. */}
+            {!inspectorOpen ? (
+              <button
+                type="button"
+                onClick={() => setInspectorOpen(true)}
+                title="Show question settings"
+                className="ml-auto hidden shrink-0 items-center gap-1.5 rounded-[7px] border border-line bg-surface px-2.5 py-1.5 text-[12px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink lg:flex"
+              >
+                <PanelRightOpen size={13} strokeWidth={2} />
+                Settings
+              </button>
+            ) : null}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
@@ -367,9 +430,23 @@ export function ServiceDesigner({ initialSchema, serviceName, onPublish }: Desig
         </main>
 
         {/* ── Properties ────────────────────────────────── */}
-        <aside className="hidden min-h-0 flex-col overflow-y-auto border-l border-line bg-surface p-4 lg:flex">
+        <aside
+          className={cn(
+            'hidden min-h-0 flex-col overflow-y-auto border-l border-line bg-surface p-4 lg:flex',
+            !inspectorOpen && 'lg:hidden',
+          )}
+        >
           <h2 className="mb-3 flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.09em] text-ink-faint">
             <Settings2 size={12} strokeWidth={2} /> {selected ? 'Question' : 'Nothing selected'}
+            <button
+              type="button"
+              onClick={() => setInspectorOpen(false)}
+              aria-label="Collapse the question settings"
+              title="Collapse"
+              className="ml-auto rounded-[5px] p-1 text-ink-faint transition-colors hover:bg-sunk hover:text-ink"
+            >
+              <PanelRightClose size={14} strokeWidth={2} />
+            </button>
           </h2>
 
           {selected ? (

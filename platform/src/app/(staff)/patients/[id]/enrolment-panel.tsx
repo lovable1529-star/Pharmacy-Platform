@@ -16,6 +16,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Repeat, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import { formatDate } from '@/lib/units';
 import { saveEnrolment, setEnrolmentStatus } from './enrolment-actions';
 
@@ -276,17 +277,13 @@ export function EnrolmentPanel({
 
               <div>
                 <label className={label} htmlFor="en-service">Service</label>
-                <select
+                <SearchSelect
                   id="en-service"
                   value={form.serviceId}
-                  onChange={(e) => setForm({ ...form, serviceId: e.target.value })}
+                  onChange={(next) => setForm({ ...form, serviceId: next })}
                   disabled={Boolean(current)}
-                  className={cn(input, current && 'opacity-60')}
-                >
-                  {services.map((s) => (
-                    <option key={s.id} value={s.id}>{s.name}</option>
-                  ))}
-                </select>
+                  options={services.map((s) => ({ value: s.id, label: s.name }))}
+                />
               </div>
 
               <div className="flex flex-wrap gap-3">

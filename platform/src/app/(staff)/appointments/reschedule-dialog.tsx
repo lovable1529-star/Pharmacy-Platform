@@ -17,6 +17,7 @@ import { DayPicker } from 'react-day-picker';
 import { enGB } from 'date-fns/locale';
 import { Loader2, X } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import { PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
 import { getRescheduleSlots, type DaySlots } from './actions';
 import type { AppointmentRow } from './appointments-view';
@@ -119,16 +120,12 @@ export function RescheduleDialog({
               >
                 Branch
               </label>
-              <select
+              <SearchSelect
                 id="reschedule-branch"
                 value={branchId}
-                onChange={(e) => setBranchId(e.target.value)}
-                className="w-full rounded-[7px] border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-brand-400"
-              >
-                {branches.map((b) => (
-                  <option key={b.id} value={b.id}>{b.name}</option>
-                ))}
-              </select>
+                onChange={setBranchId}
+                options={branches.map((b) => ({ value: b.id, label: b.name }))}
+              />
               {branchId !== currentBranchId ? (
                 <p className="mt-1 text-[12.5px] text-review-700">
                   Moving sites. Their questionnaire and answers come with them.

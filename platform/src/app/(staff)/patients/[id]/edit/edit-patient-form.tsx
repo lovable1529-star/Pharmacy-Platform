@@ -15,8 +15,8 @@ import { useRouter } from 'next/navigation';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import { AlertTriangle, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import { updatePatient } from '../actions';
-import 'react-phone-number-input/style.css';
 
 export interface EditablePatient {
   id: string;
@@ -230,17 +230,13 @@ export function EditPatientForm({
 
         <div className="mt-3.5">
           <label className={labelCls} htmlFor="gpSurgeryId">GP surgery</label>
-          <select
+          <SearchSelect
             id="gpSurgeryId"
             value={form.gpSurgeryId}
-            onChange={(e) => set('gpSurgeryId')(e.target.value)}
-            className={inputCls}
-          >
-            <option value="">Not recorded</option>
-            {surgeries.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+            onChange={set('gpSurgeryId')}
+            emptyLabel="Not recorded"
+            options={surgeries.map((s) => ({ value: s.id, label: s.name }))}
+          />
         </div>
       </div>
 

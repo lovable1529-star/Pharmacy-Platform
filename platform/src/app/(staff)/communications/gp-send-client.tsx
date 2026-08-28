@@ -19,6 +19,7 @@ import {
   AlertTriangle, Check, Loader2, Mail, RefreshCw, Send,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import { PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
 import { getGpRecords, sendToGp, type GpRecord } from './actions';
 
@@ -138,17 +139,13 @@ export function GpSendClient() {
           <label className="mb-1.5 block text-[12.5px] font-medium text-ink-soft" htmlFor="gp-surgery">
             Practice
           </label>
-          <select
+          <SearchSelect
             id="gp-surgery"
             value={surgeryId}
-            onChange={(e) => setSurgeryId(e.target.value)}
-            className={cn(control, 'w-full')}
-          >
-            <option value="">All practices</option>
-            {surgeries.map((s) => (
-              <option key={s.id} value={s.id}>{s.name}</option>
-            ))}
-          </select>
+            onChange={setSurgeryId}
+            emptyLabel="All practices"
+            options={surgeries.map((s) => ({ value: s.id, label: s.name }))}
+          />
         </div>
         <label className="flex items-center gap-2 pb-2 text-[13px] text-ink-soft">
           <input

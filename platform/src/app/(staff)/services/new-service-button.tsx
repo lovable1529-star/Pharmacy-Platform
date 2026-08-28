@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Plus, X, Loader2, AlertTriangle, Copy } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import { duplicateService } from './actions';
 
 export interface DuplicableService {
@@ -80,16 +81,14 @@ export function NewServiceButton({ services }: { services: DuplicableService[] }
               <label htmlFor="source" className="mb-1.5 block text-[13px] font-medium text-ink">
                 Copy from
               </label>
-              <select
-                id="source"
-                value={sourceId}
-                onChange={(e) => { setSourceId(e.target.value); setCopyRules(false); }}
-                className="mb-4 w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[14px] text-ink focus:border-brand-400 focus:outline-none"
-              >
-                {services.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
+              <div className="mb-4">
+                <SearchSelect
+                  id="source"
+                  value={sourceId}
+                  onChange={(next) => { setSourceId(next); setCopyRules(false); }}
+                  options={services.map((s) => ({ value: s.id, label: s.name }))}
+                />
+              </div>
 
               <label htmlFor="name" className="mb-1.5 block text-[13px] font-medium text-ink">
                 Name the new service

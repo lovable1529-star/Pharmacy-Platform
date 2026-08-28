@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Loader2, AlertTriangle, Users } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import { formatDate } from '@/lib/units';
 import { similarity, type PatientRecord } from '@/lib/patients/search';
 import { createPatient } from './actions';
@@ -159,13 +160,17 @@ export function NewPatientForm({
           </div>
           <div>
             <label className={label} htmlFor="gender">Gender</label>
-            <select id="gender" value={form.gender}
-              onChange={(e) => set('gender')(e.target.value)} className={input}>
-              <option value="">Prefer not to say</option>
-              <option value="female">Female</option>
-              <option value="male">Male</option>
-              <option value="other">Other</option>
-            </select>
+            <SearchSelect
+              id="gender"
+              value={form.gender}
+              onChange={set('gender')}
+              emptyLabel="Prefer not to say"
+              options={[
+                { value: 'female', label: 'Female' },
+                { value: 'male', label: 'Male' },
+                { value: 'other', label: 'Other' },
+              ]}
+            />
           </div>
           {form.gender === 'other' ? (
             <div className="sm:col-span-2">
@@ -201,11 +206,13 @@ export function NewPatientForm({
           </div>
           <div className="sm:col-span-2">
             <label className={label} htmlFor="gp">GP surgery</label>
-            <select id="gp" value={form.gpSurgeryId}
-              onChange={(e) => set('gpSurgeryId')(e.target.value)} className={input}>
-              <option value="">Not known</option>
-              {surgeries.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-            </select>
+            <SearchSelect
+              id="gp"
+              value={form.gpSurgeryId}
+              onChange={set('gpSurgeryId')}
+              emptyLabel="Not known"
+              options={surgeries.map((s) => ({ value: s.id, label: s.name }))}
+            />
           </div>
         </div>
 

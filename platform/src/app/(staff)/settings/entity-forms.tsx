@@ -13,6 +13,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, Plus } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import {
   saveClinician, saveProduct, saveBranch, archiveClinician,
 } from './entity-actions';
@@ -277,16 +278,12 @@ export function AddBranchForm({
     >
       <div>
         <label className={label} htmlFor="br-company">Operated by</label>
-        <select
+        <SearchSelect
           id="br-company"
           value={companyId}
-          onChange={(e) => setCompanyId(e.target.value)}
-          className={input}
-        >
-          {companies.map((c) => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
+          onChange={setCompanyId}
+          options={companies.map((c) => ({ value: c.id, label: c.name }))}
+        />
       </div>
 
       <div className="flex flex-wrap gap-3">

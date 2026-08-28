@@ -20,10 +20,10 @@ import { enGB } from 'date-fns/locale';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import { Loader2, Check } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import { PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
 import { getCounterSlots, bookAtCounterAction, type DaySlots } from '../actions';
 import 'react-day-picker/style.css';
-import 'react-phone-number-input/style.css';
 
 function time(iso: string): string {
   return new Intl.DateTimeFormat('en-GB', {
@@ -122,16 +122,12 @@ export function CounterBookingForm({
 
       <div className="rounded-[10px] border border-line bg-surface p-5">
         <label className={label} htmlFor="service">Service</label>
-        <select
+        <SearchSelect
           id="service"
           value={serviceId}
-          onChange={(e) => setServiceId(e.target.value)}
-          className={input}
-        >
-          {services.map((s) => (
-            <option key={s.id} value={s.id}>{s.name}</option>
-          ))}
-        </select>
+          onChange={setServiceId}
+          options={services.map((s) => ({ value: s.id, label: s.name }))}
+        />
       </div>
 
       <div className="rounded-[10px] border border-line bg-surface p-5">

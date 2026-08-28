@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import { Check, Upload, Camera, Eraser, Info, AlertTriangle, OctagonX, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { SearchSelect } from '@/components/ui/search-select';
 import { canUpload, uploadFile, useUploadTarget } from './upload-context';
 import { isStoredFileRef, formatFileSize } from './stored-file';
 import {
@@ -341,28 +342,27 @@ export function CheckList({ field, value, onChange, disabled }: FieldProps) {
 // 6 · Dropdown
 // ─────────────────────────────────────────────────────────────
 
-export function Dropdown({ field, value, onChange, disabled }: FieldProps) {
+/**
+ * A dropdown you can type into.
+ *
+ * The GP surgery list is eleven Isle of Man practices and the country list is
+ * every country there is. A native select makes somebody scroll both, on a
+ * phone, while a pharmacist waits.
+ */
+export function Dropdown({ field, value, onChange, disabled, error }: FieldProps) {
   return (
-    <select
+    <SearchSelect
       id={field.id}
-      disabled={disabled}
       value={typeof value === 'string' ? value : ''}
-      onChange={(e) => onChange(e.target.value || undefined)}
-      className={cn(inputClass, 'appearance-none bg-[length:16px] pr-9')}
-      style={{
-        backgroundImage:
-          "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%237C7594' stroke-width='2.2' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E\")",
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'right 12px center',
-      }}
-    >
-      <option value="">Please choose…</option>
-      {(field.options ?? []).map((option) => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
+      onChange={(next) => onChange(next || undefined)}
+      disabled={disabled}
+      invalid={Boolean(error)}
+      placeholder={field.placeholder ?? 'Please choose…'}
+      options={(field.options ?? []).map((option) => ({
+        value: option.value,
+        label: option.label,
+      }))}
+    />
   );
 }
 
