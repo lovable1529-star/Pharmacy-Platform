@@ -1,0 +1,744 @@
+<title>Configurable Rules Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Source+Sans+3:wght@400;500;600&display=swap">
+
+<style>
+  /* ── Tokens ────────────────────────────────────────────────────────
+     Cooler slate neutrals than the client walkthrough, deliberately:
+     this is the engineering document, not the one Muka is handed. The
+     triage colours stay exactly what they mean in the product. */
+  :root {
+    --ink:       #131720;
+    --ink-soft:  #3B4453;
+    --ink-faint: #6B7488;
+    --canvas:    #F7F8FA;
+    --surface:   #FFFFFF;
+    --sunk:      #EFF1F5;
+    --line:      #E1E5EC;
+    --line-soft: #EDEFF4;
+    --brand:     #6B4FBB;
+    --brand-dim: #F1ECFB;
+    --go:        #2E7D52;
+    --go-dim:    #E6F3EB;
+    --warn:      #A96A08;
+    --warn-dim:  #FBF1DD;
+    --stop:      #B3261E;
+    --stop-dim:  #FBEAE8;
+    --code-bg:   #171B24;
+    --code-ink:  #DDE3EC;
+    --shadow-sm: 0 1px 2px rgba(19,23,32,.05);
+    --shadow:    0 1px 2px rgba(19,23,32,.05), 0 10px 28px -14px rgba(19,23,32,.22);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink:       #E8ECF3;
+      --ink-soft:  #AEB7C6;
+      --ink-faint: #7F8899;
+      --canvas:    #0D1017;
+      --surface:   #161A23;
+      --sunk:      #1F242F;
+      --line:      #2A303C;
+      --line-soft: #222833;
+      --brand:     #B79EF2;
+      --brand-dim: #241E38;
+      --go:        #74D3A0;
+      --go-dim:    #15281E;
+      --warn:      #E8B063;
+      --warn-dim:  #2C2113;
+      --stop:      #F29A92;
+      --stop-dim:  #2F1917;
+      --code-bg:   #1F242F;
+      --code-ink:  #DDE3EC;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.45);
+      --shadow:    0 1px 2px rgba(0,0,0,.45), 0 10px 28px -14px rgba(0,0,0,.7);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ink:       #E8ECF3;
+    --ink-soft:  #AEB7C6;
+    --ink-faint: #7F8899;
+    --canvas:    #0D1017;
+    --surface:   #161A23;
+    --sunk:      #1F242F;
+    --line:      #2A303C;
+    --line-soft: #222833;
+    --brand:     #B79EF2;
+    --brand-dim: #241E38;
+    --go:        #74D3A0;
+    --go-dim:    #15281E;
+    --warn:      #E8B063;
+    --warn-dim:  #2C2113;
+    --stop:      #F29A92;
+    --stop-dim:  #2F1917;
+    --code-bg:   #1F242F;
+    --code-ink:  #DDE3EC;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.45);
+    --shadow:    0 1px 2px rgba(0,0,0,.45), 0 10px 28px -14px rgba(0,0,0,.7);
+  }
+
+  body {
+    margin: 0; background: var(--canvas); color: var(--ink);
+    font-family: "Source Sans 3", ui-sans-serif, system-ui, sans-serif;
+    font-size: 16.5px; line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 1020px; margin: 0 auto; padding: 0 30px 96px; }
+  .col { max-width: 70ch; }
+
+  /* ── Masthead ─────────────────────────────────────────────────── */
+  .masthead { padding: 66px 0 34px; border-bottom: 2px solid var(--ink); margin-bottom: 8px; }
+  .kicker {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    font-size: 11px; font-weight: 500; letter-spacing: .16em;
+    text-transform: uppercase; color: var(--brand); margin: 0 0 16px;
+  }
+  h1 {
+    font-family: Archivo, ui-sans-serif, sans-serif; font-weight: 700;
+    font-size: clamp(33px, 5vw, 52px); line-height: 1.03;
+    letter-spacing: -.028em; text-wrap: balance; margin: 0 0 18px;
+  }
+  .standfirst { font-size: 18.5px; color: var(--ink-soft); max-width: 60ch; margin: 0 0 22px; }
+  .sources {
+    font-family: "JetBrains Mono", monospace; font-size: 11.5px;
+    color: var(--ink-faint); display: grid; gap: 4px;
+  }
+
+  /* ── Sections ─────────────────────────────────────────────────── */
+  section { padding: 46px 0; border-bottom: 1px solid var(--line); }
+  .sec-n {
+    font-family: "JetBrains Mono", monospace; font-size: 11px;
+    font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 0 0 12px;
+  }
+  h2 {
+    font-family: Archivo, sans-serif; font-weight: 600;
+    font-size: clamp(24px, 3.2vw, 33px); line-height: 1.12;
+    letter-spacing: -.02em; text-wrap: balance; margin: 0 0 18px;
+  }
+  h3 {
+    font-family: Archivo, sans-serif; font-weight: 600; font-size: 17.5px;
+    letter-spacing: -.004em; margin: 34px 0 10px;
+  }
+  h4 {
+    font-family: "JetBrains Mono", monospace; font-size: 11.5px;
+    font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 26px 0 8px;
+  }
+  p { margin: 0 0 15px; }
+  .col ul, .col ol { margin: 0 0 15px; padding-left: 22px; }
+  li { margin-bottom: 7px; }
+  strong { font-weight: 600; }
+
+  code {
+    font-family: "JetBrains Mono", monospace; font-size: .85em;
+    background: var(--sunk); border: 1px solid var(--line-soft);
+    border-radius: 4px; padding: 1px 5px;
+  }
+  pre {
+    background: var(--code-bg); color: var(--code-ink);
+    border-radius: 9px; padding: 15px 17px; overflow-x: auto;
+    margin: 0 0 20px; font-size: 12.5px; line-height: 1.62;
+    font-family: "JetBrains Mono", monospace; box-shadow: var(--shadow);
+  }
+  pre .c { color: #8B94A6; }
+  pre .k { color: #C4A8F5; }
+
+  /* ── Callouts ─────────────────────────────────────────────────── */
+  .note {
+    border: 1px solid var(--line); border-left: 3px solid var(--brand);
+    background: var(--surface); border-radius: 9px;
+    padding: 15px 18px; margin: 0 0 20px; max-width: 70ch;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .tag {
+    display: block; font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--brand); margin-bottom: 6px;
+  }
+  .note.stop { border-left-color: var(--stop); background: var(--stop-dim); }
+  .note.stop .tag { color: var(--stop); }
+  .note.warn { border-left-color: var(--warn); background: var(--warn-dim); }
+  .note.warn .tag { color: var(--warn); }
+  .note.go   { border-left-color: var(--go); background: var(--go-dim); }
+  .note.go .tag { color: var(--go); }
+
+  /* ── Tables ───────────────────────────────────────────────────── */
+  .tablewrap {
+    overflow-x: auto; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--surface); margin: 22px 0 26px; box-shadow: var(--shadow-sm);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th {
+    font-family: "JetBrains Mono", monospace; font-size: 10px;
+    font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-faint); background: var(--sunk); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: 0; }
+  td code { white-space: nowrap; }
+  .num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .pill {
+    display: inline-block; font-family: "JetBrains Mono", monospace;
+    font-size: 10px; font-weight: 600; letter-spacing: .05em;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 999px; white-space: nowrap;
+  }
+  .pill.red   { background: var(--stop-dim); color: var(--stop); }
+  .pill.amber { background: var(--warn-dim); color: var(--warn); }
+  .pill.green { background: var(--go-dim);   color: var(--go); }
+  .pill.grey  { background: var(--sunk);     color: var(--ink-faint); }
+  .pill.brand { background: var(--brand-dim); color: var(--brand); }
+
+  /* ── Phases ───────────────────────────────────────────────────── */
+  .phase {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px 24px; margin: 0 0 16px;
+    box-shadow: var(--shadow-sm);
+  }
+  .phase.urgent { border-color: var(--stop); border-width: 1.5px; }
+  .phase-top {
+    display: flex; flex-wrap: wrap; align-items: baseline;
+    gap: 10px 14px; margin-bottom: 12px;
+  }
+  .phase-n {
+    font-family: "JetBrains Mono", monospace; font-size: 11.5px;
+    font-weight: 600; color: var(--brand); background: var(--brand-dim);
+    padding: 3px 9px; border-radius: 6px;
+  }
+  .phase h3 { margin: 0; font-size: 19px; flex: 1 1 260px; }
+  .effort {
+    font-family: "JetBrains Mono", monospace; font-size: 11.5px;
+    color: var(--ink-faint); white-space: nowrap;
+  }
+  .phase ul { margin: 10px 0 0; padding-left: 20px; }
+  .phase li { font-size: 15px; color: var(--ink-soft); }
+  .phase > p { color: var(--ink-soft); font-size: 15.5px; }
+
+  /* ── Mock UI ──────────────────────────────────────────────────── */
+  figure { margin: 26px 0 30px; padding: 22px 20px 16px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 13px; box-shadow: var(--shadow); }
+  .figscroll { overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; }
+  figcaption {
+    margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--line-soft);
+    font-size: 13px; color: var(--ink-faint); line-height: 1.5;
+  }
+  figcaption b { color: var(--ink-soft); font-weight: 600; }
+  .svg-t { font-family: "Source Sans 3", sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--ink); }
+  .svg-s { font-family: "Source Sans 3", sans-serif; font-size: 11px; fill: var(--ink-faint); }
+  .svg-m { font-family: "JetBrains Mono", monospace; font-size: 10px; font-weight: 500; fill: var(--ink-faint); letter-spacing: .06em; }
+  .svg-c { font-family: "JetBrains Mono", monospace; font-size: 10.5px; fill: var(--ink); }
+
+  footer { padding-top: 24px; font-size: 13px; color: var(--ink-faint); }
+
+  @media (max-width: 640px) {
+    .page { padding: 0 18px 72px; }
+    .masthead { padding-top: 42px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="kicker">Karsons Pharmacy Platform · Engineering plan</p>
+    <h1>Making the clinical rules configurable</h1>
+    <p class="standfirst">
+      What exists, what is quietly broken, and what it takes to put the decision
+      logic in Muka's hands — checked against his own two specifications and
+      against the live database rather than against the code alone.
+    </p>
+    <div class="sources">
+      <span>SOURCE · GLP1_Repeat_Care_Scope_of_Work.docx — 18/09/25</span>
+      <span>SOURCE · Karsons Pharmacy Flu Vaccine Development Overview.docx</span>
+      <span>SOURCE · live database, 30 August 2026</span>
+    </div>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-n">01 · Position</p>
+    <h2>The engine is good. Nothing else is.</h2>
+
+    <div class="col">
+      <p>The decision engine itself is the strongest part of the codebase. It is
+      pure — no database, no clock, no network — so it can be replayed against
+      any historical submission. It evaluates every rule rather than stopping at
+      the first match, records a full trace of what it considered, and treats a
+      rule whose field is missing as <strong>skipped</strong> rather than
+      passed. That last decision is what stops a blank answer from satisfying a
+      safety check.</p>
+      <p>Around it, three things are missing or wrong.</p>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>What</th><th>State</th><th>Consequence</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Rule authoring UI</td>
+            <td><span class="pill red">Does not exist</span></td>
+            <td>The designer edits questions only. The one UI path to a ruleset is duplicating a service that already has one, which copies rules verbatim. Nobody can write or change a rule.</td>
+          </tr>
+          <tr>
+            <td>Rules per service</td>
+            <td><span class="pill amber">1 of 3</span></td>
+            <td>Only <em>Weight Management — Repeat Request</em> has a published ruleset. Flu and first-consultation take no automatic view at all.</td>
+          </tr>
+          <tr>
+            <td>Two derived inputs</td>
+            <td><span class="pill red">Never computed</span></td>
+            <td>Four of the 24 GLP-1 rules silently skip on every submission — including both routes to GREEN. See below.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note stop">
+      <span class="tag">Found while checking this plan</span>
+      <p>On submission, <code>deriveValues()</code> is called with the form's own
+      answers, height, weight and date of birth — but never with the patient's
+      previous weight or previous strength. So
+      <code>derived.weightLossPercent</code> and
+      <code>derived.doseStepChange</code> are always <code>null</code>, and every
+      rule that reads them is skipped.</p>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Rule</th><th>Outcome</th><th>Needs</th><th>What it was for</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>dose-skip</code></td>
+            <td><span class="pill red">RED</span></td>
+            <td><code>doseStepChange</code></td>
+            <td>“No skipping strengths — only same or ±1.” His matrix marks this <strong>Block</strong>. It has never fired.</td>
+          </tr>
+          <tr>
+            <td><code>stable-continue</code></td>
+            <td><span class="pill green">GREEN</span></td>
+            <td><code>weightLossPercent</code></td>
+            <td>The main auto-approve path — ≥2% loss, good suppression, no snacking.</td>
+          </tr>
+          <tr>
+            <td><code>increase-supported</code></td>
+            <td><span class="pill green">GREEN</span></td>
+            <td><code>doseStepChange</code></td>
+            <td>The other auto-approve path.</td>
+          </tr>
+          <tr>
+            <td><code>weight-loss-below-target</code></td>
+            <td><span class="pill amber">AMBER</span></td>
+            <td><code>weightLossPercent</code></td>
+            <td>0–2% loss — suggest considering an increase.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <p><strong>Both GREEN routes are dead.</strong> With neither able to fire,
+      every repeat request falls through to the ruleset's default — which is
+      AMBER, by his own instruction. The tool is therefore safe, and completely
+      unable to do the thing he asked it to do:</p>
+      <p style="padding-left:18px;border-left:3px solid var(--line);color:var(--ink-soft)">
+        “Reduce pharmacist workload by auto-triaging requests into GREEN
+        (auto-approve), AMBER (review), or RED (block).”
+      </p>
+      <p>A pharmacist reviews one hundred per cent of requests today. Nobody
+      would notice from the screen — the queue simply looks busy.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-n">02 · Mandate</p>
+    <h2>He already asked for this, in writing</h2>
+
+    <div class="col">
+      <p>The scope of work lists among its deliverables:</p>
+      <p style="padding-left:18px;border-left:3px solid var(--brand);color:var(--ink-soft)">
+        “Admin guide for maintaining Config (age limits, thresholds, advice
+        text).”
+      </p>
+      <p>He expects to change age limits, thresholds and advice wording himself.
+      Today every one of those is a code change and a deploy.</p>
+      <p>More usefully, the specification tells us exactly what shape the editor
+      should be. Section 5 and the Decision Matrix are not prose — they are seven
+      tables, all in the same four columns:</p>
+      <p><code>Input</code> · <code>Condition</code> · <code>Outcome</code> ·
+      <code>Notes</code></p>
+      <p>That is the interface. He has already designed it; we should build the
+      thing he wrote rather than invent a rule-builder abstraction and then teach
+      it to him. The seven groups — eligibility, dose, supply length, BMI, missed
+      doses, adverse effects, supportive checks — become the editor's sections.</p>
+    </div>
+
+    <figure>
+      <div class="figscroll">
+        <svg viewBox="0 0 940 314" role="img" aria-label="Proposed rule editor: a table of rules per service, matching the four columns of the client's own decision matrix, with a condition builder below.">
+          <rect x="6" y="30" width="928" height="278" rx="11" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+          <text class="svg-m" x="6" y="20">SERVICES › WEIGHT MANAGEMENT — REPEAT REQUEST › RULES</text>
+
+          <rect x="22" y="44" width="896" height="26" rx="6" fill="var(--sunk)"></rect>
+          <text class="svg-m" x="36"  y="61">GROUP</text>
+          <text class="svg-m" x="150" y="61">CONDITION</text>
+          <text class="svg-m" x="520" y="61">OUTCOME</text>
+          <text class="svg-m" x="630" y="61">MESSAGE TO PHARMACIST</text>
+          <text class="svg-m" x="862" y="61">ON</text>
+
+          <g>
+            <text class="svg-s" x="36"  y="93">Eligibility</text>
+            <text class="svg-c" x="150" y="93">pregnancy  is  Yes</text>
+            <rect x="520" y="82" width="46" height="16" rx="8" fill="var(--stop-dim)"></rect>
+            <text class="svg-m" x="543" y="94" fill="var(--stop)" text-anchor="middle">RED</text>
+            <text class="svg-s" x="630" y="93">Block — advise booking</text>
+            <rect x="856" y="84" width="22" height="12" rx="6" fill="var(--go)"></rect>
+            <circle cx="872" cy="90" r="4.5" fill="#FFFFFF"></circle>
+            <line x1="22" y1="104" x2="918" y2="104" stroke="var(--line-soft)" stroke-width="1"></line>
+          </g>
+          <g>
+            <text class="svg-s" x="36"  y="126">Eligibility</text>
+            <text class="svg-c" x="150" y="126">age  &gt;  74   and   medicine  is  Wegovy</text>
+            <rect x="520" y="115" width="46" height="16" rx="8" fill="var(--stop-dim)"></rect>
+            <text class="svg-m" x="543" y="127" fill="var(--stop)" text-anchor="middle">RED</text>
+            <text class="svg-s" x="630" y="126">Outside licensed age range</text>
+            <rect x="856" y="117" width="22" height="12" rx="6" fill="var(--go)"></rect>
+            <circle cx="872" cy="123" r="4.5" fill="#FFFFFF"></circle>
+            <line x1="22" y1="137" x2="918" y2="137" stroke="var(--line-soft)" stroke-width="1"></line>
+          </g>
+          <g>
+            <rect x="22" y="141" width="896" height="70" rx="7" fill="var(--brand-dim)" stroke="var(--brand)" stroke-width="1.3"></rect>
+            <text class="svg-s" x="36"  y="162" fill="var(--brand)">Dose</text>
+            <text class="svg-c" x="150" y="162" fill="var(--brand)">dose step change  &gt;  1 step</text>
+            <rect x="520" y="151" width="46" height="16" rx="8" fill="var(--stop)"></rect>
+            <text class="svg-m" x="543" y="163" fill="#FFFFFF" text-anchor="middle">RED</text>
+            <text class="svg-s" x="630" y="162" fill="var(--brand)">Only same or ±1 allowed</text>
+            <rect x="856" y="153" width="22" height="12" rx="6" fill="var(--go)"></rect>
+            <circle cx="872" cy="159" r="4.5" fill="#FFFFFF"></circle>
+
+            <text class="svg-m" x="36" y="186" fill="var(--brand)">EDITING</text>
+            <rect x="150" y="174" width="132" height="22" rx="6" fill="var(--surface)" stroke="var(--brand)" stroke-width="1.2"></rect>
+            <text class="svg-c" x="160" y="189">dose step change</text>
+            <rect x="290" y="174" width="72" height="22" rx="6" fill="var(--surface)" stroke="var(--brand)" stroke-width="1.2"></rect>
+            <text class="svg-c" x="300" y="189">is above</text>
+            <rect x="370" y="174" width="46" height="22" rx="6" fill="var(--surface)" stroke="var(--brand)" stroke-width="1.2"></rect>
+            <text class="svg-c" x="386" y="189">1</text>
+            <text class="svg-s" x="428" y="189" fill="var(--brand)">+ add condition   ·   any / all</text>
+          </g>
+          <g>
+            <text class="svg-s" x="36"  y="234">BMI</text>
+            <text class="svg-c" x="150" y="234">bmi  is between  23  and  24.9</text>
+            <rect x="520" y="223" width="56" height="16" rx="8" fill="var(--warn-dim)"></rect>
+            <text class="svg-m" x="548" y="235" fill="var(--warn)" text-anchor="middle">AMBER</text>
+            <text class="svg-s" x="630" y="234">Pharmacist review</text>
+            <rect x="856" y="225" width="22" height="12" rx="6" fill="var(--go)"></rect>
+            <circle cx="872" cy="231" r="4.5" fill="#FFFFFF"></circle>
+            <line x1="22" y1="245" x2="918" y2="245" stroke="var(--line-soft)" stroke-width="1"></line>
+          </g>
+          <g>
+            <text class="svg-s" x="36"  y="267">Supportive</text>
+            <text class="svg-c" x="150" y="267">hydration  is under  1.5 L   and   has adverse effects</text>
+            <rect x="520" y="256" width="60" height="16" rx="8" fill="var(--sunk)"></rect>
+            <text class="svg-m" x="550" y="268" text-anchor="middle">ADVICE</text>
+            <text class="svg-s" x="630" y="267">Append hydration advice</text>
+            <rect x="856" y="258" width="22" height="12" rx="6" fill="var(--go)"></rect>
+            <circle cx="872" cy="264" r="4.5" fill="#FFFFFF"></circle>
+          </g>
+
+          <text class="svg-s" x="36" y="296">Draft · 24 rules · last published v1</text>
+          <rect x="700" y="282" width="98" height="20" rx="6" fill="var(--surface)" stroke="var(--line)" stroke-width="1.2"></rect>
+          <text class="svg-m" x="749" y="295" text-anchor="middle">SIMULATE</text>
+          <rect x="808" y="282" width="110" height="20" rx="6" fill="var(--brand)"></rect>
+          <text class="svg-m" x="863" y="295" fill="#FFFFFF" text-anchor="middle">PUBLISH v2</text>
+        </svg>
+      </div>
+      <figcaption>
+        <b>His decision matrix, made editable.</b> Same four columns, same seven
+        groups, plus an on/off switch per rule and the publish control the form
+        designer already has. The condition row is the only new interaction, and
+        it reads as a sentence rather than as a formula.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-n">03 · Design</p>
+    <h2>What gets built</h2>
+
+    <h3>The condition builder is bound to the form</h3>
+    <div class="col">
+      <p>The field picker offers only what that service's published questionnaire
+      actually collects, plus the calculated values available to it. It is not a
+      free text box, so a rule can never reference a question that does not
+      exist — which is the failure mode that produced the four dead rules and
+      would otherwise reappear the moment a question is renamed.</p>
+      <p>Operators come from the engine's existing set, worded for a pharmacist
+      rather than a programmer:</p>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Reads as</th><th>Engine</th><th>Used in his matrix for</th></tr></thead>
+        <tbody>
+          <tr><td>is / is not</td><td><code>eq</code> · <code>neq</code></td><td>Pregnancy, dose request, consent</td></tr>
+          <tr><td>is one of / is none of</td><td><code>in</code> · <code>nin</code></td><td>Adverse effect severity, suppression bands</td></tr>
+          <tr><td>is above / is under</td><td><code>gt</code> · <code>lt</code> · <code>gte</code> · <code>lte</code></td><td>Age limits, BMI, hydration, weeks on dose</td></tr>
+          <tr><td>is between</td><td><code>between</code></td><td>BMI 23–24.9</td></tr>
+          <tr><td>was answered / was not answered</td><td><code>exists</code> · <code>notExists</code></td><td>Notes, questions for the pharmacist</td></tr>
+          <tr><td>all of / any of / not</td><td><code>all</code> · <code>any</code> · <code>not</code></td><td>Every compound row in the matrix</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Outcomes are not only a colour</h3>
+    <div class="col">
+      <p>His matrix produces four different kinds of result, and the engine
+      already carries all four — they just have no editor:</p>
+      <ul>
+        <li><strong>Outcome</strong> — GREEN, AMBER, RED. Worst wins, always.</li>
+        <li><strong>Message to the pharmacist</strong> — why this fired.</li>
+        <li><strong>Message to the patient</strong> — never a dose instruction.</li>
+        <li><strong>Advice</strong> — non-blocking, appended to the summary and
+        printed on the back of the prescription. His hydration and BMI
+        congratulation rules are this kind, not a triage decision.</li>
+      </ul>
+      <p>Advice-only rules need a fifth pseudo-outcome in the editor so a rule
+      can attach guidance without moving the colour. The engine supports it
+      today by giving a GREEN rule an <code>advice</code> string; the editor
+      should present that as its own thing rather than making him understand the
+      trick.</p>
+    </div>
+
+    <h3>Versioning mirrors the form exactly</h3>
+    <div class="col">
+      <p>Draft, publish, immutable version, submission bound to the version that
+      judged it. All of that already exists in the schema —
+      <code>ruleset_version</code> is versioned per service and
+      <code>rule_evaluation</code> records which version decided each submission.
+      The editor writes drafts and publishes; it does not need new tables.</p>
+    </div>
+
+    <h3>The simulator is the reason the engine is pure</h3>
+    <div class="col">
+      <p>Before publishing, replay the draft ruleset against every historical
+      submission for that service and show what would change:</p>
+    </div>
+
+    <pre><span class="c">// Replaying draft v2 against 148 past submissions</span>
+  <span class="k">GREEN → AMBER</span>     3   <span class="c">tighter BMI band</span>
+  <span class="k">AMBER → GREEN</span>    22   <span class="c">weight-loss rule now firing</span>
+  <span class="k">AMBER → RED</span>       1   <span class="c">dose-skip now firing</span>
+  <span class="k">unchanged</span>       122
+                    <span class="c">→ 22 requests a pharmacist would no longer review</span></pre>
+
+    <div class="col">
+      <p>This matters more here than on a typical project because his own
+      specification is openly provisional — <em>“It's not 100% perfect”</em>, and
+      the thresholds are his best guess at numbers he has never been able to
+      test. Replay turns tuning from a gamble into a measurement, and it is the
+      single feature most likely to make him feel the tool is his.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-n">04 · His open question</p>
+    <h2>Scoring, or discrete rules?</h2>
+
+    <div class="col">
+      <p>From the specification:</p>
+      <p style="padding-left:18px;border-left:3px solid var(--line);color:var(--ink-soft)">
+        “Is it better with a scoring system (0–5) throughout the tool, with
+        points adding up to outcomes?”
+      </p>
+      <p><strong>Recommendation: both, split by purpose.</strong> Not a
+      compromise — the two halves of his matrix are genuinely different kinds of
+      judgement.</p>
+    </div>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Kind</th><th>Examples from his matrix</th><th>Mechanism</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>Absolute</strong><br><span class="pill grey">never scored</span></td>
+            <td>Pregnancy · age outside licence · severe adverse effect · ≥2 missed doses · BMI &lt;23 without a decrease · dose skip</td>
+            <td>Discrete rules. A single trigger decides on its own and cannot be outweighed by good scores elsewhere.</td>
+          </tr>
+          <tr>
+            <td><strong>Judgement</strong><br><span class="pill brand">scored</span></td>
+            <td>Suppression + snacking + weight loss + hydration → continue, increase, or decrease</td>
+            <td>A score, banded into an outcome and a recommendation.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="col">
+      <p>The danger in a pure scoring model is exactly the thing his tool exists
+      to prevent: a pregnant patient with excellent suppression, perfect
+      hydration and 4% weight loss accumulating enough points to clear a
+      threshold. Safety limits must be non-negotiable, and the engine's
+      worst-wins ordering already guarantees that a RED cannot be outvoted.</p>
+      <p>Implementing the scored half needs one new calculated value —
+      <code>score</code>, summing weights the editor exposes per answer — and
+      then ordinary band rules written on it. No engine change; a new
+      <code>DerivedCalculation</code> and a weights table in the editor.</p>
+    </div>
+
+    <div class="note">
+      <span class="tag">Decision needed from Muka</span>
+      <p>Scoring is Phase 4 and it is the one part of this plan I would not build
+      until he has used the discrete editor against real requests for a few
+      weeks. His instinct may be right, but the weights can only be chosen from
+      data he does not have yet — and the simulator is what will produce it.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-n">05 · Sequence</p>
+    <h2>Four phases</h2>
+
+    <div class="phase urgent">
+      <div class="phase-top">
+        <span class="phase-n">00</span>
+        <h3>Feed the engine what it is missing</h3>
+        <span class="effort">~half a day</span>
+      </div>
+      <p>Independent of the editor, and it should go in regardless. Pass the
+      patient's previous weight and previous strength into
+      <code>deriveValues()</code> at submission, so
+      <code>weightLossPercent</code> and <code>doseStepChange</code> stop being
+      null.</p>
+      <ul>
+        <li>Read the last completed supply for the patient before deriving.</li>
+        <li>Revives both GREEN routes and the <code>dose-skip</code> RED block.</li>
+        <li>Add a test proving a rule on a missing field is skipped and does not pass — the current behaviour is right and must stay right.</li>
+        <li>Backfill: re-evaluate historical submissions so the simulator has an honest baseline to compare against.</li>
+      </ul>
+    </div>
+
+    <div class="phase">
+      <div class="phase-top">
+        <span class="phase-n">01</span>
+        <h3>The rule editor</h3>
+        <span class="effort">~5–7 days</span>
+      </div>
+      <p>The core deliverable: his decision matrix, editable, per service.</p>
+      <ul>
+        <li>Rules list grouped by his seven categories, with drag-to-reorder for priority and a per-rule on/off switch.</li>
+        <li>Condition builder bound to the published form's real question IDs and calculated values; nested <em>all / any / not</em>.</li>
+        <li>Outcome, pharmacist message, patient message and advice per rule.</li>
+        <li>Draft autosave, then publish as the next immutable version.</li>
+        <li>Validation before publish: unreachable rules, rules referencing a question the current form no longer asks, and a ruleset with no default.</li>
+      </ul>
+    </div>
+
+    <div class="phase">
+      <div class="phase-top">
+        <span class="phase-n">02</span>
+        <h3>The simulator</h3>
+        <span class="effort">~2–3 days</span>
+      </div>
+      <p>Replay a draft against real historical submissions and show the
+      difference before anything goes live.</p>
+      <ul>
+        <li>Counts by transition, plus a drill-down into the affected submissions.</li>
+        <li>Per-rule firing counts, so a rule that never fires is visible rather than assumed to work — which is precisely how the four dead rules stayed hidden.</li>
+        <li>Cheap because the engine is already pure: no new evaluation path, just a different source of context.</li>
+      </ul>
+    </div>
+
+    <div class="phase">
+      <div class="phase-top">
+        <span class="phase-n">03</span>
+        <h3>Rules for the other services</h3>
+        <span class="effort">~1–2 days, plus his clinical input</span>
+      </div>
+      <p>Flu is genuinely simple and its specification already lists the
+      questions: fever in the last 24 hours (clinician-answered on the day),
+      currently unwell, flu vaccine within six months, pregnancy, allergies. Two
+      or three RED rules and an AMBER default would cover it.</p>
+      <ul>
+        <li>Authored by him in the new editor — the first real test of whether it works.</li>
+        <li>Vaccine → batch and expiry auto-fill is already supported by option metadata in the form schema; it needs configuring, not building.</li>
+      </ul>
+    </div>
+
+    <div class="phase">
+      <div class="phase-top">
+        <span class="phase-n">04</span>
+        <h3>Scoring, if he still wants it</h3>
+        <span class="effort">~3–4 days</span>
+      </div>
+      <p>Deliberately last. A <code>score</code> calculated value with editable
+      weights, banded by ordinary rules, and absolute safety rules still winning
+      outright. Decide after Phase 2 has produced real data.</p>
+    </div>
+
+    <div class="note go">
+      <span class="tag">Total</span>
+      <p>Phases 00–03 land the thing he actually asked for in roughly
+      <strong>nine to thirteen working days</strong>. Phase 00 alone is half a
+      day and is the difference between a tool that auto-approves and one that
+      sends everything to a pharmacist.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════ -->
+  <section>
+    <p class="sec-n">06 · Before starting</p>
+    <h2>What I need from him</h2>
+
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Question</th><th>Why it blocks</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Should <em>weeks on current dose</em> come from the patient's answer or from our own supply record?</td>
+            <td>His matrix leans on it for nearly every dose and supply rule. Self-reported is gameable, and he explicitly worries about patients circumventing checks. Our record is authoritative but only once repeat care has been running.</td>
+          </tr>
+          <tr>
+            <td>Who may publish a ruleset — owner only, or any pharmacist?</td>
+            <td>Publishing changes clinical behaviour for every subsequent patient. It should be a named permission, and my assumption is owner-only unless he says otherwise.</td>
+          </tr>
+          <tr>
+            <td>Confirm “Block” and RED are the same thing.</td>
+            <td>His matrix uses both words. The code treats them as one: refuse, advise, redirect to booking. Worth confirming rather than assuming.</td>
+          </tr>
+          <tr>
+            <td>Flu rules — his clinical call, not ours.</td>
+            <td>I will not invent vaccination rules. Phase 03 needs him for an hour.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">One thing to be candid about</span>
+      <p>The four dead rules were not caught by 30 passing tests, because the
+      tests exercise the engine with values supplied directly — they prove the
+      logic, not the wiring that feeds it. Phase 02's per-rule firing counts are
+      the durable fix for that class of problem, which is a good reason not to
+      treat the simulator as a nice-to-have.</p>
+    </div>
+  </section>
+
+  <footer>
+    Karsons Pharmacy Platform · rules configurability plan · 30 August 2026 ·
+    Written against GLP1_Repeat_Care_Scope_of_Work.docx, the flu development
+    overview, and the live database.
+  </footer>
+
+</div>
