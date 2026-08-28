@@ -24,6 +24,7 @@ import { sendPatientEmail, bookingConfirmation } from '@/lib/email/patient';
 import { getStaffContext } from '@/lib/auth/context';
 import { createBooking } from '@/lib/scheduling/book';
 import { buildFormUrl } from '@/lib/forms/draft';
+import { resolveAppUrl } from '@/lib/app-url';
 
 const LEAD_TIME_MINUTES = 0; // Staff can book right up to the minute; patients cannot.
 
@@ -631,7 +632,7 @@ export async function bookAtCounterAction(input: CounterBookingInput) {
     const booking = await bookAtCounter(input);
 
     if (input.sendEmail && input.email) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3100';
+      const appUrl = resolveAppUrl();
       void sendPatientEmail(
         input.email,
         bookingConfirmation({

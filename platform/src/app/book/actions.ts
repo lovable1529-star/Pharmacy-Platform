@@ -27,6 +27,7 @@ import {
 } from '@/lib/scheduling/slots';
 import { bookingConfirmation } from '@/lib/email/patient';
 import { sendPatientEmail } from '@/lib/email/patient';
+import { resolveAppUrl } from '@/lib/app-url';
 
 /** Nothing inside the next two hours — the pharmacy needs notice. */
 const LEAD_TIME_MINUTES = 120;
@@ -274,7 +275,7 @@ export async function bookAppointment(input: BookInput): Promise<BookResult> {
 
     if ('conflict' in result) return { ok: false, error: result.conflict };
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3100';
+    const appUrl = resolveAppUrl();
 
     // The token, never the reference. ONC-3JBX4 is printed on the confirmation
     // and read out over the phone; if it also unlocked the questionnaire, every

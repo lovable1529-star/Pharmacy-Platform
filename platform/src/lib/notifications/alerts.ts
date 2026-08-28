@@ -25,6 +25,7 @@ import { db } from '@/lib/db/client';
 import { branch, organisation } from '@/lib/db/schema';
 import { queueNotification } from '@/lib/notifications/outbox';
 import type { Answers } from '@/types/form-schema';
+import { resolveAppUrl } from '@/lib/app-url';
 
 export interface AlertInput {
   organisationId: string;
@@ -120,7 +121,7 @@ export async function alertPharmacist(input: AlertInput): Promise<void> {
     `${urgency}New ${input.serviceName} request from ${input.patientName}` +
     (input.outcome ? ` (${input.outcome})` : '');
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3100';
+  const appUrl = resolveAppUrl();
   const link = `${appUrl}/consultations/${input.submissionId}`;
 
   if (recipientEmail) {

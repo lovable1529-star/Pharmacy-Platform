@@ -21,6 +21,7 @@ import {
   payment, submission, service, patient, branch, organisation,
 } from '@/lib/db/schema';
 import { queueNotification } from '@/lib/notifications/outbox';
+import { resolveAppUrl } from '@/lib/app-url';
 import {
   generatePaymentToken, paymentExpiry, activeProvider, formatMoney,
   buildPaymentUrl, isDemoMode, type PaymentProvider,
@@ -57,7 +58,7 @@ export async function requestPayment(
 ): Promise<RequestedPayment | null> {
   if (input.amountMinor <= 0) return null;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3100';
+  const appUrl = resolveAppUrl();
 
   const [open] = await db
     .select({

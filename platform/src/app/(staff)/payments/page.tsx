@@ -1,4 +1,5 @@
 import { isDemoMode } from '@/lib/payments/provider';
+import { resolveAppUrl } from '@/lib/app-url';
 import { PaymentsClient } from './payments-client';
 
 export const dynamic = 'force-dynamic';
@@ -16,7 +17,7 @@ export default function PaymentsPage() {
 
       <PaymentsClient
         demo={isDemoMode()}
-        appUrl={process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3100'}
+        appUrl={resolveAppUrl()}
       />
     </div>
   );

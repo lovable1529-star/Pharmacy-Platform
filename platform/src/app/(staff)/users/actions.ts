@@ -23,6 +23,7 @@ import { getActor } from '@/lib/auth/actor';
 import { can } from '@/lib/tenancy/scope';
 import { normaliseGrid, type Permission } from '@/lib/tenancy/permissions';
 import { createSupabaseAdminClient, isInviteConfigured } from '@/lib/supabase/admin';
+import { resolveAppUrl } from '@/lib/app-url';
 
 // ─────────────────────────────────────────────────────────────
 // Reading
@@ -499,7 +500,7 @@ export async function inviteUser(input: InviteInput) {
 
   try {
     const admin = createSupabaseAdminClient();
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3100';
+    const appUrl = resolveAppUrl();
 
     const { data, error } = await admin.auth.admin.inviteUserByEmail(email, {
       redirectTo: `${appUrl}/auth/callback?next=/reset-password`,

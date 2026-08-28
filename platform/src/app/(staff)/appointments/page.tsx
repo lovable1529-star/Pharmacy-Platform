@@ -19,6 +19,7 @@ import { and, eq, gte, lte, ne } from 'drizzle-orm';
 import { getStaffContext } from '@/lib/auth/context';
 import { getBranchesForActor } from '@/lib/auth/actor';
 import { db } from '@/lib/db/client';
+import { resolveAppUrl } from '@/lib/app-url';
 import {
   appointment, service, patient, submission, ruleEvaluation,
 } from '@/lib/db/schema';
@@ -133,7 +134,7 @@ export default async function AppointmentsPage() {
       branchName={activeBranch.name}
       branchId={activeBranch.id}
       branches={branches.map((b) => ({ id: b.id, name: b.name }))}
-      appUrl={process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3100'}
+      appUrl={resolveAppUrl()}
     />
   );
 }

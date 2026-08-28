@@ -26,6 +26,7 @@ import { appointmentReminder } from '@/lib/email/patient';
 import { queueNotification, drainOutbox } from '@/lib/notifications/outbox';
 import { isAuthorisedCron } from '@/lib/cron/guard';
 import { PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
+import { resolveAppUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -85,7 +86,7 @@ export async function GET(request: Request) {
   let queued = 0;
   let skipped = 0;
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3100';
+  const appUrl = resolveAppUrl();
 
   for (const row of due) {
     // A reminder that also nudges an unfinished form is worth far more than one
