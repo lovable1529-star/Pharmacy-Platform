@@ -1,0 +1,116 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin:0; font-family:"Public Sans", system-ui, sans-serif; font-size:15px; line-height:1.55; color:#191428; -webkit-font-smoothing:antialiased; }
+  * { box-sizing:border-box; }
+  h1,h2,h3,h4 { font-family:"Archivo", system-ui, sans-serif; font-weight:600; letter-spacing:-0.015em; margin:0; text-wrap:pretty; }
+  a { color:#472C70; } a:hover { color:#191428; }
+  .mono { font-family:"JetBrains Mono", ui-monospace, monospace; }
+</style>
+</helmet>
+
+<div style="width:1440px; height:920px; display:flex; flex-direction:column; background:#F6F5F9; overflow:hidden">
+
+  <div style="display:flex; flex-shrink:0; align-items:center; gap:16px; height:60px; border-bottom:1px solid #DEDAE9; background:#FFFFFF; padding:0 20px">
+    <a href="#" style="display:flex; align-items:center; gap:6px; font-size:13px; color:#7C7594">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+      Services
+    </a>
+    <span style="width:1px; height:22px; background:#EAE7F2"></span>
+    <div style="line-height:1.2">
+      <div style="font-family:Archivo; font-size:15px; font-weight:600; color:#191428">Travel Health</div>
+      <div style="display:flex; align-items:center; gap:7px; font-size:11.5px; color:#7C7594">
+        <span class="mono" style="border-radius:4px; background:#F8EEDA; padding:1px 6px; font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; color:#8A5A0B">draft</span>
+        <span>never published</span>
+      </div>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; margin-left:auto">
+      <button type="button" style="border-radius:8px; border:0; background:#5B3A8E; padding:9px 15px; font-size:13.5px; font-weight:600; color:#fff; opacity:.45; cursor:not-allowed">Publish v1</button>
+    </div>
+  </div>
+
+  <div style="display:flex; flex:1; min-height:0">
+
+    <aside style="width:180px; flex-shrink:0; display:flex; flex-direction:column; border-right:1px solid #DEDAE9; background:#FCFBFE; padding:14px 10px">
+      <div class="mono" style="padding:0 8px 8px; font-size:9px; text-transform:uppercase; letter-spacing:.12em; color:#7C7594">Steps</div>
+      <div style="position:relative; display:flex; align-items:center; gap:9px; border-radius:8px; padding:8px 10px; background:#F7F5FC">
+        <span style="position:absolute; left:0; top:50%; height:18px; width:3px; border-radius:0 3px 3px 0; background:#5B3A8E; transform:translateY(-50%)"></span>
+        <span class="mono" style="width:13px; font-size:11px; color:#5B3A8E">1</span>
+        <span style="flex:1; font-size:13px; font-weight:600; color:#472C70">Step 1</span>
+        <span class="mono" style="font-size:10px; color:#9B78D0">0</span>
+      </div>
+      <button type="button" style="display:flex; align-items:center; gap:8px; margin-top:6px; border-radius:8px; border:1px dashed #DEDAE9; background:transparent; padding:8px 10px; font-size:12.5px; font-weight:500; color:#7C7594; cursor:pointer">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+        Add step
+      </button>
+    </aside>
+
+    <section style="width:468px; flex-shrink:0; display:flex; flex-direction:column; border-right:1px solid #DEDAE9; background:#FFFFFF; overflow:hidden">
+      <div style="flex-shrink:0; border-bottom:1px solid #EAE7F2; padding:12px 16px">
+        <div style="display:flex; align-items:center; gap:9px; border-radius:8px; border:1px solid #DEDAE9; background:#F6F5F9; padding:8px 11px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C7594" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"></path><path d="M12 5v14"></path></svg>
+          <span style="flex:1; font-size:13.5px; color:#7C7594">Add a question — type to find one…</span>
+          <span class="mono" style="border-radius:5px; border:1px solid #DEDAE9; background:#FFFFFF; padding:1px 6px; font-size:10px; color:#7C7594">/</span>
+        </div>
+      </div>
+
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:32px 28px; text-align:center">
+        <div style="display:flex; height:46px; width:46px; align-items:center; justify-content:center; border-radius:12px; background:#F3F1F9; color:#7C7594; margin-bottom:14px">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M9 13h6"></path><path d="M9 17h4"></path></svg>
+        </div>
+        <h3 style="font-size:16px; color:#191428; margin-bottom:5px">No questions yet</h3>
+        <p style="margin:0 0 20px; font-size:13.5px; line-height:1.5; color:#7C7594; max-width:34ch">
+          Add your first question above, or start from a set you already use.
+        </p>
+
+        <div style="width:100%; display:flex; flex-direction:column; gap:7px">
+          <button type="button" style="display:flex; align-items:center; gap:11px; border-radius:9px; border:1px solid #DEDAE9; background:#FFFFFF; padding:11px 13px; text-align:left; cursor:pointer">
+            <span style="display:flex; height:28px; width:28px; flex-shrink:0; align-items:center; justify-content:center; border-radius:7px; background:#EDE7F8; color:#5B3A8E">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle></svg>
+            </span>
+            <span style="min-width:0; flex:1">
+              <span style="display:block; font-size:13.5px; font-weight:600; color:#191428">Start with the patient basics</span>
+              <span style="display:block; font-size:12px; color:#7C7594">Name, date of birth, phone, GP surgery — 5 questions</span>
+            </span>
+          </button>
+          <button type="button" style="display:flex; align-items:center; gap:11px; border-radius:9px; border:1px solid #DEDAE9; background:#FFFFFF; padding:11px 13px; text-align:left; cursor:pointer">
+            <span style="display:flex; height:28px; width:28px; flex-shrink:0; align-items:center; justify-content:center; border-radius:7px; background:#F3F1F9; color:#544D6B">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"></rect><path d="M4 16V6a2 2 0 0 1 2-2h10"></path></svg>
+            </span>
+            <span style="min-width:0; flex:1">
+              <span style="display:block; font-size:13.5px; font-weight:600; color:#191428">Copy a step from another service</span>
+              <span style="display:block; font-size:12px; color:#7C7594">Reuse the consent step from Flu Vaccination</span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <main style="flex:1; min-width:0; display:flex; flex-direction:column; background:#F6F5F9; overflow:hidden">
+      <div style="display:flex; flex-shrink:0; align-items:center; gap:8px; border-bottom:1px solid #DEDAE9; background:#FCFBFE; padding:9px 18px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C7594" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span class="mono" style="font-size:10px; text-transform:uppercase; letter-spacing:.09em; color:#7C7594">Live preview — the real patient form</span>
+      </div>
+
+      <div style="flex:1; display:flex; align-items:center; justify-content:center; padding:22px 24px">
+        <div style="width:100%; max-width:520px; border-radius:12px; border:1px dashed #DEDAE9; background:#FCFBFE; padding:52px 24px; text-align:center">
+          <p style="margin:0; font-size:14px; color:#7C7594">Your form appears here as you build it.</p>
+          <p style="margin:5px 0 0; font-size:12.5px; color:#7C7594">This is the same screen the patient sees on their phone — not an approximation.</p>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+</body>
+</html>

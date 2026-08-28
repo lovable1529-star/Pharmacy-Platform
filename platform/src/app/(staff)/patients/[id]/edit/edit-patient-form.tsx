@@ -35,7 +35,7 @@ export interface EditablePatient {
 
 const labelCls = 'mb-1.5 block text-[13px] font-medium text-ink-soft';
 const inputCls =
-  'w-full rounded-[7px] border border-line bg-surface px-3 py-2 text-[15px] text-ink outline-none focus:border-brand-400';
+  'w-full rounded-control border border-line bg-surface px-3 py-2 text-[15px] text-ink outline-none focus:border-brand-400';
 
 export function EditPatientForm({
   patient,
@@ -104,7 +104,7 @@ export function EditPatientForm({
         </div>
       ) : null}
 
-      <div className="rounded-[10px] border border-line bg-surface p-5">
+      <div className="rounded-panel border border-line bg-surface shadow-panel p-5">
         <div className="flex flex-wrap gap-3.5">
           <div className="min-w-[200px] flex-1">
             <label className={labelCls} htmlFor="firstName">First name</label>
@@ -150,7 +150,7 @@ export function EditPatientForm({
         </div>
 
         {dobChanged ? (
-          <p className="mt-2.5 flex items-start gap-1.5 rounded-[8px] border border-review-200 bg-review-50 px-3 py-2 text-[13px] text-review-700">
+          <p className="mt-2.5 flex items-start gap-1.5 rounded-control border border-review-200 bg-review-50 px-3 py-2 text-[13px] text-review-700">
             <AlertTriangle size={13} strokeWidth={2.2} className="mt-0.5 shrink-0" />
             <span>
               You are changing the date of birth from{' '}
@@ -162,7 +162,7 @@ export function EditPatientForm({
         ) : null}
       </div>
 
-      <div className="rounded-[10px] border border-line bg-surface p-5">
+      <div className="rounded-panel border border-line bg-surface shadow-panel p-5">
         <div className="flex flex-wrap gap-3.5">
           <div className="min-w-[220px] flex-1">
             <label className={labelCls} htmlFor="phone">Phone</label>
@@ -244,7 +244,7 @@ export function EditPatientForm({
         <button
           type="button"
           onClick={() => router.push(`/patients/${patient.id}`)}
-          className="rounded-[7px] border border-line px-4 py-2 text-[13.5px] font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
+          className="rounded-control border border-line px-4 py-2 text-[13.5px] font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
         >
           Cancel
         </button>
@@ -253,7 +253,7 @@ export function EditPatientForm({
           disabled={!canSave}
           onClick={save}
           className={cn(
-            'flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-4 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700',
+            'flex items-center gap-1.5 rounded-control bg-brand-600 px-4 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700',
             !canSave && 'cursor-not-allowed opacity-40 hover:bg-brand-600',
           )}
         >

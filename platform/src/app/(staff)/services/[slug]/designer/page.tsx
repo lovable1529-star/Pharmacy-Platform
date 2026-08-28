@@ -42,6 +42,7 @@ export default async function DesignerPage({
       serviceId={row.serviceId}
       serviceName={row.serviceName}
       currentVersion={row.version}
+      slug={slug}
       schema={row.schema as unknown as FormSchema}
     />
   );

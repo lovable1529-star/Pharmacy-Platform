@@ -44,3 +44,12 @@ Thumbs.db
 
 # Superseded first build. Kept on disk for reference, not published.
 karsons/
+
+# Claude Design canvases.
+#
+# The .dc.html artboards and canvas.json ARE the design source and are kept.
+# The seeded *.html beside them is generated output with the whole canvas editor
+# baked in — 2.5 MB apiece, and rebuilt from the sources whenever the design is
+# re-published. There is no reason for that to live in the history.
+design-drafts/**/form-designer-directions.html
+design-drafts/**/karsons-form-designer.html

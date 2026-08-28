@@ -40,7 +40,7 @@ function stamp(date: Date): string {
 }
 
 const input =
-  'w-full rounded-[7px] border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-brand-400';
+  'w-full rounded-control border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-brand-400';
 
 export function AddendaPanel({
   consultationId,
@@ -74,7 +74,7 @@ export function AddendaPanel({
   return (
     <section className="mb-5">
       {addenda.length > 0 ? (
-        <div className="mb-3 overflow-hidden rounded-[10px] border border-review-200 bg-review-50">
+        <div className="mb-3 overflow-hidden rounded-panel border border-review-200 bg-review-50">
           <div className="border-b border-review-200 px-4 py-2.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-review-700">
             {addenda.length} correction{addenda.length === 1 ? '' : 's'} on this record
           </div>
@@ -115,7 +115,7 @@ export function AddendaPanel({
       ) : null}
 
       {open ? (
-        <div className="rounded-[10px] border border-line bg-surface p-5">
+        <div className="rounded-panel border border-line bg-surface shadow-panel p-5">
           <div className="mb-3 flex items-center justify-between">
             <h3 className="font-display text-[15px] font-semibold text-ink">
               Add a correction
@@ -181,7 +181,7 @@ export function AddendaPanel({
             <button
               type="button"
               onClick={() => setOpen(false)}
-              className="rounded-[7px] border border-line px-3.5 py-2 text-[13.5px] font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
+              className="rounded-control border border-line px-3.5 py-2 text-[13.5px] font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
             >
               Cancel
             </button>
@@ -190,7 +190,7 @@ export function AddendaPanel({
               disabled={busy || !reason.trim()}
               onClick={submit}
               className={cn(
-                'flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white hover:bg-brand-700',
+                'flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white hover:bg-brand-700',
                 (busy || !reason.trim()) && 'cursor-not-allowed opacity-40 hover:bg-brand-600',
               )}
             >
@@ -203,7 +203,7 @@ export function AddendaPanel({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="flex items-center gap-1.5 rounded-[7px] border border-line bg-surface px-3 py-2 text-[13px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+          className="flex items-center gap-1.5 rounded-control border border-line bg-surface px-3 py-2 text-[13px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
         >
           <FilePlus2 size={13} strokeWidth={2.2} />
           Add a correction

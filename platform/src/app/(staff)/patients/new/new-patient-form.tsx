@@ -11,7 +11,7 @@ import { similarity, type PatientRecord } from '@/lib/patients/search';
 import { createPatient } from './actions';
 
 const input =
-  'w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[14.5px] text-ink placeholder:text-ink-faint focus:border-brand-400 focus:outline-none';
+  'w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[14.5px] text-ink placeholder:text-ink-faint transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none';
 const label = 'mb-1.5 block text-[13px] font-medium text-ink';
 
 interface Candidate extends PatientRecord {
@@ -95,7 +95,7 @@ export function NewPatientForm({
   }
 
   return (
-    <div className="mx-auto max-w-[720px] px-6 py-8">
+    <div className="page-shell mx-auto max-w-[calc(720px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
       <Link href="/patients" className="mb-4 inline-flex items-center gap-1.5 text-[13px] text-ink-faint transition-colors hover:text-ink">
         <ArrowLeft size={14} strokeWidth={2} /> All patients
       </Link>
@@ -106,7 +106,7 @@ export function NewPatientForm({
       </p>
 
       {duplicates.length > 0 ? (
-        <div className="mb-5 rounded-[10px] border border-review-200 bg-review-50 px-4 py-3.5">
+        <div className="mb-5 rounded-panel border border-review-200 bg-review-50 px-4 py-3.5">
           <div className="flex items-start gap-2.5">
             <Users size={16} strokeWidth={2.1} className="mt-0.5 shrink-0 text-review-700" />
             <div className="min-w-0 flex-1">
@@ -141,7 +141,7 @@ export function NewPatientForm({
         </div>
       ) : null}
 
-      <form onSubmit={submit} className="rounded-[10px] border border-line bg-surface px-5 py-5">
+      <form onSubmit={submit} className="rounded-panel border border-line bg-surface shadow-panel px-5 py-5">
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className={label} htmlFor="firstName">First name</label>
@@ -225,7 +225,7 @@ export function NewPatientForm({
 
         <button type="submit" disabled={busy || blockedByDuplicates}
           className={cn(
-            'mt-5 flex items-center gap-2 rounded-[8px] px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
+            'mt-5 flex items-center gap-2 rounded-control px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
             busy || blockedByDuplicates ? 'cursor-not-allowed bg-ink-faint' : 'bg-brand-600 hover:bg-brand-700',
           )}>
           {busy ? <Loader2 size={15} className="animate-spin" /> : null}

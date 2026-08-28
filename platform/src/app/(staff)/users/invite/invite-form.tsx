@@ -17,7 +17,7 @@ import { SearchSelect } from '@/components/ui/search-select';
 import { inviteUser } from '../actions';
 
 const input =
-  'w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[14.5px] text-ink placeholder:text-ink-faint focus:border-brand-400 focus:outline-none';
+  'w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[14.5px] text-ink placeholder:text-ink-faint transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none';
 const label = 'mb-1.5 block text-[13px] font-medium text-ink';
 
 export function InviteForm({
@@ -68,7 +68,7 @@ export function InviteForm({
   }
 
   return (
-    <div className="mx-auto max-w-[1000px] px-6 py-8">
+    <div className="page-shell mx-auto max-w-[calc(1000px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
       <Link
         href="/users"
         className="mb-4 inline-flex items-center gap-1.5 text-[13px] text-ink-faint transition-colors hover:text-ink"
@@ -84,7 +84,7 @@ export function InviteForm({
 
       <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
         {/* ── Form ──────────────────────────────────────── */}
-        <form onSubmit={submit} className="rounded-[10px] border border-line bg-surface px-5 py-5">
+        <form onSubmit={submit} className="rounded-panel border border-line bg-surface shadow-panel px-5 py-5">
           {sent ? (
             <div className="mb-5 flex items-start gap-2.5 rounded-[9px] border border-safe-200 bg-safe-50 px-4 py-3">
               <Check size={15} strokeWidth={2.2} className="mt-0.5 shrink-0 text-safe-700" />
@@ -164,7 +164,7 @@ export function InviteForm({
           {error ? (
             <div
               role="alert"
-              className="mt-4 flex items-start gap-2 rounded-[7px] border border-stop-200 bg-stop-50 px-3 py-2.5 text-[13px] text-stop-700"
+              className="mt-4 flex items-start gap-2 rounded-control border border-stop-200 bg-stop-50 px-3 py-2.5 text-[13px] text-stop-700"
             >
               <AlertTriangle size={14} strokeWidth={2.1} className="mt-0.5 shrink-0" />
               <span>{error}</span>
@@ -175,7 +175,7 @@ export function InviteForm({
             type="submit"
             disabled={busy || !configured || !email.trim() || !roleId}
             className={cn(
-              'mt-5 flex items-center gap-2 rounded-[8px] px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
+              'mt-5 flex items-center gap-2 rounded-control px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
               busy || !configured || !email.trim() || !roleId
                 ? 'cursor-not-allowed bg-ink-faint'
                 : 'bg-brand-600 hover:bg-brand-700',
@@ -193,7 +193,7 @@ export function InviteForm({
         </form>
 
         {/* ── Access rules ──────────────────────────────── */}
-        <aside className="rounded-[10px] border border-line bg-surface px-5 py-5">
+        <aside className="rounded-panel border border-line bg-surface shadow-panel px-5 py-5">
           <h2 className="mb-3 flex items-center gap-1.5 font-display text-[14.5px] font-semibold text-ink">
             <ShieldCheck size={15} strokeWidth={2} className="text-brand-600" />
             Access rules

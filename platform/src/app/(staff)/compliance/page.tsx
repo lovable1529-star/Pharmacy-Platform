@@ -57,7 +57,7 @@ export default async function CompliancePage() {
   const trail = await getAuditTrail(actor.organisationId);
 
   return (
-    <div className="mx-auto max-w-[1080px] px-6 py-8">
+    <div className="page-shell mx-auto max-w-[calc(1080px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
       <div className="mb-6">
         <h1 className="text-[28px] leading-tight text-ink">Compliance</h1>
         <p className="mt-1 text-[14px] text-ink-faint">
@@ -69,8 +69,8 @@ export default async function CompliancePage() {
       <div
         className={
           verification.valid
-            ? 'mb-6 flex items-start gap-3.5 rounded-[10px] border border-safe-200 bg-safe-50 px-5 py-4'
-            : 'mb-6 flex items-start gap-3.5 rounded-[10px] border border-stop-200 bg-stop-50 px-5 py-4'
+            ? 'mb-6 flex items-start gap-3.5 rounded-panel border border-safe-200 bg-safe-50 px-5 py-4'
+            : 'mb-6 flex items-start gap-3.5 rounded-panel border border-stop-200 bg-stop-50 px-5 py-4'
         }
       >
         {verification.valid ? (

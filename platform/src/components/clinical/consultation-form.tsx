@@ -161,12 +161,12 @@ export function ConsultationForm({
   }
 
   const label = 'mb-1.5 block text-[13px] font-medium text-ink';
-  const control = 'w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[14.5px] text-ink focus:border-brand-400 focus:outline-none';
+  const control = 'w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[14.5px] text-ink transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none';
 
   return (
     <div className="mx-auto max-w-[820px] px-6 py-8">
       {/* Patient + identity */}
-      <section className="mb-5 overflow-hidden rounded-[10px] border border-line bg-surface">
+      <section className="mb-5 overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
         <div className="border-b border-line px-5 py-4">
           <h1 className="text-[21px] text-ink">{patient.fullName}</h1>
           <p className="tabular mt-0.5 font-mono text-[12.5px] text-ink-faint">
@@ -236,7 +236,7 @@ export function ConsultationForm({
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <span className={label}>Branch</span>
-            <div className="rounded-[7px] border border-line bg-sunk px-3 py-2.5 text-[14.5px] text-ink">
+            <div className="rounded-control border border-line bg-sunk px-3 py-2.5 text-[14.5px] text-ink">
               {branchName}
             </div>
           </div>
@@ -289,7 +289,7 @@ export function ConsultationForm({
                 ) : null}
 
                 {allergyClash.length > 0 ? (
-                  <p className="mt-2 flex items-start gap-1.5 rounded-[8px] border border-stop-200 bg-stop-50 px-3 py-2 text-[13px] text-stop-700">
+                  <p className="mt-2 flex items-start gap-1.5 rounded-control border border-stop-200 bg-stop-50 px-3 py-2 text-[13px] text-stop-700">
                     <AlertTriangle size={13} strokeWidth={2.4} className="mt-0.5 shrink-0" />
                     <span>
                       <strong>{selectedBatch?.productName}</strong> contains{' '}
@@ -326,7 +326,7 @@ export function ConsultationForm({
 
           <div>
             <span className={label}>Funded by</span>
-            <div className="inline-flex gap-1 rounded-[8px] bg-sunk p-1">
+            <div className="inline-flex gap-1 rounded-control bg-sunk p-1">
               {(['NHS', 'Private'] as const).map((f) => (
                 <button key={f} type="button" onClick={() => setFunding(f)} aria-pressed={funding === f}
                   className={cn(
@@ -357,7 +357,7 @@ export function ConsultationForm({
                 <button key={d.id} type="button" role="checkbox" aria-checked={checked}
                   onClick={() => setDeclarations((cur) => checked ? cur.filter((x) => x !== d.id) : [...cur, d.id])}
                   className={cn(
-                    'flex items-start gap-3 rounded-[7px] border px-3.5 py-2.5 text-left transition-colors',
+                    'flex items-start gap-3 rounded-control border px-3.5 py-2.5 text-left transition-colors',
                     checked ? 'border-brand-400 bg-brand-50' : 'border-line bg-surface hover:border-brand-300',
                   )}>
                   <span className={cn(
@@ -393,7 +393,7 @@ export function ConsultationForm({
           </p>
           <button type="button" onClick={submit} disabled={!canSubmit}
             className={cn(
-              'flex items-center gap-2 rounded-[8px] px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
+              'flex items-center gap-2 rounded-control px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
               canSubmit ? 'bg-brand-600 hover:bg-brand-700' : 'cursor-not-allowed bg-ink-faint',
             )}>
             {busy ? <Loader2 size={15} className="animate-spin" /> : null}
@@ -409,7 +409,7 @@ function Panel({
   title, icon, children,
 }: { title: string; icon?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <section className="mb-5 overflow-hidden rounded-[10px] border border-line bg-surface">
+    <section className="mb-5 overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
       <div className="flex items-center gap-2 border-b border-line px-5 py-3">
         {icon ? <span className="text-ink-faint">{icon}</span> : null}
         <h2 className="font-display text-[14.5px] font-semibold text-ink">{title}</h2>

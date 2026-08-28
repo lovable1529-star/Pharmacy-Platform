@@ -179,9 +179,9 @@ export function SearchSelect({
         aria-label={aria['aria-label']}
         aria-describedby={aria['aria-describedby']}
         className={cn(
-          'flex w-full items-center gap-2 rounded-[7px] border bg-surface px-3 py-2 text-left text-[14.5px] text-ink transition-colors',
+          'flex w-full items-center gap-2 rounded-control border bg-surface px-3 py-2 text-left text-[14.5px] text-ink transition-colors',
           invalid ? 'border-stop-600' : 'border-line',
-          !disabled && 'hover:border-brand-300 focus:border-brand-400 focus:outline-none',
+          !disabled && 'hover:border-brand-300 transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none',
           disabled && 'cursor-not-allowed opacity-55',
         )}
       >

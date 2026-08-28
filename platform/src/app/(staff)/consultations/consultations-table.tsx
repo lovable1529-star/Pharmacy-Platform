@@ -10,7 +10,8 @@
 
 import { FileText } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { DataTable, PageHeader, type Column } from '@/components/ui/data-table';
+import { DataTable, type Column } from '@/components/ui/data-table';
+import { PageHeader } from '@/components/ui/primitives';
 import { formatDate, formatDateTime } from '@/lib/units';
 import type { ConsultationRow } from '@/lib/queries/clinical';
 
@@ -71,7 +72,7 @@ export function ConsultationsTable({ rows }: { rows: ConsultationRow[] }) {
   ];
 
   return (
-    <div className="mx-auto max-w-[1200px] px-6 py-8">
+    <div className="page-shell mx-auto max-w-[calc(1200px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
       <PageHeader
         title="Consultations"
         subtitle="Everything recorded across the group. Filter, then export for claims or audit."

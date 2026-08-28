@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { Plus, Loader2, AlertTriangle, Clock, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { SearchSelect } from '@/components/ui/search-select';
+import { PageHeader, Panel } from '@/components/ui/primitives';
 import {
   AddBranchForm, AddPharmacistForm, AddProductForm, PharmacistRowActions,
 } from './entity-forms';
@@ -39,17 +40,15 @@ export function SettingsView(props: Props) {
   const [tab, setTab] = useState<Tab>('Locations');
 
   return (
-    <div className="mx-auto max-w-[1000px] px-6 py-8">
-      <div className="mb-6">
-        <h1 className="text-[28px] leading-tight text-ink">Settings</h1>
-        <p className="mt-1 text-[14px] text-ink-faint">
-          The reference data behind every dropdown in the system. Yours to maintain.
-        </p>
-      </div>
+    <div className="page-shell mx-auto max-w-[calc(1000px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
+      <PageHeader
+        title="Settings"
+        subtitle="The reference data behind every dropdown in the system. Yours to maintain."
+      />
 
       <Link
         href="/settings/hours"
-        className="mb-5 flex items-center gap-3 rounded-[10px] border border-line bg-surface px-4 py-3.5 transition-colors hover:border-brand-300"
+        className="mb-[18px] flex items-center gap-3 rounded-panel border border-line bg-surface px-4 py-3.5 shadow-panel transition-[border-color,box-shadow] hover:border-brand-200 hover:shadow-lift"
       >
         <Clock size={17} strokeWidth={2} className="shrink-0 text-brand-600" />
         <span className="min-w-0 flex-1">
@@ -61,14 +60,19 @@ export function SettingsView(props: Props) {
         <ChevronRight size={16} className="shrink-0 text-ink-faint" />
       </Link>
 
-      <div className="mb-5 flex flex-wrap gap-1 rounded-[9px] bg-sunk p-1">
+      {/* A segmented control, not a row of buttons: the sunk trough is what
+          tells you these are alternatives to each other rather than four
+          separate actions. */}
+      <div className="mb-[18px] flex flex-wrap gap-1 rounded-panel bg-sunk p-1" role="tablist">
         {TABS.map((t) => (
           <button
             key={t}
             type="button"
+            role="tab"
+            aria-selected={tab === t}
             onClick={() => setTab(t)}
             className={cn(
-              'rounded-[6px] px-3.5 py-2 text-[13.5px] font-medium transition-colors',
+              'rounded-control px-3.5 py-2 text-[13.5px] font-medium transition-colors',
               tab === t
                 ? 'bg-surface text-ink shadow-[0_1px_2px_rgba(25,20,40,0.10)]'
                 : 'text-ink-soft hover:text-ink',
@@ -183,12 +187,12 @@ export function SettingsView(props: Props) {
 
 function Card({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="mb-5 overflow-hidden rounded-[10px] border border-line bg-surface">
+    <Panel as="section" className="mb-[18px]">
       <div className="border-b border-line px-4 py-2.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">
         {title}
       </div>
       {children}
-    </section>
+    </Panel>
   );
 }
 
@@ -223,7 +227,7 @@ function Row({
 }
 
 const input =
-  'w-full rounded-[7px] border border-line bg-surface px-3 py-2 text-[13.5px] text-ink focus:border-brand-400 focus:outline-none';
+  'w-full rounded-control border border-line bg-surface px-3 py-2 text-[13.5px] text-ink transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none';
 
 function AddBatchForm({
   products, activeBranch,
@@ -264,7 +268,7 @@ function AddBatchForm({
   }
 
   return (
-    <form onSubmit={submit} className="rounded-[10px] border border-line bg-surface px-4 py-4">
+    <form onSubmit={submit} className="rounded-panel border border-line bg-surface px-[18px] py-[17px] shadow-panel">
       <h3 className="mb-3 text-[14px] font-semibold text-ink">
         Receive a new batch at {activeBranch.name}
       </h3>
@@ -293,7 +297,7 @@ function AddBatchForm({
       ) : null}
 
       <button type="submit" disabled={busy}
-        className="mt-3 flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60">
+        className="mt-3 flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60">
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} strokeWidth={2.2} />}
         Add batch
       </button>
@@ -322,7 +326,7 @@ function AddSurgeryForm() {
   }
 
   return (
-    <form onSubmit={submit} className="rounded-[10px] border border-line bg-surface px-4 py-4">
+    <form onSubmit={submit} className="rounded-panel border border-line bg-surface px-[18px] py-[17px] shadow-panel">
       <h3 className="mb-3 text-[14px] font-semibold text-ink">Add a practice</h3>
       <div className="grid gap-3 sm:grid-cols-2">
         <input value={name} onChange={(e) => setName(e.target.value)}
@@ -338,7 +342,7 @@ function AddSurgeryForm() {
       ) : null}
 
       <button type="submit" disabled={busy}
-        className="mt-3 flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60">
+        className="mt-3 flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60">
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} strokeWidth={2.2} />}
         Add practice
       </button>

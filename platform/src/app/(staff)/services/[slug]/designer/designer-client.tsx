@@ -6,11 +6,12 @@ import type { FormSchema } from '@/types/form-schema';
 import { publishFormVersion } from './actions';
 
 export function DesignerClient({
-  serviceId, serviceName, currentVersion, schema,
+  serviceId, serviceName, currentVersion, slug, schema,
 }: {
   serviceId: string;
   serviceName: string;
   currentVersion: number;
+  slug: string;
   schema: FormSchema;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -27,13 +28,20 @@ export function DesignerClient({
   return (
     <>
       {error ? (
-        <div className="border-b border-stop-200 bg-stop-50 px-5 py-2.5 text-[13.5px] text-stop-700">
+        <div role="alert" className="border-b border-stop-200 bg-stop-50 px-5 py-2.5 text-[13.5px] text-stop-700">
           {error}
         </div>
       ) : null}
+      {/*
+        The version used to be glued onto the name — "Flu Vaccination ·
+        currently v4" — which read as part of the service's title. It is now a
+        separate chip, so the heading is the service and the version is state.
+      */}
       <ServiceDesigner
         initialSchema={schema}
-        serviceName={`${serviceName} · currently v${currentVersion}`}
+        serviceName={serviceName}
+        currentVersion={currentVersion}
+        previewHref={`/services/${slug}/preview`}
         onPublish={handlePublish}
       />
     </>

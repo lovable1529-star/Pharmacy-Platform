@@ -9,7 +9,7 @@ export default async function OpeningHoursPage() {
   const data = await getOpeningHours();
 
   return (
-    <div className="mx-auto max-w-[900px] px-6 py-8">
+    <div className="page-shell mx-auto max-w-[calc(900px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
       <Link
         href="/settings"
         className="mb-4 inline-flex items-center gap-1.5 text-[13px] text-ink-faint transition-colors hover:text-ink"
@@ -24,7 +24,7 @@ export default async function OpeningHoursPage() {
       </p>
 
       {!data.ok || !data.windows || !data.branches || !data.services ? (
-        <div className="rounded-[10px] border border-stop-200 bg-stop-50 px-4 py-3 text-[13.5px] text-stop-700">
+        <div className="rounded-panel border border-stop-200 bg-stop-50 px-4 py-3 text-[13.5px] text-stop-700">
           {data.error ?? 'Could not load opening hours.'}
         </div>
       ) : (

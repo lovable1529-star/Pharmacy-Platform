@@ -41,7 +41,7 @@ export interface EnrolmentRow {
 
 const label = 'mb-1.5 block text-[12.5px] font-medium text-ink-soft';
 const input =
-  'w-full rounded-[7px] border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-brand-400';
+  'w-full rounded-control border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-brand-400';
 
 export function EnrolmentPanel({
   patientId,
@@ -128,7 +128,7 @@ export function EnrolmentPanel({
   if (services.length === 0 && enrolments.length === 0) return null;
 
   return (
-    <section className="mb-5 overflow-hidden rounded-[10px] border border-line bg-surface">
+    <section className="mb-5 overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
       <div className="flex items-center gap-2 border-b border-line bg-sunk px-4 py-2.5">
         <Repeat size={13} strokeWidth={2.2} className="text-ink-faint" />
         <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">
@@ -253,7 +253,7 @@ export function EnrolmentPanel({
 
       {editing ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 px-4 py-8">
-          <div className="max-h-full w-full max-w-[560px] overflow-auto rounded-[12px] border border-line bg-surface shadow-pop">
+          <div className="max-h-full w-full max-w-[560px] overflow-auto rounded-panel border border-line bg-surface shadow-pop">
             <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
               <h3 className="font-display text-[16px] font-semibold text-ink">
                 {current ? 'Edit repeat care' : 'Enrol in repeat care'}
@@ -269,7 +269,7 @@ export function EnrolmentPanel({
             </div>
 
             <div className="flex flex-col gap-3.5 px-5 py-4">
-              <p className="m-0 rounded-[8px] border border-brand-200 bg-brand-50 px-3 py-2 text-[13px] text-brand-700">
+              <p className="m-0 rounded-control border border-brand-200 bg-brand-50 px-3 py-2 text-[13px] text-brand-700">
                 Enrolling confirms a pharmacist has assessed this patient and is
                 content for them to request repeat supply online. It is recorded
                 against your name.
@@ -383,7 +383,7 @@ export function EnrolmentPanel({
               <button
                 type="button"
                 onClick={() => setEditing(null)}
-                className="rounded-[7px] border border-line px-3.5 py-2 text-[13.5px] font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
+                className="rounded-control border border-line px-3.5 py-2 text-[13.5px] font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
               >
                 Cancel
               </button>
@@ -392,7 +392,7 @@ export function EnrolmentPanel({
                 disabled={busy || !form.serviceId}
                 onClick={submit}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white hover:bg-brand-700',
+                  'flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white hover:bg-brand-700',
                   (busy || !form.serviceId) &&
                     'cursor-not-allowed opacity-40 hover:bg-brand-600',
                 )}

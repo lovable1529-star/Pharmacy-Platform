@@ -93,7 +93,7 @@ export default async function ServicePreviewPage({
           <div className="ml-auto flex gap-2">
             <Link
               href={`/services/${row.slug}/designer`}
-              className="flex items-center gap-1.5 rounded-[7px] border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+              className="flex items-center gap-1.5 rounded-control border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
             >
               <PencilLine size={13} strokeWidth={2.2} />
               Edit form
@@ -101,7 +101,7 @@ export default async function ServicePreviewPage({
             <Link
               href={`/f/${row.slug}`}
               target="_blank"
-              className="flex items-center gap-1.5 rounded-[7px] border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+              className="flex items-center gap-1.5 rounded-control border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
             >
               <ExternalLink size={13} strokeWidth={2} />
               Open the live form

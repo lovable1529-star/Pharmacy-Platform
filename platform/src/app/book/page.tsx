@@ -17,7 +17,7 @@ export default async function BookPage() {
     <div className="min-h-screen bg-canvas">
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-[720px] items-center gap-3 px-5 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[7px] bg-brand-600 font-display text-[14px] font-bold text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-control bg-brand-600 font-display text-[14px] font-bold text-white">
             K
           </div>
           <div className="leading-tight">

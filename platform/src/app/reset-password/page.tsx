@@ -101,7 +101,7 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-canvas px-5">
       <div className="w-full max-w-[400px]">
         <div className="mb-7 flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-brand-600 font-display text-[15px] font-bold text-white">
+          <div className="flex h-9 w-9 items-center justify-center rounded-control bg-brand-600 font-display text-[15px] font-bold text-white">
             K
           </div>
           <div className="leading-tight">
@@ -112,7 +112,7 @@ export default function ResetPasswordPage() {
           </div>
         </div>
 
-        <div className="rounded-[12px] border border-line bg-surface p-6 shadow-panel">
+        <div className="rounded-panel border border-line bg-surface p-6 shadow-panel">
           {!ready ? (
             <p className="flex items-center gap-2 py-6 text-[14px] text-ink-faint">
               <Loader2 size={15} className="animate-spin" /> Checking your link…
@@ -135,7 +135,7 @@ export default function ResetPasswordPage() {
               </p>
               <a
                 href="/forgot-password"
-                className="inline-block rounded-[7px] bg-brand-600 px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-brand-700"
+                className="inline-block rounded-control bg-brand-600 px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-brand-700"
               >
                 Request a new link
               </a>
@@ -158,7 +158,7 @@ export default function ResetPasswordPage() {
                 autoComplete="new-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mb-2 w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[15px] text-ink focus:border-brand-400 focus:outline-none"
+                className="mb-2 w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[15px] text-ink transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none"
               />
 
               {password.length > 0 ? (
@@ -196,7 +196,7 @@ export default function ResetPasswordPage() {
                 autoComplete="new-password"
                 value={confirm}
                 onChange={(e) => setConfirm(e.target.value)}
-                className="mb-3 w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[15px] text-ink focus:border-brand-400 focus:outline-none"
+                className="mb-3 w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[15px] text-ink transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none"
               />
 
               {tooShort ? (
@@ -210,7 +210,7 @@ export default function ResetPasswordPage() {
               {error ? (
                 <div
                   role="alert"
-                  className="mb-3 flex items-start gap-2 rounded-[7px] border border-stop-200 bg-stop-50 px-3 py-2.5 text-[13px] text-stop-700"
+                  className="mb-3 flex items-start gap-2 rounded-control border border-stop-200 bg-stop-50 px-3 py-2.5 text-[13px] text-stop-700"
                 >
                   <AlertTriangle size={14} strokeWidth={2.1} className="mt-0.5 shrink-0" />
                   <span>{error}</span>
@@ -221,7 +221,7 @@ export default function ResetPasswordPage() {
                 type="submit"
                 disabled={!canSubmit}
                 className={cn(
-                  'flex w-full items-center justify-center gap-2 rounded-[7px] px-4 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
+                  'flex w-full items-center justify-center gap-2 rounded-control px-4 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
                   canSubmit ? 'bg-brand-600 hover:bg-brand-700' : 'cursor-not-allowed bg-ink-faint',
                 )}
               >

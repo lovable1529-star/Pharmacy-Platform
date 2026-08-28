@@ -1,0 +1,336 @@
+<title>Karsons Open Items</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  :root {
+    --canvas:#F6F5F9; --surface:#FFFFFF; --sunk:#F3F1F9;
+    --line:#DEDAE9; --line-soft:#EAE7F2;
+    --ink:#191428; --ink-soft:#544D6B; --ink-faint:#7C7594;
+    --b50:#F7F5FC; --b100:#EDE7F8; --b200:#DCCFF1; --b400:#9B78D0;
+    --b500:#7C52BC; --b600:#5B3A8E; --b700:#472C70;
+    --safe-bg:#DCEFE4; --safe-fg:#17603E; --safe-line:#B8DFC9;
+    --rev-bg:#F8EEDA;  --rev-fg:#8A5A0B;  --rev-line:#F0DCB4;
+    --stop-bg:#F8E4E1; --stop-fg:#A32E22; --stop-line:#F0C7C0;
+    --shadow:0 1px 2px rgba(25,20,40,.05), 0 10px 28px -18px rgba(25,20,40,.30);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas:#0F0C18; --surface:#191527; --sunk:#221C33;
+      --line:#2E2745; --line-soft:#262038;
+      --ink:#F3F1F9; --ink-soft:#B6AECF; --ink-faint:#8B84A3;
+      --b50:#231A38; --b100:#2C2146; --b200:#3B2C5C; --b400:#9B78D0;
+      --b500:#A98AE0; --b600:#7C52BC; --b700:#C7B0F0;
+      --safe-bg:#123023; --safe-fg:#79DFAB; --safe-line:#1D4B36;
+      --rev-bg:#33260C;  --rev-fg:#EFC475;  --rev-line:#4C3A13;
+      --stop-bg:#3A181A; --stop-fg:#F3A79C; --stop-line:#552325;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 12px 30px -18px rgba(0,0,0,.7);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --canvas:#0F0C18; --surface:#191527; --sunk:#221C33;
+    --line:#2E2745; --line-soft:#262038;
+    --ink:#F3F1F9; --ink-soft:#B6AECF; --ink-faint:#8B84A3;
+    --b50:#231A38; --b100:#2C2146; --b200:#3B2C5C; --b400:#9B78D0;
+    --b500:#A98AE0; --b600:#7C52BC; --b700:#C7B0F0;
+    --safe-bg:#123023; --safe-fg:#79DFAB; --safe-line:#1D4B36;
+    --rev-bg:#33260C;  --rev-fg:#EFC475;  --rev-line:#4C3A13;
+    --stop-bg:#3A181A; --stop-fg:#F3A79C; --stop-line:#552325;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 12px 30px -18px rgba(0,0,0,.7);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--canvas); color: var(--ink);
+    font-family: "Public Sans", system-ui, -apple-system, sans-serif;
+    font-size: 15.5px; line-height: 1.58; -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: "Archivo", system-ui, sans-serif; font-weight: 600;
+    letter-spacing: -0.018em; text-wrap: balance; margin: 0;
+  }
+  code, .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  code { font-size: .86em; background: var(--sunk); padding: 1px 5px; border-radius: 4px; }
+  a { color: var(--b700); }
+  :focus-visible { outline: 2px solid var(--b500); outline-offset: 3px; border-radius: 3px; }
+
+  .page { max-width: 1000px; margin: 0 auto; padding: 52px 24px 90px; }
+
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: .13em; color: var(--ink-faint);
+  }
+  header h1 { font-size: clamp(29px, 4.2vw, 39px); line-height: 1.08; margin: 12px 0 10px; }
+  header p { margin: 0; max-width: 64ch; color: var(--ink-soft); font-size: 16.5px; }
+
+  /* ── Summary strip ── */
+  .summary {
+    display: grid; gap: 12px; margin: 30px 0 44px;
+    grid-template-columns: repeat(auto-fit, minmax(158px, 1fr));
+  }
+  .stat {
+    border: 1px solid var(--line); background: var(--surface);
+    border-radius: 12px; padding: 14px 16px; position: relative; overflow: hidden;
+  }
+  .stat::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--b400);
+  }
+  .stat.is-now::before  { background: var(--stop-fg); }
+  .stat.is-soon::before { background: var(--rev-fg); }
+  .stat.is-done::before { background: var(--safe-fg); }
+  .stat dt {
+    font-family: "JetBrains Mono", monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: .09em; color: var(--ink-faint);
+  }
+  .stat dd {
+    margin: 3px 0 0; font-family: "Archivo", sans-serif; font-size: 27px;
+    font-weight: 600; line-height: 1.1; font-variant-numeric: tabular-nums;
+  }
+  .stat p { margin: 5px 0 0; font-size: 12.5px; color: var(--ink-faint); line-height: 1.4; }
+
+  /* ── Groups ── */
+  .group { margin-bottom: 46px; }
+  .group > h2 { font-size: 21px; margin-bottom: 6px; }
+  .group > .note { margin: 0 0 18px; max-width: 68ch; color: var(--ink-soft); font-size: 15px; }
+
+  .items { display: flex; flex-direction: column; gap: 10px; }
+  .item {
+    border: 1px solid var(--line); background: var(--surface);
+    border-radius: 12px; padding: 15px 18px; box-shadow: var(--shadow);
+    display: grid; gap: 8px;
+  }
+  .item-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+  .item-head h3 { font-size: 16px; }
+  .item p { margin: 0; max-width: 72ch; font-size: 14.5px; color: var(--ink-soft); }
+  .item .unblock {
+    font-size: 13.5px; color: var(--ink-faint);
+    border-top: 1px solid var(--line-soft); padding-top: 8px;
+  }
+  .item .unblock b {
+    font-family: "JetBrains Mono", monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: .07em; font-weight: 500;
+    color: var(--ink-faint); margin-right: 7px;
+  }
+
+  .chip {
+    display: inline-block; border-radius: 5px; padding: 2px 8px;
+    font-family: "JetBrains Mono", monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
+    margin-left: auto;
+  }
+  .c-now  { background: var(--stop-bg); color: var(--stop-fg); }
+  .c-soon { background: var(--rev-bg);  color: var(--rev-fg); }
+  .c-later{ background: var(--sunk);    color: var(--ink-faint); }
+  .c-call { background: var(--b100);    color: var(--b700); }
+
+  .banner {
+    border: 1px solid var(--rev-line); background: var(--rev-bg); color: var(--rev-fg);
+    border-radius: 12px; padding: 16px 20px; margin-bottom: 44px;
+  }
+  .banner h2 { font-size: 17px; margin-bottom: 5px; color: var(--rev-fg); }
+  .banner p { margin: 0; max-width: 72ch; font-size: 14.5px; }
+  .banner ol { margin: 10px 0 0; padding-left: 20px; max-width: 72ch; font-size: 14.5px; }
+  .banner li { margin-bottom: 4px; }
+
+  .scope {
+    border: 1px solid var(--line); background: var(--sunk);
+    border-radius: 12px; padding: 18px 20px;
+  }
+  .scope h2 { font-size: 18px; margin-bottom: 6px; }
+  .scope p { max-width: 72ch; color: var(--ink-soft); font-size: 14.5px; }
+  .scope ul { columns: 2; column-gap: 32px; padding-left: 18px; margin: 12px 0 0; font-size: 14.5px; color: var(--ink-soft); }
+  @media (max-width: 640px) { .scope ul { columns: 1; } }
+  .scope li { margin-bottom: 5px; break-inside: avoid; }
+  .scope li::marker { color: var(--b400); }
+</style>
+
+<div class="page">
+
+  <header>
+    <div class="eyebrow">Karsons Pharmacy Platform · 28 August 2026</div>
+    <h1>Open items</h1>
+    <p>
+      Everything left on the table after this session's work — what was deliberately not
+      built and why, what is unverified, and what this audit never looked at. Kept so the
+      gaps are a decision rather than a surprise.
+    </p>
+
+    <dl class="summary">
+      <div class="stat is-now">
+        <dt>Needs you</dt><dd>2</dd>
+        <p>Ten minutes each, and both block confidence in everything else</p>
+      </div>
+      <div class="stat is-soon">
+        <dt>Deliberately deferred</dt><dd>9</dd>
+        <p>Design or behaviour decisions, not defects</p>
+      </div>
+      <div class="stat">
+        <dt>Not audited</dt><dd>8</dd>
+        <p>Domains this audit never examined</p>
+      </div>
+      <div class="stat is-done">
+        <dt>Closed this session</dt><dd>17</dd>
+        <p>Across eight parts of work</p>
+      </div>
+    </dl>
+  </header>
+
+  <div class="banner">
+    <h2>Do these first</h2>
+    <p>
+      Everything below is judgement. These two are the only items that change what is
+      <em>known</em> rather than what is planned.
+    </p>
+    <ol>
+      <li><strong>Click through the form designer while signed in.</strong> Every editor added in Parts 4–8 is a client component behind staff auth. Route compilation proves they compile, not that they render — and that is a lot of new UI resting on the compiler alone.</li>
+      <li><strong>Run <code>pnpm build</code> once the other session's dev server is stopped.</strong> No production build has been run all session, because a build writes to the shared <code>.next</code> directory.</li>
+    </ol>
+  </div>
+
+  <!-- ── Drawn but not built ─────────────────────────────────────────── -->
+  <section class="group">
+    <h2>Drawn in the design, not built</h2>
+    <p class="note">
+      These appear in the design canvases. They are behaviour rather than styling, so the
+      entry points exist and the mechanics do not.
+    </p>
+
+    <div class="items">
+      <div class="item">
+        <div class="item-head"><h3>Drag to reorder questions</h3><span class="chip c-soon">Behaviour</span></div>
+        <p>The grip handles are rendered and reordering works through the up/down controls in the question editor. Dragging itself is not implemented.</p>
+        <p class="unblock"><b>Unblocked by</b> A drag library or a hand-rolled pointer implementation with a drop indicator.</p>
+      </div>
+
+      <div class="item">
+        <div class="item-head"><h3>Copy a step from another service</h3><span class="chip c-soon">Behaviour</span></div>
+        <p>Offered on the empty-form state in the design, because the blank-page moment is where a form builder feels hardest. The entry point is drawn; the picker behind it does not exist.</p>
+        <p class="unblock"><b>Unblocked by</b> A service-and-step picker, plus id-collision handling when the copied questions land.</p>
+      </div>
+
+      <div class="item">
+        <div class="item-head"><h3>Duplicate a question</h3><span class="chip c-later">New</span></div>
+        <p>Move and delete exist. Duplicate would be new functionality, so it was left out of a redesign rather than smuggled in.</p>
+        <p class="unblock"><b>Unblocked by</b> Your say-so — it is small.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Needs data ──────────────────────────────────────────────────── -->
+  <section class="group">
+    <h2>In the design, but the data does not exist</h2>
+    <p class="note">
+      Both were omitted on the same principle: inventing numbers on a clinical dashboard is
+      indefensible, and a badge that asserts something false is worse than no badge.
+    </p>
+
+    <div class="items">
+      <div class="item">
+        <div class="item-head"><h3>“Clinic open” live pill</h3><span class="chip c-soon">Needs data</span></div>
+        <p>On the Today hero. Opening hours exist in Settings but are not read by that screen, so the pill would be asserting the clinic is open without checking.</p>
+        <p class="unblock"><b>Unblocked by</b> Reading branch hours in <code>getTodaySnapshot</code>.</p>
+      </div>
+
+      <div class="item">
+        <div class="item-head"><h3>Sparklines and “+18% vs last Friday”</h3><span class="chip c-soon">Needs data</span></div>
+        <p>The counters on Today have no historical series behind them — only today's figures. Any trend line would be decoration drawn over invented data.</p>
+        <p class="unblock"><b>Unblocked by</b> A daily rollup table, or a query over the consultation history.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Product decisions ───────────────────────────────────────────── -->
+  <section class="group">
+    <h2>Waiting on a decision</h2>
+    <p class="note">
+      Not defects. Each is a choice about what the product should do, and guessing would
+      have been worse than asking.
+    </p>
+
+    <div class="items">
+      <div class="item">
+        <div class="item-head"><h3>The ⌘K command palette</h3><span class="chip c-call">Your call</span></div>
+        <p>The search box in the top bar has always been inert — it has never had a handler. It is now explicitly non-interactive and hidden from screen readers, so nobody discovers a dead control by tabbing, rather than being made to look more inviting than it is.</p>
+        <p class="unblock"><b>Unblocked by</b> Deciding whether a palette is wanted, or removing the box.</p>
+      </div>
+
+      <div class="item">
+        <div class="item-head"><h3>Toasts</h3><span class="chip c-call">Your call</span></div>
+        <p>The design includes a toast stack. Screens currently report success and failure inline, which is not obviously worse — an inline message stays on screen beside the thing it refers to. Converting is a behaviour change across roughly fifteen files.</p>
+        <p class="unblock"><b>Unblocked by</b> A decision that toasts are actually wanted.</p>
+      </div>
+
+      <div class="item">
+        <div class="item-head"><h3>Loading skeletons</h3><span class="chip c-call">Your call</span></div>
+        <p>The tokens, the <code>.bg-skel</code> utility and the shimmer keyframe are all in place. Wiring them needs a <code>loading.tsx</code> per route — new files that change perceived behaviour.</p>
+        <p class="unblock"><b>Unblocked by</b> Your say-so. It is now a small job.</p>
+      </div>
+
+      <div class="item">
+        <div class="item-head"><h3>Book / Start consultation from a patient record</h3><span class="chip c-call">Your call</span></div>
+        <p>Both appear in the patient-record design. Booking would need the booking screen to accept a pre-selected patient; there is <em>no route at all</em> that starts a consultation from a patient — they begin from an arrived appointment.</p>
+        <p class="unblock"><b>Unblocked by</b> Two new flows, not two buttons.</p>
+      </div>
+
+      <div class="item">
+        <div class="item-head"><h3><code>FormStep.unlockedBy</code> — the verification gate</h3><span class="chip c-later">Unused</span></div>
+        <p>The runtime implements it: a step stays locked until named earlier fields are answered. No seeded form uses it and the designer has no editor for it. A feature that exists and is unreachable.</p>
+        <p class="unblock"><b>Unblocked by</b> Deciding whether the gate is wanted; the editor is then straightforward.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Pre-existing ────────────────────────────────────────────────── -->
+  <section class="group">
+    <h2>Carried over from before this session</h2>
+    <p class="note">
+      Not touched by this work, and recorded so they do not get lost between sessions.
+    </p>
+
+    <div class="items">
+      <div class="item">
+        <div class="item-head"><h3>Payments are a deliberate fake</h3><span class="chip c-soon">Known</span></div>
+        <p>An honest demo provider, built to your instruction. Real integration was deferred pending NMS and GPhC standards. The GLP-1 flow is payment-gated by design — the prescription is only issued once a webhook confirms Paid.</p>
+        <p class="unblock"><b>Unblocked by</b> Choosing a provider, and the standards decision behind it.</p>
+      </div>
+
+      <div class="item">
+        <div class="item-head"><h3>Client-facing workflow and demo document</h3><span class="chip c-now">Requested</span></div>
+        <p>Asked for on 28 August, gated on “only when you think our system is completely ready”. Never produced. This is what you would actually walk Muka through.</p>
+        <p class="unblock"><b>Unblocked by</b> Your word that the system is ready enough — then it is one session's work.</p>
+      </div>
+
+      <div class="item">
+        <div class="item-head"><h3>Industry comparison audit</h3><span class="chip c-now">Requested</span></div>
+        <p>Asked for alongside it: what leading pharmacy software does that this does not, and what each is best known for. Never produced.</p>
+        <p class="unblock"><b>Unblocked by</b> Research time. Independent of the demo document.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Scope honesty ───────────────────────────────────────────────── -->
+  <section class="scope">
+    <h2>What this audit did not cover</h2>
+    <p>
+      The audit examined the form schema surface, the designer's coverage of it, field-type
+      reachability and link integrity. Every other domain was only compile-checked. Nothing
+      below has been reviewed for correctness, and an absence of findings here means an
+      absence of looking:
+    </p>
+    <ul>
+      <li>The clinical rules and triage engine</li>
+      <li>Payments and the webhook gate</li>
+      <li>Scheduling and slot generation</li>
+      <li>Notifications and email delivery</li>
+      <li>Row Level Security policies</li>
+      <li>The hash-chained audit log</li>
+      <li>Prescription PDF generation</li>
+      <li>Patient matching and de-duplication</li>
+    </ul>
+  </section>
+</div>

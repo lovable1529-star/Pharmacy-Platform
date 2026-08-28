@@ -45,7 +45,7 @@ export default function ForgotPasswordPage() {
     <div className="flex min-h-screen items-center justify-center bg-canvas px-5">
       <div className="w-full max-w-[400px]">
         <div className="mb-7 flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-brand-600 font-display text-[15px] font-bold text-white">
+          <div className="flex h-9 w-9 items-center justify-center rounded-control bg-brand-600 font-display text-[15px] font-bold text-white">
             K
           </div>
           <div className="leading-tight">
@@ -56,7 +56,7 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
 
-        <div className="rounded-[12px] border border-line bg-surface p-6 shadow-panel">
+        <div className="rounded-panel border border-line bg-surface p-6 shadow-panel">
           {sent ? (
             <>
               <Mail size={22} strokeWidth={1.8} className="mb-3 text-brand-600" />
@@ -91,13 +91,13 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@karsonspharmacy.co.uk"
-                className="mb-4 w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-faint focus:border-brand-400 focus:outline-none"
+                className="mb-4 w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-faint transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none"
               />
 
               <button
                 type="submit"
                 disabled={busy}
-                className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-brand-600 px-4 py-2.5 text-[14.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-control bg-brand-600 px-4 py-2.5 text-[14.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
               >
                 {busy ? <Loader2 size={15} className="animate-spin" /> : null}
                 Send reset link

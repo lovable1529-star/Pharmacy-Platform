@@ -1,0 +1,30 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "A · Edit on the form", "x": 0, "y": 0, "w": 1440, "h": 920 },
+    { "file": "OutlineFirst.dc.html", "title": "B · Outline beside the form", "x": 1560, "y": 0, "w": 1440, "h": 920 }
+  ],
+  "annotations": [
+    {
+      "id": "note-a",
+      "x": 0,
+      "y": -210,
+      "w": 620,
+      "text": "A · Edit on the form\n\nThe live patient form IS the editing surface. There is no separate list of questions — you click a question where it sits, a small toolbar appears on it, and its settings fill the right panel.\n\nFollow-ups render inline, indented, exactly where the patient will meet them, tagged \"shown when · Other\".\n\nWhy: the current designer stacks an outline above a preview in one scroller, so you never see the question you are editing next to its effect.\n\nTradeoff: on a 20-question form you scroll to reorder, and there is no one view of the whole structure."
+    },
+    {
+      "id": "note-b",
+      "x": 1560,
+      "y": -210,
+      "w": 620,
+      "text": "B · Outline beside the form\n\nA proper tree on the left, the live form pinned on the right. Selecting a row expands it into an editor in place and highlights the same question in the form.\n\nBranches are real children of the tree, on a connector line, tagged \"if Other\" — the logic is legible without opening anything.\n\nWhy: his flu form is long. This is the view that lets him audit and reorder the whole thing at once.\n\nTradeoff: two representations of the same form, and the patient form is narrower."
+    },
+    {
+      "id": "note-shared",
+      "x": 640,
+      "y": -210,
+      "w": 780,
+      "text": "Both share the fixes that are not up for debate:\n\n· Follow-ups are arranged BY ANSWER — \"when they say Other, ask this\" — not buried in the selected question's panel. This is the thing you flagged as confusing.\n· A version state in the toolbar: what is live, what is draft, how many unpublished changes.\n· The 18-type palette becomes a search field, not a wall of 18 items in a rail.\n· Pharmacist-only questions are marked in both the outline and the form.\n\nBoth match the app's tokens exactly — Archivo / Public Sans / JetBrains Mono, the purple ramp, 8 and 12px radii."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

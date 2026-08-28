@@ -39,7 +39,7 @@ function dateKey(day: Date): string {
 
 const label = 'mb-1.5 block text-[13px] font-medium text-ink-soft';
 const input =
-  'w-full rounded-[7px] border border-line bg-surface px-3 py-2 text-[15px] text-ink outline-none focus:border-brand-400';
+  'w-full rounded-control border border-line bg-surface px-3 py-2 text-[15px] text-ink outline-none focus:border-brand-400';
 
 export function CounterBookingForm({
   branchId,
@@ -120,7 +120,7 @@ export function CounterBookingForm({
         </div>
       ) : null}
 
-      <div className="rounded-[10px] border border-line bg-surface p-5">
+      <div className="rounded-panel border border-line bg-surface shadow-panel p-5">
         <label className={label} htmlFor="service">Service</label>
         <SearchSelect
           id="service"
@@ -130,7 +130,7 @@ export function CounterBookingForm({
         />
       </div>
 
-      <div className="rounded-[10px] border border-line bg-surface p-5">
+      <div className="rounded-panel border border-line bg-surface shadow-panel p-5">
         <p className={label}>When</p>
 
         {days === null ? (
@@ -184,7 +184,7 @@ export function CounterBookingForm({
         )}
       </div>
 
-      <div className="rounded-[10px] border border-line bg-surface p-5">
+      <div className="rounded-panel border border-line bg-surface shadow-panel p-5">
         <p className={label}>Who</p>
         <div className="flex flex-col gap-3.5">
           <div>
@@ -267,7 +267,7 @@ export function CounterBookingForm({
         <button
           type="button"
           onClick={() => router.push('/appointments')}
-          className="rounded-[7px] border border-line px-4 py-2 text-[13.5px] font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
+          className="rounded-control border border-line px-4 py-2 text-[13.5px] font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
         >
           Cancel
         </button>
@@ -276,7 +276,7 @@ export function CounterBookingForm({
           disabled={!canSave}
           onClick={submit}
           className={cn(
-            'flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-4 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700',
+            'flex items-center gap-1.5 rounded-control bg-brand-600 px-4 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700',
             !canSave && 'cursor-not-allowed opacity-40 hover:bg-brand-600',
           )}
         >

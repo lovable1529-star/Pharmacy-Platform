@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { DataTable, PageHeader, type Column } from '@/components/ui/data-table';
+import { DataTable, type Column } from '@/components/ui/data-table';
+import { PageHeader } from '@/components/ui/primitives';
 import { formatDate, formatDateTime } from '@/lib/units';
 import type { ConsultationRow } from '@/lib/queries/clinical';
 
@@ -57,7 +58,7 @@ export function ReportsView({ rows }: { rows: ConsultationRow[] }) {
   ];
 
   return (
-    <div className="mx-auto max-w-[1200px] px-6 py-8">
+    <div className="page-shell mx-auto max-w-[calc(1200px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
       <PageHeader
         title="Reports"
         subtitle="The last 90 days. Filter to what you need, then export for claims or audit."
@@ -95,7 +96,7 @@ export function ReportsView({ rows }: { rows: ConsultationRow[] }) {
 
 function Stat({ label, value, tone }: { label: string; value: number; tone?: 'review' }) {
   return (
-    <div className="rounded-[10px] border border-line bg-surface px-4 py-3.5">
+    <div className="rounded-panel border border-line bg-surface px-4 py-3.5">
       <div className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">
         {label}
       </div>
@@ -114,7 +115,7 @@ function Stat({ label, value, tone }: { label: string; value: number; tone?: 're
 
 function Breakdown({ title, entries }: { title: string; entries: [string, number][] }) {
   return (
-    <div className="overflow-hidden rounded-[10px] border border-line bg-surface">
+    <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
       <div className="border-b border-line px-4 py-2.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">
         {title}
       </div>

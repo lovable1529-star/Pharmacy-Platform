@@ -11,7 +11,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { DataTable, PageHeader, type Column } from '@/components/ui/data-table';
+import { DataTable, type Column } from '@/components/ui/data-table';
+import { PageHeader } from '@/components/ui/primitives';
 import { formatDate } from '@/lib/units';
 import type { StockRow } from '@/lib/queries/clinical';
 import { RecallDialog } from './recall-dialog';
@@ -106,7 +107,7 @@ export function InventoryTable({
   }
 
   return (
-    <div className="mx-auto max-w-[1080px] px-6 py-8">
+    <div className="page-shell mx-auto max-w-[calc(1080px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
       <PageHeader
         title="Inventory"
         subtitle={`${total} doses in stock across the group. Stock decrements automatically when a consultation is recorded.`}

@@ -1,0 +1,38 @@
+{
+  "artboards": [
+    { "file": "Main.dc.html", "title": "Editing a question", "x": 0, "y": 0, "w": 1440, "h": 920 },
+    { "file": "NewForm.dc.html", "title": "A brand-new form", "x": 1560, "y": 0, "w": 1440, "h": 920 },
+    { "file": "AddQuestion.dc.html", "title": "Adding a question", "x": 0, "y": 1160, "w": 760, "h": 860 }
+  ],
+  "annotations": [
+    {
+      "id": "note-main",
+      "x": 0,
+      "y": -230,
+      "w": 660,
+      "text": "Editing a question\n\nThree columns: steps, the outline, the live patient form.\n\nSelecting a row in the outline expands it INTO an editor in place — no separate inspector panel to look across at — and highlights the same question in the form on the right.\n\nFollow-ups are arranged by ANSWER: \"Other → then ask 1 more\". The branch also appears in the outline as a real child on a connector line, tagged \"if Other\", so the logic is readable without opening anything."
+    },
+    {
+      "id": "note-new",
+      "x": 1560,
+      "y": -230,
+      "w": 660,
+      "text": "A brand-new form\n\nThe state he will actually test first: a service with nothing in it.\n\nAn empty outline is where a builder feels hardest, so it offers two ways in besides the blank search field — the patient basics every form needs, and copying a step from a service he has already built.\n\nThe preview column says plainly that this is the same screen the patient sees, not an approximation. That is the claim Zoho could not make."
+    },
+    {
+      "id": "note-add",
+      "x": 0,
+      "y": 2070,
+      "w": 760,
+      "text": "Adding a question\n\nThe 18 field types were a flat rail of 18 items you had to read top to bottom. Here it is one search field: type a few letters, the best match is first and takes Enter.\n\nBelow it the rest are grouped — Choice, Clinical & consent, Text, Numbers — so browsing still works when he does not know what the thing is called.\n\nThe hint text is written for a pharmacist, not a developer: \"Weight, height or waist — metric or imperial, patient chooses\", not \"measurement\"."
+    },
+    {
+      "id": "note-scope",
+      "x": 840,
+      "y": 1160,
+      "w": 600,
+      "text": "Not drawn, deliberately\n\n· Drag-to-reorder is shown by the grip handles, but the drop indicator is behavioural — it will be built, not mocked.\n· The \"copy a step from another service\" flow needs a picker that does not exist yet; the entry point is drawn, the picker is not.\n· Publishing already works and is unchanged — this redesign does not touch how versions are created."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

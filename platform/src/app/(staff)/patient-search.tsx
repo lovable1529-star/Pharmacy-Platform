@@ -6,11 +6,26 @@
  * One box that takes a name, a name and a date of birth, a postcode or a phone
  * number, works out which is which, and tolerates misspelling. Nothing fires
  * under three characters — that keeps query volume, and the hosting bill, down.
+ *
+ * ── Redesign notes ────────────────────────────────────────────────────────
+ *
+ * Now sits INSIDE the Today hero panel rather than under it, so the first
+ * thing on the screen is the thing the pharmacist came to do. That means it no
+ * longer supplies its own bottom margin — the hero owns the spacing.
+ *
+ * "New patient" moved out of the field and up into the hero's action row. A
+ * primary button living inside a search input made the field read as a form to
+ * be submitted, when in fact it filters as you type and nothing is ever
+ * submitted. The destination is unchanged and is now more prominent, not less.
+ *
+ * The "keep typing" hint moved inline to the right of the field. Below the
+ * field it pushed the whole page down by a line the moment anyone touched the
+ * keyboard, which is a visible jolt on every single search.
  */
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, UserPlus, ArrowRight } from 'lucide-react';
+import { Search, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import {
   searchPatients, shouldSearch, ageInYears, SEARCH_MIN_LENGTH, type PatientRecord,
@@ -23,11 +38,13 @@ export function PatientSearch({ patients }: { patients: PatientRecord[] }) {
   const searching = shouldSearch(query);
 
   return (
-    <div className="relative mb-8">
+    <div className="relative">
       <div
         className={cn(
-          'flex items-center gap-3 rounded-[10px] border bg-surface px-4 py-3 shadow-panel transition-colors',
-          searching ? 'border-brand-300' : 'border-line',
+          'flex items-center gap-3 rounded-[11px] border bg-surface px-[15px] py-3 shadow-panel transition-[border-color,box-shadow]',
+          searching
+            ? 'border-brand-300 shadow-[0_0_0_4px_var(--color-brand-50)]'
+            : 'border-line focus-within:border-brand-300 focus-within:shadow-[0_0_0_4px_var(--color-brand-50)]',
         )}
       >
         <Search size={19} strokeWidth={2} className="shrink-0 text-brand-500" />
@@ -38,23 +55,18 @@ export function PatientSearch({ patients }: { patients: PatientRecord[] }) {
           aria-label="Search patients"
           className="min-w-0 flex-1 bg-transparent text-[15.5px] text-ink outline-none placeholder:text-ink-faint"
         />
-        <Link
-          href="/patients/new"
-          className="flex shrink-0 items-center gap-1.5 rounded-[7px] bg-brand-600 px-3 py-2 text-[13px] font-semibold text-white transition-colors hover:bg-brand-700"
-        >
-          <UserPlus size={15} strokeWidth={2.1} />
-          New patient
-        </Link>
+        {/* Inline, and only while it applies — see the note at the top of the
+            file about the field jumping the page down a line. */}
+        {query.trim().length > 0 && !searching ? (
+          <span className="hidden shrink-0 whitespace-nowrap font-mono text-[10.5px] text-ink-faint sm:block">
+            {SEARCH_MIN_LENGTH - query.trim().length} more character
+            {SEARCH_MIN_LENGTH - query.trim().length === 1 ? '' : 's'}
+          </span>
+        ) : null}
       </div>
 
-      {query.trim().length > 0 && !searching ? (
-        <p className="mt-2 pl-1 text-[12.5px] text-ink-faint">
-          Keep typing — search starts at {SEARCH_MIN_LENGTH} characters.
-        </p>
-      ) : null}
-
       {searching ? (
-        <div className="absolute inset-x-0 z-20 mt-2 overflow-hidden rounded-[10px] border border-line bg-surface shadow-pop">
+        <div className="absolute inset-x-0 z-20 mt-2 animate-pop overflow-hidden rounded-[11px] border border-line bg-surface shadow-pop">
           {results.length === 0 ? (
             <div className="px-4 py-6 text-center">
               <p className="text-[14px] text-ink-soft">No patient found for “{query}”.</p>

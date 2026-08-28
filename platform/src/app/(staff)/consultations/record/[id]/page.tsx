@@ -146,7 +146,7 @@ export default async function ConsultationRecordPage({
     typeof clinical[key] === 'string' ? (clinical[key] as string) : null;
 
   return (
-    <div className="mx-auto max-w-[880px] px-6 py-8">
+    <div className="page-shell mx-auto max-w-[calc(880px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
       <Link
         href="/consultations"
         className="mb-4 inline-flex items-center gap-1.5 text-[13px] text-ink-faint transition-colors hover:text-ink"
@@ -165,7 +165,7 @@ export default async function ConsultationRecordPage({
         </div>
         <a
           href={`/api/consultations/${row.id}/pdf`}
-          className="flex items-center gap-1.5 rounded-[7px] border border-line px-3 py-2 text-[13px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+          className="flex items-center gap-1.5 rounded-control border border-line px-3 py-2 text-[13px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
         >
           <Download size={13} strokeWidth={2.2} />
           Download PDF
@@ -175,7 +175,7 @@ export default async function ConsultationRecordPage({
       <AddendaPanel consultationId={row.id} addenda={addenda} />
 
       {/* ── What was given ──────────────────────────────── */}
-      <section className="mb-5 overflow-hidden rounded-[10px] border border-line bg-surface">
+      <section className="mb-5 overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
         <div className="flex items-center gap-2 border-b border-line bg-sunk px-4 py-2.5">
           <Syringe size={13} strokeWidth={2.2} className="text-ink-faint" />
           <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">
@@ -250,7 +250,7 @@ export default async function ConsultationRecordPage({
 
       {/* ── Declarations ────────────────────────────────── */}
       {row.declarations.length > 0 ? (
-        <section className="mb-5 overflow-hidden rounded-[10px] border border-line bg-surface">
+        <section className="mb-5 overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
           <div className="border-b border-line bg-sunk px-4 py-2.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">
             Pharmacist declarations
           </div>
@@ -268,7 +268,7 @@ export default async function ConsultationRecordPage({
       ) : null}
 
       {advice.length > 0 ? (
-        <section className="mb-5 rounded-[10px] border border-review-200 bg-review-50 px-4 py-3">
+        <section className="mb-5 rounded-panel border border-review-200 bg-review-50 px-4 py-3">
           <p className="mb-1.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-review-700">
             Clinical advice at the time
           </p>

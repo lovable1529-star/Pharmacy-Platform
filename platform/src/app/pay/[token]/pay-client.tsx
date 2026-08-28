@@ -75,7 +75,7 @@ export function PayClient({
       </div>
 
       {error ? (
-        <p className="mb-3 rounded-[8px] border border-stop-200 bg-stop-50 px-3 py-2 text-[13.5px] text-stop-700">
+        <p className="mb-3 rounded-control border border-stop-200 bg-stop-50 px-3 py-2 text-[13.5px] text-stop-700">
           {error}
         </p>
       ) : null}
@@ -86,7 +86,7 @@ export function PayClient({
         disabled={busy}
         aria-describedby={`pay-note-${paymentId}`}
         className={cn(
-          'flex w-full items-center justify-center gap-2 rounded-[8px] bg-brand-600 px-4 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-brand-700',
+          'flex w-full items-center justify-center gap-2 rounded-control bg-brand-600 px-4 py-3 text-[15px] font-semibold text-white transition-colors hover:bg-brand-700',
           busy && 'cursor-not-allowed opacity-60 hover:bg-brand-600',
         )}
       >

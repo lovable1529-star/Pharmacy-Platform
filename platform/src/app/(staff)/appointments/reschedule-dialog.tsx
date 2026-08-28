@@ -91,7 +91,7 @@ export function RescheduleDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 px-4 py-8">
-      <div className="max-h-full w-full max-w-[560px] overflow-auto rounded-[12px] border border-line bg-surface shadow-pop">
+      <div className="max-h-full w-full max-w-[560px] overflow-auto rounded-panel border border-line bg-surface shadow-pop">
         <div className="flex items-start justify-between border-b border-line px-5 py-4">
           <div>
             <h2 className="font-display text-[17px] font-semibold text-ink">
@@ -135,7 +135,7 @@ export function RescheduleDialog({
           ) : null}
 
           {error ? (
-            <p className="rounded-[8px] border border-stop-200 bg-stop-50 px-3 py-2 text-[13.5px] text-stop-700">
+            <p className="rounded-control border border-stop-200 bg-stop-50 px-3 py-2 text-[13.5px] text-stop-700">
               {error}
             </p>
           ) : days === null ? (
@@ -210,7 +210,7 @@ export function RescheduleDialog({
             <button
               type="button"
               onClick={onClose}
-              className="rounded-[7px] border border-line px-3.5 py-2 text-[13.5px] font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
+              className="rounded-control border border-line px-3.5 py-2 text-[13.5px] font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
             >
               Cancel
             </button>
@@ -226,7 +226,7 @@ export function RescheduleDialog({
                 )
               }
               className={cn(
-                'rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700',
+                'rounded-control bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700',
                 !selectedSlot && 'cursor-not-allowed opacity-40 hover:bg-brand-600',
               )}
             >

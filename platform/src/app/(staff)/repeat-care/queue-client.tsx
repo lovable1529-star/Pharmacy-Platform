@@ -9,6 +9,18 @@
  *
  * A pharmacist should never have to take the outcome on trust, and an auditor
  * should be able to reconstruct any past decision exactly.
+ *
+ * ── Redesign notes ────────────────────────────────────────────────────────
+ *
+ * The "Why?" panel now slides in from the edge it is anchored to, over a
+ * blurred scrim. That is not decoration: a drawer that simply appears reads as
+ * a new page, and a pharmacist needs to feel they have opened something on top
+ * of the queue rather than navigated away from it — the queue is still there,
+ * dimmed, behind it.
+ *
+ * The scrim also gained a backdrop blur. The queue behind it is a list of
+ * patient names, and blurring them while a decision is being made on one is
+ * both calmer to read and marginally better for anyone standing at the counter.
  */
 
 import { useState } from 'react';
@@ -17,6 +29,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { formatDateTime } from '@/lib/units';
+import { EmptyState, PageHeader, Panel } from '@/components/ui/primitives';
 import type { QueueItem } from '@/lib/queries/reviews';
 import { reviewSubmission, type ReviewAction } from './actions';
 
@@ -37,39 +50,40 @@ export function ReviewQueue({ items }: { items: QueueItem[] }) {
   };
 
   return (
-    <div className="mx-auto max-w-[1080px] px-6 py-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[28px] leading-tight text-ink">Repeat care</h1>
-          <p className="mt-1 text-[14px] text-ink-faint">
-            {items.length} request{items.length === 1 ? '' : 's'} awaiting a decision, worst first.
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {(['RED', 'AMBER', 'GREEN'] as const).map((o) => (
-            <span
-              key={o}
-              className={cn(
-                'tabular rounded-[6px] px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-wide',
-                OUTCOME_STYLES[o],
-              )}
-            >
-              {counts[o]} {o.toLowerCase()}
-            </span>
-          ))}
-        </div>
-      </div>
+    <div className="page-shell mx-auto max-w-[calc(1080px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
+      <PageHeader
+        title="Repeat care"
+        subtitle={`${items.length} request${items.length === 1 ? '' : 's'} awaiting a decision, worst first.`}
+        actions={
+          <div className="flex gap-2">
+            {(['RED', 'AMBER', 'GREEN'] as const).map((o) => (
+              <span
+                key={o}
+                className={cn(
+                  'tabular rounded-control px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.05em]',
+                  OUTCOME_STYLES[o],
+                )}
+              >
+                {counts[o]} {o.toLowerCase()}
+              </span>
+            ))}
+          </div>
+        }
+      />
 
       {items.length === 0 ? (
-        <div className="rounded-[10px] border border-line bg-surface px-6 py-16 text-center">
-          <CircleCheck size={28} strokeWidth={1.7} className="mx-auto mb-3 text-safe-600" />
-          <p className="text-[15px] font-medium text-ink">Nothing waiting</p>
-          <p className="mt-1 text-[13.5px] text-ink-faint">
-            Every repeat request has been dealt with.
-          </p>
-        </div>
+        <Panel>
+          <div className="pt-14">
+            <CircleCheck size={28} strokeWidth={1.7} className="mx-auto text-safe-600" />
+          </div>
+          <EmptyState
+            title="Nothing waiting"
+            body="Every repeat request has been dealt with."
+            className="pt-3"
+          />
+        </Panel>
       ) : (
-        <div className="overflow-hidden rounded-[10px] border border-line bg-surface">
+        <Panel>
           {items.map((item) => (
             <button
               key={item.submissionId}
@@ -100,13 +114,13 @@ export function ReviewQueue({ items }: { items: QueueItem[] }) {
                 {item.reference}
               </span>
 
-              <span className="flex shrink-0 items-center gap-1.5 rounded-[6px] border border-line px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft">
+              <span className="flex shrink-0 items-center gap-1.5 rounded-control border border-line px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft">
                 Why?
                 <ChevronRight size={13} strokeWidth={2.2} />
               </span>
             </button>
           ))}
-        </div>
+        </Panel>
       )}
 
       {open ? <ReviewDrawer item={open} onClose={() => setOpenId(null)} /> : null}
@@ -139,9 +153,9 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-[70] flex justify-end">
       <div
-        className="absolute inset-0 bg-ink/25"
+        className="absolute inset-0 animate-fade bg-ink/25 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -149,7 +163,7 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
       <aside
         role="dialog"
         aria-label={`Review ${item.patientName ?? item.reference}`}
-        className="relative flex h-full w-full max-w-[560px] flex-col overflow-hidden bg-canvas shadow-pop"
+        className="relative flex h-full w-full max-w-[560px] animate-slidein flex-col overflow-hidden bg-canvas shadow-pop"
       >
         {/* Header */}
         <div className="flex shrink-0 items-start gap-3 border-b border-line bg-surface px-5 py-4">
@@ -208,7 +222,7 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
                   <li
                     key={t.ruleId}
                     className={cn(
-                      'flex items-start gap-2.5 rounded-[7px] border px-3 py-2.5',
+                      'flex items-start gap-2.5 rounded-control border px-3 py-2.5',
                       t.ruleId === item.decidingRuleId
                         ? 'border-brand-400 bg-brand-50'
                         : 'border-line bg-surface',
@@ -266,7 +280,7 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
             <Section title="Advice for the patient">
               <ul className="flex flex-col gap-2">
                 {item.advice.map((a) => (
-                  <li key={a} className="rounded-[7px] bg-sunk px-3 py-2.5 text-[13.5px] leading-relaxed text-ink-soft">
+                  <li key={a} className="rounded-control bg-sunk px-3 py-2.5 text-[13.5px] leading-relaxed text-ink-soft">
                     {a}
                   </li>
                 ))}
@@ -293,7 +307,7 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
                     ? 'Add a note (optional)'
                     : 'Why are you approving or rejecting this? Required.'
                 }
-                className="mb-3 w-full resize-y rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[13.5px] text-ink placeholder:text-ink-faint focus:border-brand-400 focus:outline-none"
+                className="mb-3 w-full resize-y rounded-control border border-line bg-surface px-3 py-2.5 text-[13.5px] text-ink placeholder:text-ink-faint transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none"
               />
 
               {error ? (
@@ -305,7 +319,7 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
                   type="button"
                   onClick={() => decide('APPROVED')}
                   disabled={busy !== null}
-                  className="flex flex-1 items-center justify-center gap-1.5 rounded-[7px] bg-safe-600 px-4 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-safe-700 disabled:opacity-60"
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-control bg-safe-600 px-4 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-safe-700 disabled:opacity-60"
                 >
                   {busy === 'APPROVED' ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} strokeWidth={2.4} />}
                   Confirm and issue
@@ -314,7 +328,7 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
                   type="button"
                   onClick={() => decide('INFO_REQUESTED')}
                   disabled={busy !== null}
-                  className="flex items-center justify-center gap-1.5 rounded-[7px] border border-line px-3.5 py-2.5 text-[13.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink disabled:opacity-60"
+                  className="flex items-center justify-center gap-1.5 rounded-control border border-line px-3.5 py-2.5 text-[13.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink disabled:opacity-60"
                 >
                   <MessageCircleQuestion size={14} strokeWidth={2} />
                   Ask for more
@@ -323,7 +337,7 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
                   type="button"
                   onClick={() => decide('REJECTED')}
                   disabled={busy !== null}
-                  className="flex items-center justify-center gap-1.5 rounded-[7px] border border-line px-3.5 py-2.5 text-[13.5px] font-medium text-ink-soft transition-colors hover:border-stop-200 hover:text-stop-700 disabled:opacity-60"
+                  className="flex items-center justify-center gap-1.5 rounded-control border border-line px-3.5 py-2.5 text-[13.5px] font-medium text-ink-soft transition-colors hover:border-stop-200 hover:text-stop-700 disabled:opacity-60"
                 >
                   <Ban size={14} strokeWidth={2} />
                   Reject

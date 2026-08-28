@@ -44,7 +44,7 @@ export function NewServiceButton({ services }: { services: DuplicableService[] }
         type="button"
         onClick={() => setOpen(true)}
         disabled={services.length === 0}
-        className="flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
+        className="flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
       >
         <Plus size={15} strokeWidth={2.2} />
         New service
@@ -57,7 +57,7 @@ export function NewServiceButton({ services }: { services: DuplicableService[] }
           <div
             role="dialog"
             aria-label="New service"
-            className="relative w-full max-w-[460px] overflow-hidden rounded-[12px] bg-surface shadow-pop"
+            className="relative w-full max-w-[460px] overflow-hidden rounded-panel bg-surface shadow-pop"
           >
             <div className="flex items-start gap-3 border-b border-line px-5 py-4">
               <Copy size={17} strokeWidth={2} className="mt-0.5 shrink-0 text-brand-600" />
@@ -98,7 +98,7 @@ export function NewServiceButton({ services }: { services: DuplicableService[] }
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. COVID-19 Vaccination"
-                className="mb-4 w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-faint focus:border-brand-400 focus:outline-none"
+                className="mb-4 w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[14px] text-ink placeholder:text-ink-faint transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none"
               />
 
               {source?.hasRules ? (
@@ -140,7 +140,7 @@ export function NewServiceButton({ services }: { services: DuplicableService[] }
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="rounded-[7px] border border-line px-3.5 py-2 text-[13.5px] font-medium text-ink-soft transition-colors hover:text-ink"
+                className="rounded-control border border-line px-3.5 py-2 text-[13.5px] font-medium text-ink-soft transition-colors hover:text-ink"
               >
                 Cancel
               </button>
@@ -149,7 +149,7 @@ export function NewServiceButton({ services }: { services: DuplicableService[] }
                 onClick={create}
                 disabled={busy || !name.trim()}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-[7px] px-4 py-2 text-[13.5px] font-semibold text-white transition-colors',
+                  'flex items-center gap-1.5 rounded-control px-4 py-2 text-[13.5px] font-semibold text-white transition-colors',
                   busy || !name.trim() ? 'cursor-not-allowed bg-ink-faint' : 'bg-brand-600 hover:bg-brand-700',
                 )}
               >

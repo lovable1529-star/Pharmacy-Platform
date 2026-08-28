@@ -123,6 +123,28 @@ export interface FormField {
   warnWhen?: { value: unknown; message: string; severity: 'info' | 'warn' | 'stop' }[];
   /** Two fields side by side on wide screens. Layout hint, not free layout. */
   halfWidth?: boolean;
+  /**
+   * Statements for THIS consent question, overriding the form-wide list.
+   *
+   * Consent normally belongs to the whole form — one agreed wording, versioned
+   * with it, so it stays provable what a patient signed. That breaks down the
+   * moment a form needs two different consents (treatment, then sharing with a
+   * GP), because both questions were forced to show the same text.
+   *
+   * Set, this list wins for this question alone. Unset, the form-wide list
+   * applies exactly as before. Provability is unaffected either way: a field
+   * lives inside the same versioned schema the shared list does.
+   */
+  consentClauses?: ConsentClause[];
+  /**
+   * The wording of a consentList's single tick box.
+   *
+   * Was a hard-coded string inside the control, which meant the one sentence a
+   * patient actually signs was the one sentence the pharmacy could not change.
+   * Optional, and the control keeps the old wording as its fallback, so every
+   * form version published before this still renders exactly as it did.
+   */
+  confirmLabel?: string;
 }
 
 export interface FormStep {

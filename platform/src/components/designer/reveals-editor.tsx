@@ -149,7 +149,7 @@ export function RevealsEditor({
         return (
           <div
             key={String(answer.value)}
-            className="rounded-[8px] border border-line bg-sunk p-2.5"
+            className="rounded-control border border-line bg-sunk p-2.5"
           >
             <p className="mb-1.5 text-[12px] text-ink-soft">
               When they answer{' '}

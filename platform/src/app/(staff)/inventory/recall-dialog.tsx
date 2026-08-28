@@ -56,7 +56,7 @@ export function RecallDialog({
       <div
         role="dialog"
         aria-label="Recall batch"
-        className="relative flex max-h-full w-full max-w-[560px] flex-col overflow-hidden rounded-[12px] bg-surface shadow-pop"
+        className="relative flex max-h-full w-full max-w-[560px] flex-col overflow-hidden rounded-panel bg-surface shadow-pop"
       >
         <div className="flex items-start gap-3 border-b border-line px-5 py-4">
           <AlertTriangle size={18} strokeWidth={2.1} className="mt-0.5 shrink-0 text-stop-700" />
@@ -112,7 +112,7 @@ export function RecallDialog({
               </div>
 
               {impact.patientsWithoutContact > 0 ? (
-                <div className="mb-4 flex items-start gap-2.5 rounded-[8px] border border-review-200 bg-review-50 px-3.5 py-3">
+                <div className="mb-4 flex items-start gap-2.5 rounded-control border border-review-200 bg-review-50 px-3.5 py-3">
                   <PhoneOff size={15} strokeWidth={2} className="mt-0.5 shrink-0 text-review-700" />
                   <p className="text-[13px] leading-snug text-review-700">
                     {impact.patientsWithoutContact} of these patients have no phone number or email
@@ -170,7 +170,7 @@ export function RecallDialog({
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
                 placeholder="e.g. MHRA recall notice, cold chain failure"
-                className="w-full resize-y rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[13.5px] text-ink placeholder:text-ink-faint focus:border-brand-400 focus:outline-none"
+                className="w-full resize-y rounded-control border border-line bg-surface px-3 py-2.5 text-[13.5px] text-ink placeholder:text-ink-faint transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none"
               />
 
               {error ? (
@@ -189,7 +189,7 @@ export function RecallDialog({
               <button
                 type="button"
                 onClick={() => onClose(false)}
-                className="rounded-[7px] border border-line px-3.5 py-2 text-[13.5px] font-medium text-ink-soft transition-colors hover:text-ink"
+                className="rounded-control border border-line px-3.5 py-2 text-[13.5px] font-medium text-ink-soft transition-colors hover:text-ink"
               >
                 Cancel
               </button>
@@ -198,7 +198,7 @@ export function RecallDialog({
                 onClick={confirm}
                 disabled={busy || !reason.trim()}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-[7px] px-4 py-2 text-[13.5px] font-semibold text-white transition-colors',
+                  'flex items-center gap-1.5 rounded-control px-4 py-2 text-[13.5px] font-semibold text-white transition-colors',
                   busy || !reason.trim() ? 'cursor-not-allowed bg-ink-faint' : 'bg-stop-700 hover:brightness-110',
                 )}
               >
@@ -217,7 +217,7 @@ function Figure({
   label, value, tone,
 }: { label: string; value: number; tone?: 'stop' | 'review' }) {
   return (
-    <div className="rounded-[8px] border border-line bg-sunk px-3 py-2.5">
+    <div className="rounded-control border border-line bg-sunk px-3 py-2.5">
       <div className="font-mono text-[10px] uppercase tracking-[0.07em] text-ink-faint">{label}</div>
       <div
         className={cn(

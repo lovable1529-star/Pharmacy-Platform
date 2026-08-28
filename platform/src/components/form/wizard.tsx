@@ -20,11 +20,12 @@ import { cn } from '@/lib/cn';
 import {
   visibleSteps, visibleFieldsForStep, validateStep, validateForm,
   pruneHiddenAnswers, numberQuestions, activeWarnings, isStepUnlocked,
+  resolveConsentClauses,
 } from '@/lib/forms/runtime';
 import type { Answers, FormField, FormSchema } from '@/types/form-schema';
 import {
   FieldShell, FieldWarning, PillToggle, Segmented, RadioList, ChipGroup, CheckList,
-  Dropdown, TextInput, TextArea, AddressInput, DateOfBirthInput, MeasurementInput, PhoneField,
+  Dropdown, TextInput, TextArea, AddressInput, DateInput, DateOfBirthInput, MeasurementInput, PhoneField,
   DerivedValue, FileUploadInput, SignaturePad, InfoBlock, ConsentList,
   type FieldProps,
 } from '@/components/fields/controls';
@@ -58,6 +59,8 @@ export function Control(props: FieldProps & { schema: FormSchema }) {
       return <PhoneField {...props} />;
     case 'address':
       return <AddressInput {...props} />;
+    case 'date':
+      return <DateInput {...props} />;
     case 'dateOfBirth':
       return <DateOfBirthInput {...props} />;
     case 'measurement':
@@ -72,7 +75,10 @@ export function Control(props: FieldProps & { schema: FormSchema }) {
     case 'infoBlock':
       return <InfoBlock {...props} />;
     case 'consentList':
-      return <ConsentList {...props} clauses={schema.consentClauses ?? []} />;
+      // The question's own statements win; otherwise the form-wide list, which
+      // is what every form published before per-question consent relies on.
+      // Resolved by a tested function rather than inline — see runtime.ts.
+      return <ConsentList {...props} clauses={resolveConsentClauses(field, schema)} />;
     default:
       return <TextInput {...props} />;
   }
@@ -212,7 +218,7 @@ export function FormWizard({
 
   return (
     <div className="mx-auto max-w-[1000px] px-5 py-8">
-      <div className="overflow-hidden rounded-[12px] border border-line bg-surface shadow-panel">
+      <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
         {/* ── Step tabs ─────────────────────────────────── */}
         <div className="flex flex-wrap items-center gap-2 border-b border-line bg-sunk px-5 py-3.5">
           {steps.map((s, i) => {
@@ -309,7 +315,7 @@ export function FormWizard({
                   {isLastStep && preview ? (
                     // In preview the last step ends in a statement of fact, not
                     // a disabled button somebody will try to click anyway.
-                    <span className="rounded-[8px] border border-line bg-sunk px-4 py-2.5 text-[13.5px] text-ink-faint">
+                    <span className="rounded-control border border-line bg-sunk px-4 py-2.5 text-[13.5px] text-ink-faint">
                       End of the form — nothing is submitted in preview
                     </span>
                   ) : isLastStep ? (
@@ -318,7 +324,7 @@ export function FormWizard({
                       onClick={submit}
                       disabled={submitting || blocked}
                       className={cn(
-                        'flex items-center gap-2 rounded-[8px] px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
+                        'flex items-center gap-2 rounded-control px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
                         blocked ? 'cursor-not-allowed bg-ink-faint' : 'bg-brand-600 hover:bg-brand-700',
                         submitting && 'opacity-60',
                       )}
@@ -330,7 +336,7 @@ export function FormWizard({
                     <button
                       type="button"
                       onClick={goNext}
-                      className="flex items-center gap-2 rounded-[8px] bg-brand-600 px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors hover:bg-brand-700"
+                      className="flex items-center gap-2 rounded-control bg-brand-600 px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors hover:bg-brand-700"
                     >
                       Next
                       <ArrowRight size={15} strokeWidth={2.2} />

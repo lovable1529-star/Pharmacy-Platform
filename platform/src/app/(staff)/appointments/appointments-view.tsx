@@ -26,6 +26,7 @@ import {
   markArrived, markNoShow, cancelAppointment, rescheduleAppointment,
 } from './actions';
 import { RescheduleDialog } from './reschedule-dialog';
+import { ActionLink, EmptyState, Notice, PageHeader, Panel } from '@/components/ui/primitives';
 
 export type FormState = 'none' | 'not-started' | 'started' | 'submitted';
 
@@ -219,22 +220,16 @@ export function AppointmentsView({
   }
 
   return (
-    <div className="mx-auto max-w-[980px] px-6 py-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-[28px] leading-tight text-ink">Appointments</h1>
-          <p className="mt-1 text-[14px] text-ink-faint">
-            The next two weeks at {branchName}. One calendar across every service.
-          </p>
-        </div>
-        <Link
-          href="/appointments/new"
-          className="flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700"
-        >
-          <Plus size={14} strokeWidth={2.4} />
-          Book appointment
-        </Link>
-      </div>
+    <div className="page-shell mx-auto max-w-[calc(980px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
+      <PageHeader
+        title="Appointments"
+        subtitle={`The next two weeks at ${branchName}. One calendar across every service.`}
+        actions={
+          <ActionLink href="/appointments/new" icon={<Plus size={14} strokeWidth={2.4} />}>
+            Book appointment
+          </ActionLink>
+        }
+      />
 
       {rows.length > 0 ? (
         <div className="relative mb-4">
@@ -248,42 +243,48 @@ export function AppointmentsView({
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Find by name, reference, service or phone…"
             aria-label="Filter appointments"
-            className="w-full rounded-[8px] border border-line bg-surface py-2 pl-9 pr-3 text-[14px] text-ink outline-none focus:border-brand-400"
+            className="w-full rounded-control border border-line bg-surface py-2 pl-9 pr-3 text-[14px] text-ink outline-none transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)]"
           />
         </div>
       ) : null}
 
       {error ? (
-        <div className="mb-4 rounded-[9px] border border-stop-200 bg-stop-50 px-4 py-2.5 text-[13.5px] text-stop-700">
+        <Notice tone="stop" className="mb-4">
           {error}
-        </div>
+        </Notice>
       ) : null}
 
       {rows.length > 0 && visible.length === 0 ? (
-        <div className="rounded-[10px] border border-line bg-surface px-6 py-12 text-center">
-          <p className="text-[14.5px] text-ink">Nothing matches “{query}”</p>
-          <p className="mt-1 text-[13px] text-ink-faint">
-            Only the next two weeks at this branch are listed here.
-          </p>
-        </div>
+        <Panel>
+          <EmptyState
+            title={`Nothing matches “${query}”`}
+            body="Only the next two weeks at this branch are listed here."
+          />
+        </Panel>
       ) : null}
 
       {rows.length === 0 ? (
-        <div className="rounded-[10px] border border-line bg-surface px-6 py-14 text-center">
-          <Calendar size={26} strokeWidth={1.6} className="mx-auto mb-3 text-ink-faint" />
-          <p className="text-[15px] font-medium text-ink">Nothing booked</p>
-          <p className="mt-1 text-[13.5px] text-ink-faint">
-            Book one above, or send patients to{' '}
-            <Link href="/book" className="text-brand-700 underline">/book</Link>. If
-            nobody can find a slot, add opening hours in Settings.
-          </p>
-        </div>
+        <Panel>
+          <div className="pt-12">
+            <Calendar size={26} strokeWidth={1.6} className="mx-auto text-ink-faint" />
+          </div>
+          <div className="px-6 pb-14 pt-3 text-center">
+            <p className="text-[15px] font-medium text-ink">Nothing booked</p>
+            <p className="mt-1 text-[13.5px] text-ink-faint">
+              Book one above, or send patients to{' '}
+              <Link href="/book" className="text-brand-700 underline">/book</Link>. If
+              nobody can find a slot, add opening hours in Settings.
+            </p>
+          </div>
+        </Panel>
       ) : (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-[18px]">
           {[...days.entries()].map(([day, list]) => (
+            // NOT the shared Panel: that clips its overflow, and each row here
+            // opens an action menu that has to escape the section's bounds.
             <section
               key={day}
-              className="overflow-visible rounded-[10px] border border-line bg-surface"
+              className="overflow-visible rounded-panel border border-line bg-surface shadow-panel"
             >
               <div className="border-b border-line bg-sunk px-4 py-2.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">
                 {day} · {list.length} appointment{list.length === 1 ? '' : 's'}

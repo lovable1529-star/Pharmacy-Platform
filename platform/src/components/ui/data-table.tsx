@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 
 /**
  * The one table pattern.
@@ -18,6 +17,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { ArrowUpDown, Download, Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { EmptyState } from './primitives';
 
 export interface Column<T> {
   key: string;
@@ -30,6 +30,15 @@ export interface Column<T> {
   /** Numbers that line up in a column. */
   numeric?: boolean;
   width?: string;
+  /**
+   * Let this column's text wrap onto a second line.
+   *
+   * Off by default: single-line rows are what make a long table scannable, and
+   * every column in the product today is a name, a date, a code or a count.
+   * Set it if you ever add one holding a sentence — a wide table that scrolls
+   * sideways beats a ragged one whose row heights all differ.
+   */
+  wrap?: boolean;
 }
 
 export interface DataTableProps<T> {
@@ -134,9 +143,12 @@ export function DataTable<T>({
   }
 
   return (
-    <div className="overflow-hidden rounded-[10px] border border-line bg-surface">
+    <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
       <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
-        <div className="flex min-w-[200px] flex-1 items-center gap-2 rounded-[7px] border border-line bg-canvas px-3 py-2">
+        {/* The whole field lights up on focus, not just the <input> inside it —
+            otherwise the ring appears around the text and leaves the icon and
+            the border it shares looking detached. */}
+        <div className="flex min-w-[200px] flex-1 items-center gap-2 rounded-control border border-line bg-canvas px-3 py-2 transition-[border-color,box-shadow] focus-within:border-brand-300 focus-within:shadow-[0_0_0_3px_var(--color-brand-50)]">
           <Search size={14} strokeWidth={2} className="shrink-0 text-ink-faint" />
           <input
             value={query}
@@ -157,7 +169,7 @@ export function DataTable<T>({
           <button
             type="button"
             onClick={exportCsv}
-            className="flex items-center gap-1.5 rounded-[7px] border border-line px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+            className="flex items-center gap-1.5 rounded-control border border-line px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
           >
             <Download size={13} strokeWidth={2} />
             CSV
@@ -166,10 +178,7 @@ export function DataTable<T>({
       </div>
 
       {visible.length === 0 ? (
-        <div className="px-6 py-14 text-center">
-          <p className="text-[15px] font-medium text-ink">{emptyTitle}</p>
-          {emptyBody ? <p className="mt-1 text-[13.5px] text-ink-faint">{emptyBody}</p> : null}
-        </div>
+        <EmptyState title={emptyTitle} body={emptyBody} />
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full border-collapse text-[13.5px]">
@@ -194,7 +203,15 @@ export function DataTable<T>({
                       )}
                     >
                       {c.header}
-                      <ArrowUpDown size={10} strokeWidth={2.2} className="opacity-50" />
+                      {/* Faint on every column so the control is discoverable,
+                          solid on the one actually in force. Previously all
+                          six looked identical and nothing said which column
+                          the table was sorted by. */}
+                      <ArrowUpDown
+                        size={10}
+                        strokeWidth={2.2}
+                        className={cn('transition-opacity', sortKey === c.key ? 'opacity-100' : 'opacity-40')}
+                      />
                     </button>
                   </th>
                 ))}
@@ -214,7 +231,11 @@ export function DataTable<T>({
                     <td
                       key={c.key}
                       className={cn(
-                        'px-4 py-2.5 align-top text-ink',
+                        // Middle rather than top: rows carrying a pill or a
+                        // small button next to plain text looked top-heavy,
+                        // with the text riding above the control beside it.
+                        'px-4 py-2.5 align-middle text-ink',
+                        !c.wrap && 'whitespace-nowrap',
                         c.align === 'right' && 'text-right',
                         c.numeric && 'tabular font-mono text-[12.5px]',
                       )}
@@ -256,42 +277,6 @@ export function DataTable<T>({
           </div>
         </div>
       ) : null}
-    </div>
-  );
-}
-
-/** Consistent page heading across every staff screen. */
-/**
- * The primary action on a list page.
- *
- * Shared rather than hand-rolled per screen: an "Add patient" that sits in a
- * different place, or is missing entirely, on each list is the single loudest
- * signal that software was assembled screen by screen rather than designed.
- */
-export function ActionLink({
-  href, children, icon,
-}: { href: string; children: React.ReactNode; icon?: React.ReactNode }) {
-  return (
-    <Link
-      href={href}
-      className="flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700"
-    >
-      {icon}
-      {children}
-    </Link>
-  );
-}
-
-export function PageHeader({
-  title, subtitle, actions,
-}: { title: string; subtitle?: string; actions?: React.ReactNode }) {
-  return (
-    <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-      <div>
-        <h1 className="text-[28px] leading-tight text-ink">{title}</h1>
-        {subtitle ? <p className="mt-1 text-[14px] text-ink-faint">{subtitle}</p> : null}
-      </div>
-      {actions}
     </div>
   );
 }

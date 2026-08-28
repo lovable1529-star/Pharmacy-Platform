@@ -1,0 +1,508 @@
+<title>Karsons UI Change Log</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Public+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+
+<style>
+  /* ── Tokens ───────────────────────────────────────────────────────────
+     Lifted from platform/src/styles/globals.css. This document is about
+     that design system, so it is set in it. */
+  :root {
+    --canvas:#F6F5F9; --surface:#FFFFFF; --nav:#FCFBFE; --sunk:#F3F1F9;
+    --line:#DEDAE9; --line-soft:#EAE7F2;
+    --ink:#191428; --ink-soft:#544D6B; --ink-faint:#7C7594;
+    --b50:#F7F5FC; --b100:#EDE7F8; --b200:#DCCFF1; --b400:#9B78D0;
+    --b500:#7C52BC; --b600:#5B3A8E; --b700:#472C70;
+    --safe-bg:#DCEFE4; --safe-fg:#17603E;
+    --rev-bg:#F8EEDA;  --rev-fg:#8A5A0B;
+    --stop-bg:#F8E4E1; --stop-fg:#A32E22;
+    --shadow:0 1px 2px rgba(25,20,40,.05), 0 10px 28px -18px rgba(25,20,40,.30);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --canvas:#0F0C18; --surface:#191527; --nav:#141020; --sunk:#221C33;
+      --line:#2E2745; --line-soft:#262038;
+      --ink:#F3F1F9; --ink-soft:#B6AECF; --ink-faint:#8B84A3;
+      --b50:#231A38; --b100:#2C2146; --b200:#3B2C5C; --b400:#9B78D0;
+      --b500:#A98AE0; --b600:#7C52BC; --b700:#C7B0F0;
+      --safe-bg:#123023; --safe-fg:#79DFAB;
+      --rev-bg:#33260C;  --rev-fg:#EFC475;
+      --stop-bg:#3A181A; --stop-fg:#F3A79C;
+      --shadow:0 1px 2px rgba(0,0,0,.35), 0 12px 30px -18px rgba(0,0,0,.7);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --canvas:#0F0C18; --surface:#191527; --nav:#141020; --sunk:#221C33;
+    --line:#2E2745; --line-soft:#262038;
+    --ink:#F3F1F9; --ink-soft:#B6AECF; --ink-faint:#8B84A3;
+    --b50:#231A38; --b100:#2C2146; --b200:#3B2C5C; --b400:#9B78D0;
+    --b500:#A98AE0; --b600:#7C52BC; --b700:#C7B0F0;
+    --safe-bg:#123023; --safe-fg:#79DFAB;
+    --rev-bg:#33260C;  --rev-fg:#EFC475;
+    --stop-bg:#3A181A; --stop-fg:#F3A79C;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 12px 30px -18px rgba(0,0,0,.7);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: "Public Sans", system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3 {
+    font-family: "Archivo", system-ui, sans-serif;
+    font-weight: 600;
+    letter-spacing: -0.018em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  a { color: var(--b700); }
+  a:hover { color: var(--ink); }
+  code, .mono { font-family: "JetBrains Mono", ui-monospace, monospace; }
+  code {
+    font-size: 0.86em;
+    background: var(--sunk);
+    padding: 1px 5px;
+    border-radius: 4px;
+  }
+  :focus-visible { outline: 2px solid var(--b500); outline-offset: 3px; border-radius: 3px; }
+
+  .page {
+    max-width: 1180px;
+    margin: 0 auto;
+    padding: 56px 28px 96px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+  @media (min-width: 1000px) {
+    .page { grid-template-columns: 210px minmax(0, 1fr); gap: 56px; }
+  }
+
+  /* ── Masthead ── */
+  .masthead { grid-column: 1 / -1; border-bottom: 1px solid var(--line); padding-bottom: 32px; }
+  .eyebrow {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px; text-transform: uppercase; letter-spacing: .13em;
+    color: var(--ink-faint);
+  }
+  .masthead h1 { font-size: clamp(30px, 4.4vw, 42px); line-height: 1.08; margin: 12px 0 10px; }
+  .masthead p { margin: 0; max-width: 62ch; color: var(--ink-soft); font-size: 17px; }
+
+  .facts {
+    display: grid; gap: 12px; margin-top: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  }
+  .fact {
+    border: 1px solid var(--line); background: var(--surface);
+    border-radius: 12px; padding: 13px 15px;
+  }
+  .fact dt {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px; text-transform: uppercase; letter-spacing: .09em;
+    color: var(--ink-faint);
+  }
+  .fact dd {
+    margin: 3px 0 0; font-family: "Archivo", sans-serif;
+    font-size: 25px; font-weight: 600; line-height: 1.15;
+    font-variant-numeric: tabular-nums;
+  }
+  .fact dd small { font-size: 13px; font-weight: 500; color: var(--ink-faint); }
+
+  /* ── Index rail ── */
+  .rail { display: none; }
+  @media (min-width: 1000px) {
+    .rail { display: block; position: sticky; top: 40px; align-self: start; }
+  }
+  .rail ol { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+  .rail a {
+    display: flex; gap: 9px; padding: 5px 8px; border-radius: 7px;
+    font-size: 13px; color: var(--ink-soft); text-decoration: none; line-height: 1.35;
+  }
+  .rail a:hover { background: var(--sunk); color: var(--ink); }
+  .rail .n { font-family: "JetBrains Mono", monospace; font-size: 11px; color: var(--ink-faint); }
+
+  /* ── Parts ── */
+  .parts { display: flex; flex-direction: column; gap: 52px; min-width: 0; }
+  .part { scroll-margin-top: 32px; }
+  .part > h2 { font-size: 25px; line-height: 1.2; margin: 8px 0 0; max-width: 24ch; }
+  .part > .lede { margin: 12px 0 0; max-width: 68ch; color: var(--ink-soft); }
+  .part h3 {
+    font-size: 16px; margin: 30px 0 8px; max-width: 40ch;
+  }
+  .part p { max-width: 68ch; }
+  .part ul { max-width: 68ch; padding-left: 18px; }
+  .part li { margin-bottom: 7px; }
+  .part li::marker { color: var(--b400); }
+
+  .pullquote {
+    border-left: 3px solid var(--b400);
+    background: var(--b50);
+    padding: 14px 18px;
+    border-radius: 0 10px 10px 0;
+    margin: 20px 0;
+    max-width: 66ch;
+    font-size: 15px;
+    color: var(--ink-soft);
+  }
+  .pullquote strong { color: var(--ink); font-weight: 600; }
+
+  .tablewrap { overflow-x: auto; margin: 18px 0; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th {
+    text-align: left; background: var(--sunk); border-bottom: 1px solid var(--line);
+    padding: 9px 15px; font-family: "JetBrains Mono", monospace;
+    font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--ink-faint); white-space: nowrap;
+  }
+  td { padding: 10px 15px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  tr:last-child td { border-bottom: 0; }
+  td.num { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  .tag {
+    display: inline-block; border-radius: 5px; padding: 1px 7px;
+    font-family: "JetBrains Mono", monospace; font-size: 10px;
+    text-transform: uppercase; letter-spacing: .05em; white-space: nowrap;
+  }
+  .t-safe { background: var(--safe-bg); color: var(--safe-fg); }
+  .t-rev  { background: var(--rev-bg);  color: var(--rev-fg); }
+  .t-stop { background: var(--stop-bg); color: var(--stop-fg); }
+  .t-brand{ background: var(--b100);    color: var(--b700); }
+
+  .verify {
+    grid-column: 1 / -1;
+    border: 1px solid var(--line); background: var(--surface);
+    border-radius: 12px; padding: 22px 24px; box-shadow: var(--shadow);
+    margin-top: 8px;
+  }
+  .verify h2 { font-size: 18px; margin-bottom: 4px; }
+  .verify ul { padding-left: 18px; max-width: 74ch; }
+  .caveat {
+    border: 1px solid var(--rev-bg); background: var(--rev-bg);
+    color: var(--rev-fg); border-radius: 10px; padding: 13px 16px;
+    margin-top: 18px; font-size: 14.5px; max-width: 74ch;
+  }
+  .caveat strong { font-weight: 600; }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <div class="eyebrow">Karsons Pharmacy Platform · 28 August 2026</div>
+    <h1>UI change log</h1>
+    <p>
+      Eight parts of work, in the order they happened: implementing the Claude Design
+      canvas across the platform, rebuilding the form designer, and then a systematic
+      audit that found — and closed — a class of fault the product had been shipping
+      since it was seeded.
+    </p>
+
+    <dl class="facts">
+      <div class="fact"><dt>Source files changed</dt><dd>57</dd></div>
+      <div class="fact"><dt>Lines</dt><dd>+3,559 <small>/ −1,018</small></dd></div>
+      <div class="fact"><dt>Tests</dt><dd>297 <small>was 291</small></dd></div>
+      <div class="fact"><dt>Files deleted</dt><dd>0</dd></div>
+    </dl>
+  </header>
+
+  <nav class="rail" aria-label="Contents">
+    <div class="eyebrow">Contents</div>
+    <ol>
+      <li><a href="#p1"><span class="n">01</span><span>Design system, applied</span></a></li>
+      <li><a href="#p2"><span class="n">02</span><span>Form designer rebuild</span></a></li>
+      <li><a href="#p3"><span class="n">03</span><span>Sidebar reclaims its space</span></a></li>
+      <li><a href="#p4"><span class="n">04</span><span>Naming a step</span></a></li>
+      <li><a href="#p5"><span class="n">05</span><span>Consent was unconfigurable</span></a></li>
+      <li><a href="#p6"><span class="n">06</span><span>Declarations and split consent</span></a></li>
+      <li><a href="#p7"><span class="n">07</span><span>Systematic audit</span></a></li>
+      <li><a href="#p8"><span class="n">08</span><span>The four deferred gaps</span></a></li>
+    </ol>
+  </nav>
+
+  <main class="parts">
+
+    <!-- ── 1 ─────────────────────────────────────────────────────────── -->
+    <section class="part" id="p1">
+      <div class="eyebrow">Part 01</div>
+      <h2>The design system, applied across the platform</h2>
+      <p class="lede">
+        The Claude Design canvas was built on the palette the codebase already had —
+        identical hex values for the brand ramp, the clinical colours and the neutrals.
+        So this was not a reskin. It was token additions, a consolidation of duplicated
+        patterns, and per-screen refinements.
+      </p>
+
+      <div class="pullquote">
+        Measured after the fact: of the 35 colours the canvas introduced beyond what the
+        app already had, <strong>32 were dark-theme values</strong>. In light mode it
+        introduced exactly one new visible colour — a navigation surface a half-step off
+        white. That is why the light theme looks familiar, and it should have been said
+        in the first sentence rather than discovered later.
+      </div>
+
+      <h3>A dark theme that no component knows about</h3>
+      <p>
+        A complete second palette under <code>data-theme="dark"</code>. Only token values
+        change. Two things are deliberately not straight inversions: the brand ramp flips
+        direction, so <code>brand-700</code> goes from dark purple to pale purple and
+        <code>text-brand-700 on bg-brand-100</code> keeps working untouched in both
+        themes; and the clinical colours stay unmistakably green, amber and red rather
+        than being harmonised toward the brand. A pharmacist has to read RED as
+        <em>stop</em> at a glance in either theme, and that outranks visual harmony.
+      </p>
+      <p>
+        The theme resolves in a blocking inline script before first paint, from the saved
+        preference or the OS setting. Not a <code>prefers-color-scheme</code> media query —
+        if the CSS also reacted to the OS, somebody who chose light would be flipped to
+        dark the moment their laptop dimmed at dusk.
+      </p>
+
+      <h3>Consolidation</h3>
+      <ul>
+        <li><strong>~190 hard-coded corner radii</strong> across 44 files swept onto two named tokens.</li>
+        <li>A shared vocabulary — <code>Panel</code>, <code>StatCard</code>, <code>Tag</code>, <code>Notice</code>, <code>EmptyState</code>. All existed already, written slightly differently on each screen; <strong>four separate files had each invented their own amber pill.</strong></li>
+        <li>The navigation regrouped into Clinical, Operations and Administration. Thirteen destinations in one flat list was a wall.</li>
+      </ul>
+
+      <h3>An accessibility bug found on the way</h3>
+      <p>
+        Fourteen files styled inputs with <code>focus:outline-none</code>, which applies on
+        <code>:focus</code> — including <code>:focus-visible</code>. Those fields were
+        <strong>cancelling the global focus outline</strong>, leaving a faint border change
+        as the entire keyboard-focus indicator. All now carry a proper focus ring.
+      </p>
+    </section>
+
+    <!-- ── 2 ─────────────────────────────────────────────────────────── -->
+    <section class="part" id="p2">
+      <div class="eyebrow">Part 02</div>
+      <h2>The form designer, rebuilt</h2>
+      <p class="lede">
+        The old layout stacked an outline <em>above</em> the live preview inside one scroll
+        container, with a palette rail and an inspector either side. Four regions — and the
+        two that mattered, the question being edited and the effect of editing it, were the
+        two furthest apart.
+      </p>
+      <p>
+        Three columns now: <strong>steps</strong>, the <strong>outline</strong> edited in
+        place, and the <strong>real patient form</strong> pinned beside it. Selecting a
+        question expands its row into its own editor rather than filling a panel on the far
+        side of the screen.
+      </p>
+      <ul>
+        <li>The eighteen-type palette became a <strong>search field</strong> that matches on the hint as well as the label — which is why typing “weight” finds Measurement.</li>
+        <li>Follow-ups appear <strong>twice, deliberately</strong>: as a branch of the outline tagged with the answer that triggers it, and inside the parent's editor arranged by answer. The tree is for seeing the logic; the editor is for changing it.</li>
+        <li>Branch tags read the answer's own wording — <code>if Other</code>, never <code>if option_3</code>.</li>
+      </ul>
+      <p>
+        Every mutation is the same function it was, called from a different place. The
+        preview is still the real <code>FormWizard</code>, so nothing can drift between what
+        he builds and what a patient sees.
+      </p>
+    </section>
+
+    <!-- ── 3 ─────────────────────────────────────────────────────────── -->
+    <section class="part" id="p3">
+      <div class="eyebrow">Part 03</div>
+      <h2>Collapsing the sidebar gives the space back</h2>
+      <p class="lede">
+        Collapsing the rail moved 176px of screen into the left and right margins and the
+        content stayed exactly as wide — a fair description of nothing happening.
+      </p>
+      <p>
+        The shell now sets <code>--nav-freed</code> on the content column and each page adds
+        it to its own cap: <code>calc(1080px + var(--nav-freed, 0px))</code>. Additive rather
+        than one shared maximum, because a patient record should not become as wide as an
+        inventory table just because there is room. The <code>0px</code> fallback is
+        load-bearing — these containers also render in the patient-facing layouts, which have
+        no sidebar and never set the variable.
+      </p>
+      <p>
+        The separate Collapse button is gone. <strong>The K mark toggles the rail</strong>,
+        cross-fading to a chevron on hover so it reads as a control. One tradeoff: some
+        people expect a logo to link home. Today is the first nav item, so home is one click
+        away.
+      </p>
+    </section>
+
+    <!-- ── 4 ─────────────────────────────────────────────────────────── -->
+    <section class="part" id="p4">
+      <div class="eyebrow">Part 04</div>
+      <h2>Naming a step</h2>
+      <p class="lede">
+        Adding a step produced “Step 4”, “Step 5” … and the generated name was the only name.
+      </p>
+      <p>
+        The step name in the outline header is now the field itself — a heading at rest, a
+        border on hover, a focus ring when you are in it. A new step arrives
+        <strong>already focused with its name selected</strong>, so typing replaces it.
+        Double-clicking a step in the rail renames it, because the rail is where you see the
+        name and therefore where you will try to change it.
+      </p>
+      <p>
+        An emptied name falls back to its position — on <em>blur</em>, not on every keystroke,
+        or clearing the field to retype would fight you by refilling as you delete.
+      </p>
+    </section>
+
+    <!-- ── 5 ─────────────────────────────────────────────────────────── -->
+    <section class="part" id="p5">
+      <div class="eyebrow">Part 05</div>
+      <h2>The consent question could not be configured at all</h2>
+      <p class="lede">
+        Three separate faults behind one report, and the first instance of the pattern that
+        the later audit was built to find.
+      </p>
+      <ul>
+        <li><strong>The clauses had no editor.</strong> They live on the <em>schema</em>, not the field — deliberately, so the wording is versioned and it stays provable what a patient agreed to. The designer edits fields, so it never saw them. The flu form ships ten clauses; none could be touched except by hand-editing JSON.</li>
+        <li><strong>The tick-box wording was a string literal</strong> inside the control. The one sentence a patient actually signs was the one sentence the pharmacy could not change.</li>
+        <li><strong><code>consentList</code> was not in the palette at all</strong> — so a new service could never have a consent step, and “build your own form for any service” quietly excluded the one question every clinical service needs.</li>
+      </ul>
+      <p>
+        Clause ids are stable and never reused: an id is what a stored submission points at
+        to prove which wording was agreed, so renumbering on delete would quietly repoint old
+        consents at new text.
+      </p>
+    </section>
+
+    <!-- ── 6 ─────────────────────────────────────────────────────────── -->
+    <section class="part" id="p6">
+      <div class="eyebrow">Part 06</div>
+      <h2>Pharmacist declarations, and consent that can differ per question</h2>
+      <p class="lede">
+        The two items Part 5 left open.
+      </p>
+      <p>
+        <strong>Declarations</strong> had the identical fault. They could not hang off a
+        selected question the way consent does — they are not a question, belong to no step,
+        and are ticked on the consultation screen — so they got the outline column to
+        themselves, reached from the steps rail. The panel says plainly that they never
+        appear on the patient's form, because the live preview beside it shows exactly that
+        form and an editor whose changes never appear looks broken.
+      </p>
+      <p>
+        <strong>Per-question consent</strong> was a schema change, so the schema changed.
+        <code>FormField.consentClauses</code> wins over the form-wide list when set; unset,
+        the form-wide list applies exactly as before. The editor states which list is in
+        force <em>before</em> you edit it, because the two look identical and editing the
+        wrong one silently changes another question.
+      </p>
+      <div class="pullquote">
+        The resolution became a tested function rather than an inline fallback. The test that
+        earns its place: <strong>an empty list on the question is a deliberate “show
+        nothing”, not a missing value.</strong> A <code>||</code> where a <code>??</code>
+        belongs would make a question the pharmacy had explicitly cleared inherit ten
+        statements again — looking perfectly fine on screen while recording agreement to text
+        the patient never saw.
+      </div>
+    </section>
+
+    <!-- ── 7 ─────────────────────────────────────────────────────────── -->
+    <section class="part" id="p7">
+      <div class="eyebrow">Part 07</div>
+      <h2>The systematic audit</h2>
+      <p class="lede">
+        Five faults had been found one at a time, all the same shape: something the seeded
+        forms use that the designer cannot reach. Rather than wait for the sixth, the whole
+        surface was enumerated.
+      </p>
+      <p>
+        Three mechanical comparisons — every schema property against every property the
+        designer writes; every field type against the palette <em>and</em> the renderer;
+        every link against the routes that exist — then each gap weighted by how many times
+        the real seeded forms use it.
+      </p>
+
+      <div class="tablewrap">
+        <table>
+          <thead>
+            <tr><th>Gap</th><th>Uses</th><th>Severity</th><th>Consequence</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><code>warnWhen</code></td><td class="num">7</td><td><span class="tag t-stop">clinical</span></td><td>The stop-supply warnings, including pregnancy on GLP-1, existed only in seed files</td></tr>
+            <tr><td><code>measurementKind</code></td><td class="num">6</td><td><span class="tag t-stop">clinical</span></td><td>Every Measurement hard-wired to weight. A height question could not be built at all</td></tr>
+            <tr><td><code>presentation</code></td><td class="num">50</td><td><span class="tag t-rev">visible</span></td><td>Dropdown vs one-per-line, chips vs tick list — frozen at creation</td></tr>
+            <tr><td><code>FormStep.description</code></td><td class="num">11</td><td><span class="tag t-rev">visible</span></td><td>The line under each step heading the patient reads</td></tr>
+            <tr><td><code>calculation</code></td><td class="num">2</td><td><span class="tag t-rev">visible</span></td><td>Every Calculated value is BMI; an age field was impossible</td></tr>
+            <tr><td>Step delete / reorder</td><td class="num">—</td><td><span class="tag t-rev">structural</span></td><td>A step created by mistake was permanent</td></tr>
+            <tr><td><code>yesNoNa</code></td><td class="num">—</td><td><span class="tag t-brand">latent</span></td><td>A working field type that could not be created</td></tr>
+            <tr><td><code>date</code></td><td class="num">0</td><td><span class="tag t-brand">latent</span></td><td>In the type union, absent from the palette, no case in the renderer</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Every <code>href</code> in the application resolves to a route that exists, both API
+        endpoints included. No dead links.
+      </p>
+    </section>
+
+    <!-- ── 8 ─────────────────────────────────────────────────────────── -->
+    <section class="part" id="p8">
+      <div class="eyebrow">Part 08</div>
+      <h2>Closing the four deferred gaps</h2>
+      <p class="lede">
+        The audit deferred four things with reasons. All four were then closed, and one
+        turned up a latent crash.
+      </p>
+
+      <h3>The crash</h3>
+      <p>
+        <code>validateField</code> called <code>new RegExp(rules.pattern)</code> unguarded.
+        <strong>An invalid pattern throws, and the throw takes down validation for the whole
+        step</strong> — a patient would have met a crash rather than a validation message.
+        Now caught and treated as no pattern: the wrong answer to let through, and far better
+        than the alternative. Two tests pin it.
+      </p>
+
+      <h3>The other three</h3>
+      <ul>
+        <li><strong>Visibility rules.</strong> Both halves are pickers, never free text — the value is built from the target question's actual answers, so a rule cannot point at an answer that does not exist. That failure is silent: the question simply never appears.</li>
+        <li><strong>Per-option hidden data.</strong> The flu form carries an <code>@gov.im</code> mailbox on every GP surgery option — that is how a practice learns their patient was vaccinated, and it could not be seen from the designer, let alone corrected. A wrong address there fails silently. Values keep their type, so <code>ladderIndex: 0</code> stays a number.</li>
+        <li><strong>Limits.</strong> Only the limits that do something for a given type are offered, read off <code>validateField</code> rather than guessed.</li>
+      </ul>
+
+      <div class="tablewrap">
+        <table>
+          <thead><tr><th>Coverage</th><th>Before the audit</th><th>Now</th></tr></thead>
+          <tbody>
+            <tr><td><code>FormField</code> properties editable</td><td class="num">8 of 21</td><td class="num">18 of 21</td></tr>
+            <tr><td>Remaining uneditable</td><td class="num">13</td><td class="num">0 <span class="tag t-safe">complete</span></td></tr>
+            <tr><td>Step operations</td><td>add, rename</td><td>add, rename, describe, move, delete</td></tr>
+            <tr><td>Types unreachable from the palette</td><td class="num">2</td><td class="num">0</td></tr>
+            <tr><td>Types with no renderer</td><td class="num">1</td><td class="num">0</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>
+        <code>id</code>, <code>type</code> and <code>number</code> remain immutable by design.
+      </p>
+    </section>
+  </main>
+
+  <section class="verify">
+    <h2>How this was verified</h2>
+    <ul>
+      <li><code>tsc --noEmit</code> clean throughout.</li>
+      <li><strong>297 of 297 tests passing</strong>, up from 291. The unchanged pass rate through Parts 1–3 is the evidence that no behaviour moved during the redesign.</li>
+      <li>All twenty staff and public routes compile and execute — the 307s come from each page's own <code>getStaffContext()</code> redirect, not from middleware, so every page module genuinely ran.</li>
+      <li>Dark-theme token flip confirmed live in the browser; zero <code>bg-white</code>, <code>text-black</code> or hex literals in any <code>className</code>, which is why dark mode works everywhere without per-screen work.</li>
+      <li>Both public patient forms render with no console errors.</li>
+    </ul>
+
+    <div class="caveat">
+      <strong>Two things were not verified.</strong> A production <code>next build</code> was
+      never run — another session holds the dev server on the shared <code>.next</code>
+      directory. And every editor added in Parts 4 through 8 sits behind staff auth in client
+      components: route compilation proves they compile, not that they render. None has been
+      clicked.
+    </div>
+  </section>
+</div>

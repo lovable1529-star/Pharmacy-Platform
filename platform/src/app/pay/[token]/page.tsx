@@ -56,7 +56,7 @@ export default async function PaymentPage({
     <div className="min-h-screen bg-canvas">
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-[640px] items-center gap-3 px-5 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-[7px] bg-brand-600 font-display text-[14px] font-bold text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded-control bg-brand-600 font-display text-[14px] font-bold text-white">
             K
           </div>
           <div className="leading-tight">
@@ -70,7 +70,7 @@ export default async function PaymentPage({
 
       <main className="mx-auto max-w-[640px] px-5 py-10">
         {row.status === 'PAID' ? (
-          <div className="rounded-[12px] border border-safe-200 bg-safe-50 px-6 py-8 text-center">
+          <div className="rounded-panel border border-safe-200 bg-safe-50 px-6 py-8 text-center">
             <h1 className="font-display text-[22px] font-semibold text-safe-700">
               Already paid
             </h1>
@@ -81,7 +81,7 @@ export default async function PaymentPage({
             </p>
           </div>
         ) : row.status === 'CANCELLED' ? (
-          <div className="rounded-[12px] border border-line bg-surface px-6 py-8 text-center">
+          <div className="rounded-panel border border-line bg-surface shadow-panel px-6 py-8 text-center">
             <h1 className="font-display text-[22px] font-semibold text-ink">
               This request was cancelled
             </h1>
@@ -90,7 +90,7 @@ export default async function PaymentPage({
             </p>
           </div>
         ) : expired ? (
-          <div className="rounded-[12px] border border-review-200 bg-review-50 px-6 py-8 text-center">
+          <div className="rounded-panel border border-review-200 bg-review-50 px-6 py-8 text-center">
             <h1 className="font-display text-[22px] font-semibold text-review-700">
               This link has expired
             </h1>
@@ -100,7 +100,7 @@ export default async function PaymentPage({
           </div>
         ) : (
           <>
-            <div className="overflow-hidden rounded-[12px] border border-line bg-surface">
+            <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
               <div className="border-b border-line px-6 py-5">
                 <p className="font-mono text-[10.5px] uppercase tracking-[0.09em] text-ink-faint">
                   Amount due

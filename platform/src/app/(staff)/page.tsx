@@ -6,18 +6,57 @@
  * pharmacist can search for the patient name or DOB straight away."
  *
  * So: search first, then what needs a decision, then what is happening today.
+ *
+ * ── Redesign notes ────────────────────────────────────────────────────────
+ *
+ * The greeting, the date and the search are now one raised panel rather than
+ * three stacked blocks, so the screen opens with a single obvious place to put
+ * your hands. Everything below it is reference.
+ *
+ * Two things in the design were deliberately NOT built, because nothing in the
+ * system currently knows them and inventing them on a clinical dashboard is
+ * indefensible:
+ *
+ *   - the "Clinic open" live pill. Opening hours exist in Settings but are not
+ *     read here, and a badge asserting the clinic is open when it is not is
+ *     worse than no badge.
+ *   - the sparklines and "+18% vs last Friday" deltas on the counters. There is
+ *     no historical series behind this screen — only today's figures — so any
+ *     trend line would be decoration drawn over invented data.
+ *
+ * Both are noted in CHANGELOG-UI.md as available once the data exists. The
+ * fourth counter is real: it counts the batches the panel below already lists.
  */
 
 import Link from 'next/link';
-import { AlertTriangle, PackageX, CalendarClock, ArrowRight } from 'lucide-react';
+import { AlertTriangle, PackageX, CalendarClock, ArrowRight, UserPlus, Activity } from 'lucide-react';
 import { getStaffContext } from '@/lib/auth/context';
 import { getTodaySnapshot, getPatients } from '@/lib/queries/clinical';
 import { getReviewQueue } from '@/lib/queries/reviews';
 import { can } from '@/lib/tenancy/scope';
 import { formatDate } from '@/lib/units';
+import { Panel, PanelHeader, PanelRow, StatCard, Tag, EmptyState } from '@/components/ui/primitives';
 import { PatientSearch } from './patient-search';
 
 export const dynamic = 'force-dynamic';
+
+const TIME_ZONE = 'Europe/Isle_of_Man';
+
+/**
+ * Greeting by time of day, in the pharmacy's own timezone.
+ *
+ * The server may well be running in UTC, and the Isle of Man is an hour ahead
+ * for most of the year — enough to wish somebody good morning at one in the
+ * afternoon if you read the clock off the wrong machine.
+ */
+function greetingFor(now: Date): string {
+  const hour = Number(
+    new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hour12: false, timeZone: TIME_ZONE }).format(now),
+  );
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
 
 export default async function TodayPage() {
   const { actor, activeBranch } = await getStaffContext();
@@ -29,128 +68,227 @@ export default async function TodayPage() {
   ]);
 
   const blocked = queue.filter((q) => q.outcome === 'RED');
+  const now = new Date();
+  const firstName = actor.fullName.split(' ')[0];
+  const needingDecision = snapshot.submissionsAwaiting + blocked.length;
 
   return (
-    <div className="mx-auto max-w-[1080px] px-6 py-8">
-      <div className="mb-7">
-        <h1 className="text-[28px] leading-tight text-ink">
-          Today at {activeBranch?.name ?? 'your pharmacy'}
-        </h1>
-        <p className="mt-1 text-[14px] text-ink-faint">
-          {new Intl.DateTimeFormat('en-GB', {
-            weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-            timeZone: 'Europe/Isle_of_Man',
-          }).format(new Date())}
-        </p>
-      </div>
+    <div className="page-shell mx-auto max-w-[calc(1160px_+_var(--nav-freed,0px))] px-7 pb-11 pt-7">
+      {/* ── Hero ──────────────────────────────────────────────────────── */}
+      <section className="relative animate-rise overflow-hidden rounded-[16px] border border-line bg-wash px-[26px] pb-[22px] pt-[26px] shadow-panel">
+        {/* A single soft bloom in the top-right corner. It gives the panel a
+            light source so the gradient reads as depth rather than as a flat
+            grey fill that somebody forgot to finish. */}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-[60px] -top-[90px] h-[260px] w-[260px] rounded-full bg-[radial-gradient(circle,var(--color-brand-100)_0%,transparent_68%)]"
+        />
 
-      <PatientSearch
-        patients={patients.map((p) => ({
-          id: p.id,
-          firstName: p.firstName,
-          lastName: p.lastName,
-          dateOfBirth: p.dateOfBirth,
-          postcode: p.postcode,
-          phone: p.phone,
-          email: p.email,
-        }))}
-      />
-
-      {/* Counters */}
-      <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <Stat label="Completed today" value={snapshot.completedToday} />
-        <Stat label="Awaiting a decision" value={snapshot.submissionsAwaiting} tone={snapshot.submissionsAwaiting > 0 ? 'review' : undefined} />
-        <Stat label="Blocked on safety" value={blocked.length} tone={blocked.length > 0 ? 'stop' : undefined} />
-      </div>
-
-      {/* Blocked requests */}
-      {blocked.length > 0 ? (
-        <section className="mb-6 overflow-hidden rounded-[10px] border border-stop-200 bg-surface">
-          <div className="flex items-center gap-2 border-b border-stop-100 bg-stop-50 px-4 py-2.5">
-            <AlertTriangle size={15} strokeWidth={2.1} className="text-stop-700" />
-            <h2 className="font-display text-[14px] font-semibold text-stop-700">
-              {blocked.length} repeat request{blocked.length === 1 ? '' : 's'} blocked on safety grounds
-            </h2>
-            <Link href="/repeat-care" className="ml-auto flex items-center gap-1 text-[12.5px] font-medium text-stop-700">
-              Review <ArrowRight size={12} strokeWidth={2.2} />
-            </Link>
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div className="min-w-0">
+            <div className="mb-[7px] font-mono text-[10px] uppercase tracking-[0.08em] text-ink-faint">
+              {new Intl.DateTimeFormat('en-GB', {
+                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+                timeZone: TIME_ZONE,
+              }).format(now)}
+            </div>
+            <h1 className="text-[31px] leading-[1.1] text-ink">
+              {greetingFor(now)}, {firstName}
+            </h1>
+            <p className="mt-1.5 text-[14.5px] text-ink-soft">
+              {needingDecision === 0
+                ? 'Nothing is waiting on a decision'
+                : `${needingDecision} ${needingDecision === 1 ? 'request needs' : 'requests need'} a decision`}
+              {activeBranch ? ` · ${activeBranch.name}` : ''}
+            </p>
           </div>
-          {blocked.slice(0, 4).map((item) => (
-            <div key={item.submissionId} className="flex items-center gap-3 border-b border-line-soft px-4 py-2.5 last:border-b-0">
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-semibold text-ink">
-                  {item.patientName ?? 'Unmatched patient'}
-                </span>
-                <span className="block truncate text-[12.5px] text-ink-faint">
-                  {item.trace.find((t) => t.ruleId === item.decidingRuleId)?.label ?? item.serviceName}
-                </span>
-              </span>
+
+          {/*
+            The two things you start from. "Work the queue" is only offered to
+            somebody who can actually action it — the same permission that puts
+            Repeat care in the navigation.
+          */}
+          <div className="flex shrink-0 gap-2">
+            {can(actor, 'repeat_care:edit') ? (
               <Link
                 href="/repeat-care"
-                className="shrink-0 rounded-[6px] border border-line px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+                className="flex items-center gap-[7px] rounded-[9px] bg-gradient-to-br from-brand-500 to-brand-700 px-[15px] py-2.5 text-[13.5px] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(91,58,142,0.85)] transition-transform hover:-translate-y-px"
               >
-                Why?
+                Work the queue
+                <ArrowRight size={14} strokeWidth={2.2} />
               </Link>
-            </div>
-          ))}
-        </section>
-      ) : null}
-
-      <div className="grid gap-5 lg:grid-cols-2">
-        {/* Stock warnings */}
-        <section className="overflow-hidden rounded-[10px] border border-line bg-surface">
-          <div className="flex items-center gap-2 border-b border-line px-4 py-3">
-            <CalendarClock size={15} strokeWidth={2} className="text-ink-faint" />
-            <h2 className="font-display text-[14.5px] font-semibold text-ink">Stock needing attention</h2>
-            <Link href="/inventory" className="ml-auto text-[12.5px] text-ink-faint hover:text-ink">
-              Inventory
+            ) : null}
+            <Link
+              href="/patients/new"
+              className="flex items-center gap-[7px] rounded-[9px] border border-line bg-surface px-3.5 py-2.5 text-[13.5px] font-semibold text-ink-soft transition-[transform,border-color,color] hover:-translate-y-px hover:border-brand-300 hover:text-ink"
+            >
+              <UserPlus size={15} strokeWidth={2.1} />
+              New patient
             </Link>
           </div>
+        </div>
+
+        <div className="relative mt-5">
+          <PatientSearch
+            patients={patients.map((p) => ({
+              id: p.id,
+              firstName: p.firstName,
+              lastName: p.lastName,
+              dateOfBirth: p.dateOfBirth,
+              postcode: p.postcode,
+              phone: p.phone,
+              email: p.email,
+            }))}
+          />
+        </div>
+      </section>
+
+      {/* ── Counters ──────────────────────────────────────────────────── */}
+      <div className="mt-[18px] grid animate-rise gap-3.5 [animation-delay:60ms] sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Completed today" value={snapshot.completedToday} />
+        <StatCard
+          label="Awaiting a decision"
+          value={snapshot.submissionsAwaiting}
+          tone={snapshot.submissionsAwaiting > 0 ? 'review' : 'neutral'}
+        />
+        <StatCard
+          label="Blocked on safety"
+          value={blocked.length}
+          tone={blocked.length > 0 ? 'stop' : 'neutral'}
+          footnote={blocked.length > 0 ? 'Needs a pharmacist decision' : undefined}
+        />
+        <StatCard
+          label="Batches expiring"
+          value={snapshot.expiringSoon.length}
+          tone={snapshot.expiringSoon.length > 0 ? 'review' : 'neutral'}
+          footnote="Within 60 days"
+        />
+      </div>
+
+      {/* ── Blocked on safety ─────────────────────────────────────────── */}
+      {blocked.length > 0 ? (
+        <div className="mt-[18px] animate-rise [animation-delay:120ms]">
+          <Panel className="border-stop-200">
+            <PanelHeader
+              tone="stop"
+              icon={<AlertTriangle size={15} strokeWidth={2.1} />}
+              title={`${blocked.length} repeat request${blocked.length === 1 ? '' : 's'} blocked on safety grounds`}
+              action={
+                <Link
+                  href="/repeat-care"
+                  className="flex items-center gap-1 text-[12.5px] font-semibold text-stop-700"
+                >
+                  Review <ArrowRight size={12} strokeWidth={2.4} />
+                </Link>
+              }
+            />
+            {blocked.slice(0, 4).map((item) => (
+              <PanelRow key={item.submissionId} className="hover:bg-sunk">
+                <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-stop-100 font-mono text-[10.5px] font-medium text-stop-700">
+                  {(item.patientName ?? '? ?')
+                    .split(' ')
+                    .map((part) => part[0])
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase()}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[14px] font-semibold text-ink">
+                    {item.patientName ?? 'Unmatched patient'}
+                  </span>
+                  <span className="block truncate text-[12.5px] text-ink-faint">
+                    {item.trace.find((t) => t.ruleId === item.decidingRuleId)?.label ?? item.serviceName}
+                  </span>
+                </span>
+                <Link
+                  href="/repeat-care"
+                  className="shrink-0 rounded-control border border-line bg-surface px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+                >
+                  Why?
+                </Link>
+              </PanelRow>
+            ))}
+          </Panel>
+        </div>
+      ) : null}
+
+      {/* ── The day itself ────────────────────────────────────────────── */}
+      <div className="mt-[18px] grid animate-rise gap-4 [animation-delay:180ms] lg:grid-cols-2">
+        <Panel>
+          <PanelHeader
+            icon={<CalendarClock size={15} strokeWidth={2} />}
+            title="Stock needing attention"
+            action={
+              <Link href="/inventory" className="text-[12.5px] text-ink-faint transition-colors hover:text-ink">
+                Inventory
+              </Link>
+            }
+          />
           {snapshot.expiringSoon.length === 0 && snapshot.lowStock.length === 0 ? (
-            <p className="px-4 py-8 text-center text-[13.5px] text-ink-faint">
-              Nothing expiring soon or running low.
-            </p>
+            <EmptyState
+              title="Nothing needs attention"
+              body="No batch is expiring soon or running low at this branch."
+              className="py-10"
+            />
           ) : (
             <>
               {snapshot.expiringSoon.slice(0, 4).map((s) => (
-                <div key={`exp-${s.batchId}-${s.branchId}`} className="flex items-center gap-3 border-b border-line-soft px-4 py-2.5 last:border-b-0">
+                <PanelRow key={`exp-${s.batchId}-${s.branchId}`} className="hover:bg-sunk">
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[13.5px] font-medium text-ink">{s.productName}</span>
-                    <span className="tabular block font-mono text-[11.5px] text-ink-faint">
+                    <span className="tabular block truncate font-mono text-[11.5px] text-ink-faint">
                       Batch {s.batchNumber} · expires {formatDate(s.expiryDate)}
                     </span>
                   </span>
-                  <span className={`tabular shrink-0 rounded-[5px] px-2 py-0.5 font-mono text-[10.5px] ${s.daysToExpiry <= 30 ? 'bg-stop-100 text-stop-700' : 'bg-review-100 text-review-700'}`}>
+                  {/* Thirty days is the line at which a batch stops being
+                      something to plan around and starts being something to
+                      act on, so it changes colour rather than merely counting
+                      down. */}
+                  <Tag tone={s.daysToExpiry <= 30 ? 'stop' : 'review'} className="tabular">
                     {s.daysToExpiry}d
-                  </span>
-                </div>
+                  </Tag>
+                </PanelRow>
               ))}
               {snapshot.lowStock.slice(0, 3).map((s) => (
-                <div key={`low-${s.batchId}-${s.branchId}`} className="flex items-center gap-3 border-b border-line-soft px-4 py-2.5 last:border-b-0">
+                <PanelRow key={`low-${s.batchId}-${s.branchId}`} className="hover:bg-sunk">
                   <PackageX size={14} strokeWidth={2} className="shrink-0 text-review-600" />
                   <span className="min-w-0 flex-1 truncate text-[13.5px] text-ink">{s.productName}</span>
-                  <span className="tabular shrink-0 font-mono text-[12px] text-review-700">{s.quantity} left</span>
-                </div>
+                  <span className="tabular shrink-0 font-mono text-[12px] text-review-700">
+                    {s.quantity} left
+                  </span>
+                </PanelRow>
               ))}
             </>
           )}
-        </section>
+        </Panel>
 
-        {/* Today's consultations */}
-        <section className="overflow-hidden rounded-[10px] border border-line bg-surface">
-          <div className="flex items-center gap-2 border-b border-line px-4 py-3">
-            <h2 className="font-display text-[14.5px] font-semibold text-ink">Seen today</h2>
-            <Link href="/consultations" className="ml-auto text-[12.5px] text-ink-faint hover:text-ink">
-              All consultations
-            </Link>
-          </div>
+        <Panel>
+          <PanelHeader
+            icon={<Activity size={15} strokeWidth={2} />}
+            title="Seen today"
+            action={
+              <Link href="/consultations" className="text-[12.5px] text-ink-faint transition-colors hover:text-ink">
+                All consultations
+              </Link>
+            }
+          />
           {snapshot.recentConsultations.length === 0 ? (
-            <p className="px-4 py-8 text-center text-[13.5px] text-ink-faint">
-              Nobody seen yet today.
-            </p>
+            <EmptyState
+              title="Nobody seen yet today"
+              body="Completed consultations appear here as they are recorded."
+              className="py-10"
+            />
           ) : (
             snapshot.recentConsultations.map((c) => (
-              <div key={c.id} className="flex items-center gap-3 border-b border-line-soft px-4 py-2.5 last:border-b-0">
+              <PanelRow key={c.id} className="hover:bg-sunk">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sunk font-mono text-[10px] font-medium text-ink-soft">
+                  {(c.patientName ?? '? ?')
+                    .split(' ')
+                    .map((part) => part[0])
+                    .slice(0, 2)
+                    .join('')
+                    .toUpperCase()}
+                </span>
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-[13.5px] font-medium text-ink">{c.patientName}</span>
                   <span className="block truncate text-[12px] text-ink-faint">
@@ -158,32 +296,11 @@ export default async function TodayPage() {
                     {c.clinicianName ? ` · ${c.clinicianName}` : ''}
                   </span>
                 </span>
-                {c.fundedBy ? (
-                  <span className="shrink-0 rounded-[5px] bg-sunk px-2 py-0.5 font-mono text-[10px] uppercase text-ink-faint">
-                    {c.fundedBy}
-                  </span>
-                ) : null}
-              </div>
+                {c.fundedBy ? <Tag>{c.fundedBy}</Tag> : null}
+              </PanelRow>
             ))
           )}
-        </section>
-      </div>
-    </div>
-  );
-}
-
-function Stat({
-  label, value, tone,
-}: { label: string; value: number; tone?: 'review' | 'stop' }) {
-  return (
-    <div className="rounded-[10px] border border-line bg-surface px-4 py-3.5">
-      <div className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">{label}</div>
-      <div
-        className={`tabular mt-1 font-display text-[26px] font-semibold ${
-          tone === 'stop' ? 'text-stop-700' : tone === 'review' ? 'text-review-700' : 'text-ink'
-        }`}
-      >
-        {value}
+        </Panel>
       </div>
     </div>
   );

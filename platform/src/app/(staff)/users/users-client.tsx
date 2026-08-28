@@ -21,6 +21,7 @@ import {
   UserPlus, Lock, CircleSlash,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { ActionLink, Notice, PageHeader } from '@/components/ui/primitives';
 import { SearchSelect } from '@/components/ui/search-select';
 import { formatDate } from '@/lib/units';
 import {
@@ -132,38 +133,31 @@ export function UsersAndRoles({
   const grid = useMemo(() => draft, [draft]);
 
   return (
-    <div className="mx-auto max-w-[1180px] px-6 py-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[28px] leading-tight text-ink">Users &amp; Roles</h1>
-          <p className="mt-1 text-[14px] text-ink-faint">
-            Define what each role can do, then give people a role — at a branch, and for as long as
-            they need it.
-          </p>
-        </div>
-        {canEdit ? (
-          <Link
-            href="/users/invite"
-            className="flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700"
-          >
-            <UserPlus size={15} strokeWidth={2.2} />
-            Invite someone
-          </Link>
-        ) : null}
-      </div>
+    <div className="page-shell mx-auto max-w-[calc(1180px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
+      <PageHeader
+        title="Users & Roles"
+        subtitle="Define what each role can do, then give people a role — at a branch, and for as long as they need it."
+        actions={
+          canEdit ? (
+            <ActionLink href="/users/invite" icon={<UserPlus size={15} strokeWidth={2.2} />}>
+              Invite someone
+            </ActionLink>
+          ) : null
+        }
+      />
 
       {!inviteConfigured && canEdit ? (
-        <div className="mb-5 rounded-[9px] border border-review-200 bg-review-50 px-4 py-3 text-[13.5px] text-review-700">
+        <Notice tone="review" className="mb-[18px]">
           Inviting is unavailable until <code>SUPABASE_SERVICE_ROLE_KEY</code> is set. Roles and
           assignments below still work.
-        </div>
+        </Notice>
       ) : null}
 
       {message ? (
         <div
           role="status"
           className={cn(
-            'mb-5 flex items-start gap-2 rounded-[9px] border px-4 py-3 text-[13.5px]',
+            'mb-[18px] flex items-start gap-2 rounded-panel border px-4 py-3 text-[13.5px]',
             message.ok
               ? 'border-safe-200 bg-safe-50 text-safe-700'
               : 'border-stop-200 bg-stop-50 text-stop-700',
@@ -180,7 +174,7 @@ export function UsersAndRoles({
 
       <div className="grid gap-5 lg:grid-cols-[300px_1fr]">
         {/* ── Roles ─────────────────────────────────────── */}
-        <aside className="overflow-hidden rounded-[10px] border border-line bg-surface">
+        <aside className="overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
           <div className="border-b border-line px-4 py-3">
             <h2 className="font-display text-[14.5px] font-semibold text-ink">Roles</h2>
             <p className="mt-0.5 text-[12.5px] text-ink-faint">
@@ -245,20 +239,20 @@ export function UsersAndRoles({
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder="Role name (e.g. Locum Pharmacist)"
-                className="mb-2 w-full rounded-[7px] border border-line bg-surface px-3 py-2 text-[13.5px] text-ink placeholder:text-ink-faint focus:border-brand-400 focus:outline-none"
+                className="mb-2 w-full rounded-control border border-line bg-surface px-3 py-2 text-[13.5px] text-ink placeholder:text-ink-faint transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none"
               />
               <input
                 value={newDescription}
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder="Description (optional)"
-                className="mb-2.5 w-full rounded-[7px] border border-line bg-surface px-3 py-2 text-[13.5px] text-ink placeholder:text-ink-faint focus:border-brand-400 focus:outline-none"
+                className="mb-2.5 w-full rounded-control border border-line bg-surface px-3 py-2 text-[13.5px] text-ink placeholder:text-ink-faint transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none"
               />
               <button
                 type="button"
                 onClick={add}
                 disabled={busy === 'create' || !newName.trim()}
                 className={cn(
-                  'flex w-full items-center justify-center gap-1.5 rounded-[7px] px-3 py-2 text-[13.5px] font-semibold text-white transition-colors',
+                  'flex w-full items-center justify-center gap-1.5 rounded-control px-3 py-2 text-[13.5px] font-semibold text-white transition-colors',
                   busy === 'create' || !newName.trim()
                     ? 'cursor-not-allowed bg-ink-faint'
                     : 'bg-brand-600 hover:bg-brand-700',
@@ -276,7 +270,7 @@ export function UsersAndRoles({
         </aside>
 
         {/* ── Permission grid ───────────────────────────── */}
-        <section className="min-w-0 overflow-hidden rounded-[10px] border border-line bg-surface">
+        <section className="min-w-0 overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
           <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
             <div className="min-w-0">
               <h2 className="font-display text-[14.5px] font-semibold text-ink">
@@ -293,7 +287,7 @@ export function UsersAndRoles({
                 onClick={save}
                 disabled={busy === 'save' || !dirty}
                 className={cn(
-                  'ml-auto flex items-center gap-1.5 rounded-[7px] px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors',
+                  'ml-auto flex items-center gap-1.5 rounded-control px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors',
                   busy === 'save' || !dirty
                     ? 'cursor-not-allowed bg-ink-faint'
                     : 'bg-brand-600 hover:bg-brand-700',
@@ -390,7 +384,7 @@ export function UsersAndRoles({
       </div>
 
       {/* ── Users ───────────────────────────────────────── */}
-      <section className="mt-6 overflow-hidden rounded-[10px] border border-line bg-surface">
+      <section className="mt-[18px] overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
         <div className="border-b border-line px-4 py-3">
           <h2 className="font-display text-[14.5px] font-semibold text-ink">Users</h2>
           <p className="mt-0.5 text-[12.5px] text-ink-faint">
@@ -483,7 +477,7 @@ function UserRowView({
   }
 
   const select =
-    'rounded-[6px] border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink focus:border-brand-400 focus:outline-none disabled:opacity-55';
+    'rounded-[6px] border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none disabled:opacity-55';
 
   return (
     <tr className={cn('border-b border-line-soft last:border-b-0', disabled && 'bg-sunk/60')}>

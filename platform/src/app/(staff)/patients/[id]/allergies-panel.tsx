@@ -26,7 +26,7 @@ export interface AllergyRow {
 }
 
 const input =
-  'w-full rounded-[7px] border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-brand-400';
+  'w-full rounded-control border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-brand-400';
 
 export function AllergiesPanel({
   patientId,
@@ -79,7 +79,7 @@ export function AllergiesPanel({
   return (
     <section
       className={cn(
-        'mb-5 overflow-hidden rounded-[10px] border bg-surface',
+        'mb-5 overflow-hidden rounded-panel border bg-surface',
         serious ? 'border-stop-200' : 'border-line',
       )}
     >
@@ -209,7 +209,7 @@ export function AllergiesPanel({
               disabled={busy || !substance.trim()}
               onClick={submit}
               className={cn(
-                'flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white hover:bg-brand-700',
+                'flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white hover:bg-brand-700',
                 (busy || !substance.trim()) && 'cursor-not-allowed opacity-40 hover:bg-brand-600',
               )}
             >

@@ -11,6 +11,17 @@
  * Errors report what actually went wrong, but deliberately do not distinguish
  * "no such account" from "wrong password" — that difference tells an attacker
  * which addresses are real.
+ *
+ * ── Redesign notes ────────────────────────────────────────────────────────
+ *
+ * This is the only screen most people see before they trust the product with a
+ * patient list, so it gets the one piece of real staging in the whole
+ * application: two soft brand blooms behind the card, and the card itself
+ * rising into place. Nothing moves after that first half-second.
+ *
+ * Every input now shows a focus RING rather than only a border colour change.
+ * On a login form specifically, "which box am I typing in" has to survive being
+ * glanced at rather than looked at.
  */
 
 import { Suspense, useState } from 'react';
@@ -86,10 +97,17 @@ function SignInForm() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-canvas px-5">
-      <div className="w-full max-w-[400px]">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-canvas px-5">
+      {/* Two blooms, off opposite corners. Purely atmospheric — pointer-events
+          are off so they can never sit between a cursor and the form. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(760px_420px_at_18%_8%,var(--color-brand-100)_0%,transparent_62%),radial-gradient(680px_380px_at_88%_94%,var(--color-brand-50)_0%,transparent_60%)]"
+      />
+
+      <div className="relative w-full max-w-[412px] animate-rise">
         <div className="mb-7 flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-[8px] bg-brand-600 font-display text-[15px] font-bold text-white">
+          <div className="flex h-[38px] w-[38px] items-center justify-center rounded-[9px] bg-gradient-to-br from-brand-500 to-brand-700 font-display text-[16px] font-bold text-white shadow-[0_6px_18px_-8px_rgba(91,58,142,0.8)]">
             K
           </div>
           <div className="leading-tight">
@@ -100,15 +118,15 @@ function SignInForm() {
           </div>
         </div>
 
-        <div className="rounded-[12px] border border-line bg-surface p-6 shadow-panel">
+        <div className="rounded-[14px] border border-line bg-surface p-[26px] shadow-panel">
           <form onSubmit={submit}>
-            <h1 className="mb-1.5 text-[19px] text-ink">Sign in</h1>
+            <h1 className="mb-1.5 text-[20px] text-ink">Sign in</h1>
             <p className="mb-5 text-[13.5px] text-ink-soft">
               Staff accounts only. Ask an administrator if you need access.
             </p>
 
             {notice ? (
-              <div className="mb-4 rounded-[7px] border border-safe-200 bg-safe-50 px-3 py-2.5 text-[13px] text-safe-700">
+              <div className="mb-4 rounded-control border border-safe-200 bg-safe-50 px-3 py-2.5 text-[13px] text-safe-700">
                 {decodeURIComponent(notice)}
               </div>
             ) : null}
@@ -124,7 +142,7 @@ function SignInForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@karsonspharmacy.co.uk"
-              className="mb-4 w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-faint focus:border-brand-400 focus:outline-none"
+              className="mb-4 w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[15px] text-ink transition-[border-color,box-shadow] placeholder:text-ink-faint focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none"
             />
 
             <div className="mb-1.5 flex items-baseline justify-between">
@@ -145,13 +163,13 @@ function SignInForm() {
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mb-4 w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[15px] text-ink focus:border-brand-400 focus:outline-none"
+              className="mb-5 w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[15px] text-ink transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none"
             />
 
             {error ? (
               <div
                 role="alert"
-                className="mb-4 flex items-start gap-2 rounded-[7px] border border-stop-200 bg-stop-50 px-3 py-2.5 text-[13px] leading-snug text-stop-700"
+                className="mb-4 flex items-start gap-2 rounded-control border border-stop-200 bg-stop-50 px-3 py-2.5 text-[13px] leading-snug text-stop-700"
               >
                 <AlertTriangle size={14} strokeWidth={2.1} className="mt-0.5 shrink-0" />
                 <span>{error}</span>
@@ -161,7 +179,7 @@ function SignInForm() {
             <button
               type="submit"
               disabled={busy}
-              className="flex w-full items-center justify-center gap-2 rounded-[7px] bg-brand-600 px-4 py-2.5 text-[14.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60"
+              className="flex w-full items-center justify-center gap-2 rounded-control bg-gradient-to-br from-brand-500 to-brand-700 px-4 py-3 text-[14.5px] font-semibold text-white shadow-[0_8px_20px_-10px_rgba(91,58,142,0.9)] transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[0_12px_26px_-10px_rgba(91,58,142,0.95)] disabled:translate-y-0 disabled:opacity-60 disabled:shadow-none"
             >
               {busy ? <Loader2 size={15} className="animate-spin" /> : null}
               Sign in

@@ -38,7 +38,7 @@ function shortDate(date: Date | null): string {
 }
 
 const control =
-  'rounded-[7px] border border-line bg-surface px-3 py-2 text-[13.5px] text-ink outline-none focus:border-brand-400';
+  'rounded-control border border-line bg-surface px-3 py-2 text-[13.5px] text-ink outline-none focus:border-brand-400';
 
 export function GpSendClient() {
   const router = useRouter();
@@ -110,7 +110,7 @@ export function GpSendClient() {
   return (
     <div className="flex flex-col gap-4">
       {/* ── Filters ─────────────────────────────────────── */}
-      <div className="flex flex-wrap items-end gap-3 rounded-[10px] border border-line bg-surface p-4">
+      <div className="flex flex-wrap items-end gap-3 rounded-panel border border-line bg-surface shadow-panel p-4">
         <div>
           <label className="mb-1.5 block text-[12.5px] font-medium text-ink-soft" htmlFor="gp-from">
             From
@@ -191,7 +191,7 @@ export function GpSendClient() {
           <Loader2 size={14} className="animate-spin" /> Loading records…
         </p>
       ) : routable.length === 0 ? (
-        <div className="rounded-[10px] border border-line bg-surface px-6 py-14 text-center">
+        <div className="rounded-panel border border-line bg-surface shadow-panel px-6 py-14 text-center">
           <Mail size={24} strokeWidth={1.6} className="mx-auto mb-3 text-ink-faint" />
           <p className="text-[15px] font-medium text-ink">Nothing to send</p>
           <p className="mt-1 text-[13.5px] text-ink-faint">
@@ -201,7 +201,7 @@ export function GpSendClient() {
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[10px] border border-line bg-surface">
+        <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
           <div className="flex flex-wrap items-center gap-3 border-b border-line bg-sunk px-4 py-2.5">
             <label className="flex items-center gap-2 text-[13px] text-ink-soft">
               <input
@@ -224,7 +224,7 @@ export function GpSendClient() {
               disabled={busy || selected.size === 0}
               onClick={submit}
               className={cn(
-                'ml-auto flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-brand-700',
+                'ml-auto flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-1.5 text-[13px] font-semibold text-white transition-colors hover:bg-brand-700',
                 (busy || selected.size === 0) &&
                   'cursor-not-allowed opacity-40 hover:bg-brand-600',
               )}

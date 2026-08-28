@@ -44,7 +44,7 @@ export default async function EditPatientPage({
     .orderBy(gpSurgery.name);
 
   return (
-    <div className="mx-auto max-w-[760px] px-6 py-8">
+    <div className="page-shell mx-auto max-w-[calc(760px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
       <Link
         href={`/patients/${row.id}`}
         className="mb-4 inline-flex items-center gap-1.5 text-[13px] text-ink-faint transition-colors hover:text-ink"

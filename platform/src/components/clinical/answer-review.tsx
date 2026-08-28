@@ -192,7 +192,7 @@ export function AnswerReview({ schema, answers, onAmend }: Props) {
       {questions.map(({ field, value }) => (
         <div
           key={field.id}
-          className="rounded-[10px] border border-brand-200 bg-brand-50 px-4 py-3.5"
+          className="rounded-panel border border-brand-200 bg-brand-50 px-4 py-3.5"
         >
           <p className="mb-1.5 flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-brand-700">
             <MessageSquare size={12} strokeWidth={2.4} />
@@ -207,7 +207,7 @@ export function AnswerReview({ schema, answers, onAmend }: Props) {
 
       {/* ── Safety summary ──────────────────────────────── */}
       {flagged.length > 0 ? (
-        <div className="rounded-[10px] border border-review-200 bg-review-50 px-4 py-3.5">
+        <div className="rounded-panel border border-review-200 bg-review-50 px-4 py-3.5">
           <p className="mb-2 flex items-center gap-1.5 font-mono text-[10.5px] uppercase tracking-[0.08em] text-review-700">
             <AlertTriangle size={12} strokeWidth={2.4} />
             Check with the patient before proceeding
@@ -222,7 +222,7 @@ export function AnswerReview({ schema, answers, onAmend }: Props) {
           </dl>
         </div>
       ) : (
-        <div className="rounded-[10px] border border-safe-200 bg-safe-50 px-4 py-3 text-[13.5px] text-safe-700">
+        <div className="rounded-panel border border-safe-200 bg-safe-50 px-4 py-3 text-[13.5px] text-safe-700">
           <span className="inline-flex items-center gap-1.5">
             <Check size={13} strokeWidth={2.6} />
             No allergies, pregnancy or illness flagged in the patient’s answers.
@@ -248,7 +248,7 @@ export function AnswerReview({ schema, answers, onAmend }: Props) {
         const isCollapsed = collapsed.has(step.id);
 
         return (
-          <section key={step.id} className="overflow-hidden rounded-[10px] border border-line bg-surface">
+          <section key={step.id} className="overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
             <button
               type="button"
               onClick={() => toggle(step.id)}
@@ -334,7 +334,7 @@ export function AnswerReview({ schema, answers, onAmend }: Props) {
                       </div>
 
                       {isEditing ? (
-                        <div className="mt-2.5 rounded-[8px] border border-brand-200 bg-brand-50 p-3">
+                        <div className="mt-2.5 rounded-control border border-brand-200 bg-brand-50 p-3">
                           <Control
                             schema={numbered}
                             field={field}

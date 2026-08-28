@@ -10,7 +10,7 @@
  */
 
 import type {
-  Answers, FormField, FormSchema, FormStep, ValidationIssue,
+  Answers, ConsentClause, FormField, FormSchema, FormStep, ValidationIssue,
   ValidationResult, VisibilityRule,
 } from '@/types/form-schema';
 
@@ -182,12 +182,27 @@ function validateField(field: FormField, answers: Answers): ValidationIssue | nu
         message: rules.message ?? `Use no more than ${rules.maxLength} characters.`,
       };
     }
-    if (rules?.pattern && !new RegExp(rules.pattern).test(value)) {
-      return {
-        fieldId: field.id,
-        fieldLabel: field.label,
-        message: rules.message ?? 'That does not look right — please check it.',
-      };
+    /*
+     * A pattern is author-supplied text, and `new RegExp` THROWS on an invalid
+     * one — which would take down validation for the whole step rather than
+     * failing this single field. An unparseable pattern is treated as no
+     * pattern: the wrong answer to let through, but far better than a patient
+     * meeting a crash halfway down a consent form.
+     */
+    if (rules?.pattern) {
+      let expression: RegExp | null = null;
+      try {
+        expression = new RegExp(rules.pattern);
+      } catch {
+        expression = null;
+      }
+      if (expression && !expression.test(value)) {
+        return {
+          fieldId: field.id,
+          fieldLabel: field.label,
+          message: rules.message ?? 'That does not look right — please check it.',
+        };
+      }
     }
   }
 
@@ -273,6 +288,24 @@ export function numberQuestions(schema: FormSchema): FormSchema {
  * Pulls hidden metadata from selected options into the submission — the GP's
  * mailbox, the batch number and expiry, the pharmacist's GPhC number.
  */
+/**
+ * Which consent statements a question shows.
+ *
+ * The question's own list wins; otherwise the form-wide one. Worth being a
+ * named, tested function rather than an inline fallback in the renderer,
+ * because getting it backwards would silently show a patient the wrong consent
+ * text and still record a valid-looking agreement.
+ *
+ * An EMPTY list on the field is a deliberate answer, not a missing one — a
+ * question set to show no statements must not quietly inherit ten.
+ */
+export function resolveConsentClauses(
+  field: FormField,
+  schema: FormSchema,
+): ConsentClause[] {
+  return field.consentClauses ?? schema.consentClauses ?? [];
+}
+
 export function collectMetadata(schema: FormSchema, answers: Answers): Record<string, unknown> {
   const collected: Record<string, unknown> = {};
 

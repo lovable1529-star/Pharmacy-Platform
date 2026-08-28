@@ -141,7 +141,7 @@ export function OpeningHoursEditor({
       ) : null}
 
       {branches.length === 0 ? (
-        <p className="rounded-[10px] border border-line bg-surface px-6 py-10 text-center text-[13.5px] text-ink-faint">
+        <p className="rounded-panel border border-line bg-surface shadow-panel px-6 py-10 text-center text-[13.5px] text-ink-faint">
           No branches yet.
         </p>
       ) : null}
@@ -150,7 +150,7 @@ export function OpeningHoursEditor({
         const rows = byBranch.get(b.id) ?? [];
 
         return (
-          <section key={b.id} className="overflow-hidden rounded-[10px] border border-line bg-surface">
+          <section key={b.id} className="overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
             <div className="flex items-center justify-between border-b border-line bg-sunk px-4 py-2.5">
               <span className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">
                 {b.name}
@@ -212,7 +212,7 @@ export function OpeningHoursEditor({
 
       {draft ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/30 px-4">
-          <div className="w-full max-w-[480px] rounded-[12px] border border-line bg-surface shadow-pop">
+          <div className="w-full max-w-[480px] rounded-panel border border-line bg-surface shadow-pop">
             <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
               <h2 className="flex items-center gap-2 font-display text-[16px] font-semibold text-ink">
                 <Clock size={15} strokeWidth={2.2} />
@@ -320,7 +320,7 @@ export function OpeningHoursEditor({
               <button
                 type="button"
                 onClick={() => setDraft(null)}
-                className="rounded-[7px] border border-line px-3.5 py-2 text-[13.5px] font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
+                className="rounded-control border border-line px-3.5 py-2 text-[13.5px] font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
               >
                 Cancel
               </button>
@@ -329,7 +329,7 @@ export function OpeningHoursEditor({
                 disabled={busy}
                 onClick={save}
                 className={cn(
-                  'flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white hover:bg-brand-700',
+                  'flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white hover:bg-brand-700',
                   busy && 'opacity-60',
                 )}
               >

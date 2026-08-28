@@ -29,7 +29,7 @@ import 'react-day-picker/style.css';
 const PHARMACY_TIMEZONE = 'Europe/Isle_of_Man';
 
 const field =
-  'w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-faint focus:border-brand-400 focus:outline-none';
+  'w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-faint transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none';
 
 function formatLongDate(iso: string): string {
   return new Intl.DateTimeFormat('en-GB', {
@@ -152,7 +152,7 @@ export function BookingClient({
             </p>
             <a
               href={done.formUrl}
-              className="inline-block rounded-[8px] bg-brand-600 px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors hover:bg-brand-700"
+              className="inline-block rounded-control bg-brand-600 px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors hover:bg-brand-700"
             >
               Complete my form
             </a>
@@ -237,7 +237,7 @@ export function BookingClient({
               </p>
             </div>
           ) : (
-            <div className="grid gap-5 rounded-[10px] border border-line bg-surface p-4 sm:grid-cols-[auto_1fr]">
+            <div className="grid gap-5 rounded-panel border border-line bg-surface shadow-panel p-4 sm:grid-cols-[auto_1fr]">
               <div className="karsons-calendar">
                 <DayPicker
                   mode="single"
@@ -273,7 +273,7 @@ export function BookingClient({
                           type="button"
                           onClick={() => setSlot(s.startsAt)}
                           className={cn(
-                            'tabular rounded-[7px] border px-2 py-2 font-mono text-[13px] transition-colors',
+                            'tabular rounded-control border px-2 py-2 font-mono text-[13px] transition-colors',
                             slot === s.startsAt
                               ? 'border-brand-600 bg-brand-600 text-white'
                               : 'border-line bg-surface text-ink-soft hover:border-brand-300 hover:text-ink',
@@ -365,7 +365,7 @@ export function BookingClient({
               onClick={submit}
               disabled={!canSubmit}
               className={cn(
-                'flex items-center gap-2 rounded-[8px] px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
+                'flex items-center gap-2 rounded-control px-5 py-2.5 text-[14.5px] font-semibold text-white transition-colors',
                 canSubmit ? 'bg-brand-600 hover:bg-brand-700' : 'cursor-not-allowed bg-ink-faint',
               )}
             >

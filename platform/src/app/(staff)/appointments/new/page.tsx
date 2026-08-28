@@ -9,7 +9,7 @@ export default async function NewAppointmentPage() {
   const options = await getCounterBookingOptions();
 
   return (
-    <div className="mx-auto max-w-[760px] px-6 py-8">
+    <div className="page-shell mx-auto max-w-[calc(760px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
       <Link
         href="/appointments"
         className="mb-4 inline-flex items-center gap-1.5 text-[13px] text-ink-faint hover:text-ink"
@@ -26,11 +26,11 @@ export default async function NewAppointmentPage() {
       </p>
 
       {!options.ok || !options.services || !options.branchId ? (
-        <div className="rounded-[10px] border border-stop-200 bg-stop-50 px-4 py-3 text-[13.5px] text-stop-700">
+        <div className="rounded-panel border border-stop-200 bg-stop-50 px-4 py-3 text-[13.5px] text-stop-700">
           {options.error ?? 'Could not load services.'}
         </div>
       ) : options.services.length === 0 ? (
-        <div className="rounded-[10px] border border-line bg-surface px-6 py-12 text-center">
+        <div className="rounded-panel border border-line bg-surface shadow-panel px-6 py-12 text-center">
           <p className="text-[15px] font-medium text-ink">No services offered here</p>
           <p className="mt-1 text-[13.5px] text-ink-faint">
             Add one in{' '}

@@ -20,7 +20,7 @@ import {
 
 const label = 'mb-1.5 block text-[12.5px] font-medium text-ink-soft';
 const input =
-  'w-full rounded-[7px] border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-brand-400';
+  'w-full rounded-control border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-brand-400';
 
 function Shell({
   title, hint, children, onSubmit, busy, error, disabled,
@@ -34,12 +34,12 @@ function Shell({
   disabled?: boolean;
 }) {
   return (
-    <section className="mt-4 rounded-[10px] border border-line bg-surface p-5">
+    <section className="mt-4 rounded-panel border border-line bg-surface shadow-panel p-5">
       <h3 className="font-display text-[15px] font-semibold text-ink">{title}</h3>
       {hint ? <p className="mb-3 mt-0.5 text-[13px] text-ink-faint">{hint}</p> : <div className="mb-3" />}
 
       {error ? (
-        <p className="mb-3 rounded-[8px] border border-stop-200 bg-stop-50 px-3 py-2 text-[13px] text-stop-700">
+        <p className="mb-3 rounded-control border border-stop-200 bg-stop-50 px-3 py-2 text-[13px] text-stop-700">
           {error}
         </p>
       ) : null}
@@ -52,7 +52,7 @@ function Shell({
           disabled={busy || disabled}
           onClick={onSubmit}
           className={cn(
-            'flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700',
+            'flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700',
             (busy || disabled) && 'cursor-not-allowed opacity-40 hover:bg-brand-600',
           )}
         >

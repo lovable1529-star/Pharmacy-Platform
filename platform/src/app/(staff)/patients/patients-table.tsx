@@ -10,7 +10,8 @@
 
 import { useRouter } from 'next/navigation';
 import { UserPlus } from 'lucide-react';
-import { ActionLink, DataTable, PageHeader, type Column } from '@/components/ui/data-table';
+import { DataTable, type Column } from '@/components/ui/data-table';
+import { ActionLink, PageHeader } from '@/components/ui/primitives';
 import { formatDate } from '@/lib/units';
 import { ageInYears } from '@/lib/patients/search';
 import type { PatientRow } from '@/lib/queries/clinical';
@@ -41,7 +42,7 @@ export function PatientsTable({ rows }: { rows: PatientRow[] }) {
   ];
 
   return (
-    <div className="mx-auto max-w-[1080px] px-6 py-8">
+    <div className="page-shell mx-auto max-w-[calc(1080px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
       <PageHeader
         title="Patients"
         subtitle="Everyone registered with the group, findable from either branch."

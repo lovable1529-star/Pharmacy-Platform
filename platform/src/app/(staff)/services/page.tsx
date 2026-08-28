@@ -5,11 +5,19 @@
  * published form version and — optionally — a published ruleset. Adding COVID
  * vaccination or travel health is configuration from here, not a development
  * project.
+ *
+ * ── Redesign notes ────────────────────────────────────────────────────────
+ *
+ * Each service is now a card that lifts on hover, because the whole row is a
+ * destination — this is a chooser, not a table of facts. The local `Tag` this
+ * file used to define was one of four near-identical copies scattered across
+ * the app; it now uses the shared one, which is why the tag colours here match
+ * the ones on Inventory and Repeat care for the first time.
  */
 
 import Link from 'next/link';
 import { eq, and, isNull, desc } from 'drizzle-orm';
-import { PencilLine, ExternalLink, Scale , Eye} from 'lucide-react';
+import { PencilLine, Scale, Eye } from 'lucide-react';
 import { NewServiceButton } from './new-service-button';
 import { getStaffContext } from '@/lib/auth/context';
 import { can } from '@/lib/tenancy/scope';
@@ -17,6 +25,7 @@ import { db } from '@/lib/db/client';
 import { service, formVersion, rulesetVersion } from '@/lib/db/schema';
 import { formatMoney } from '@/lib/units';
 import type { FormSchema } from '@/types/form-schema';
+import { EmptyState, PageHeader, Panel, Tag } from '@/components/ui/primitives';
 
 export const dynamic = 'force-dynamic';
 
@@ -43,25 +52,22 @@ export default async function ServicesPage() {
     .orderBy(desc(service.createdAt));
 
   return (
-    <div className="mx-auto max-w-[1000px] px-6 py-8">
-      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-[28px] leading-tight text-ink">Services</h1>
-          <p className="mt-1 text-[14px] text-ink-faint">
-            Each one is a form you control. Editing publishes a new version and leaves everything
-            already answered untouched.
-          </p>
-        </div>
-        {editable ? (
-          <NewServiceButton
-            services={rows.map((r) => ({
-              id: r.id,
-              name: r.name,
-              hasRules: r.rulesetVersion !== null,
-            }))}
-          />
-        ) : null}
-      </div>
+    <div className="page-shell mx-auto max-w-[calc(1000px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
+      <PageHeader
+        title="Services"
+        subtitle="Each one is a form you control. Editing publishes a new version and leaves everything already answered untouched."
+        actions={
+          editable ? (
+            <NewServiceButton
+              services={rows.map((r) => ({
+                id: r.id,
+                name: r.name,
+                hasRules: r.rulesetVersion !== null,
+              }))}
+            />
+          ) : null
+        }
+      />
 
       <div className="grid gap-3">
         {rows.map((row) => {
@@ -70,7 +76,10 @@ export default async function ServicesPage() {
           const questions = schema?.steps.reduce((n, s) => n + s.fields.length, 0) ?? 0;
 
           return (
-            <div key={row.id} className="rounded-[10px] border border-line bg-surface px-5 py-4">
+            <Panel
+              key={row.id}
+              className="px-5 py-[17px] transition-[border-color,box-shadow] hover:border-brand-200 hover:shadow-lift"
+            >
               <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
                 <div className="min-w-0 flex-1">
                   <h2 className="text-[16px] font-semibold text-ink">{row.name}</h2>
@@ -79,9 +88,9 @@ export default async function ServicesPage() {
                   ) : null}
 
                   <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                    <Tag>{row.kind.toLowerCase().replace('_', ' ')}</Tag>
+                    <Tag tone="neutral">{row.kind.toLowerCase().replace('_', ' ')}</Tag>
                     {row.formVersion !== null ? (
-                      <Tag>form v{row.formVersion}</Tag>
+                      <Tag tone="neutral">form v{row.formVersion}</Tag>
                     ) : (
                       <Tag tone="review">no published form</Tag>
                     )}
@@ -107,7 +116,7 @@ export default async function ServicesPage() {
                       submission behind. */}
                   <Link
                     href={`/services/${row.slug}/preview`}
-                    className="flex items-center gap-1.5 rounded-[7px] border border-line px-3 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+                    className="flex items-center gap-1.5 rounded-control border border-line bg-surface px-3 py-[7px] text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
                   >
                     <Eye size={13} strokeWidth={2} />
                     Preview
@@ -115,7 +124,7 @@ export default async function ServicesPage() {
                   {editable ? (
                     <Link
                       href={`/services/${row.slug}/designer`}
-                      className="flex items-center gap-1.5 rounded-[7px] bg-brand-600 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700"
+                      className="flex items-center gap-1.5 rounded-control bg-brand-600 px-3 py-[7px] text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700"
                     >
                       <PencilLine size={13} strokeWidth={2.2} />
                       Edit form
@@ -123,38 +132,19 @@ export default async function ServicesPage() {
                   ) : null}
                 </div>
               </div>
-            </div>
+            </Panel>
           );
         })}
       </div>
 
       {rows.length === 0 ? (
-        <div className="rounded-[10px] border border-line bg-surface px-6 py-14 text-center">
-          <p className="text-[15px] font-medium text-ink">No services yet</p>
-          <p className="mt-1 text-[13.5px] text-ink-faint">
-            Run the seed scripts to load the flu and weight management services.
-          </p>
-        </div>
+        <Panel>
+          <EmptyState
+            title="No services yet"
+            body="Run the seed scripts to load the flu and weight management services."
+          />
+        </Panel>
       ) : null}
     </div>
-  );
-}
-
-function Tag({
-  children, tone,
-}: { children: React.ReactNode; tone?: 'review' | 'brand' }) {
-  const styles =
-    tone === 'review'
-      ? 'bg-review-100 text-review-700'
-      : tone === 'brand'
-        ? 'bg-brand-100 text-brand-700'
-        : 'bg-sunk text-ink-faint';
-
-  return (
-    <span
-      className={`flex items-center gap-1 rounded-[5px] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide ${styles}`}
-    >
-      {children}
-    </span>
   );
 }

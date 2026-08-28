@@ -90,7 +90,7 @@ export function PaymentsClient({ demo, appUrl }: { demo: boolean; appUrl: string
   return (
     <div className="flex flex-col gap-4">
       {demo ? (
-        <div className="flex items-start gap-2.5 rounded-[10px] border border-review-200 bg-review-50 px-4 py-3">
+        <div className="flex items-start gap-2.5 rounded-panel border border-review-200 bg-review-50 px-4 py-3">
           <Info size={15} strokeWidth={2.2} className="mt-0.5 shrink-0 text-review-700" />
           <div>
             <p className="m-0 text-[13.5px] font-semibold text-review-700">
@@ -144,7 +144,7 @@ export function PaymentsClient({ demo, appUrl }: { demo: boolean; appUrl: string
           <Loader2 size={14} className="animate-spin" /> Loading payments…
         </p>
       ) : rows.length === 0 ? (
-        <div className="rounded-[10px] border border-line bg-surface px-6 py-14 text-center">
+        <div className="rounded-panel border border-line bg-surface shadow-panel px-6 py-14 text-center">
           <Banknote size={24} strokeWidth={1.6} className="mx-auto mb-3 text-ink-faint" />
           <p className="text-[15px] font-medium text-ink">Nothing here</p>
           <p className="mt-1 text-[13.5px] text-ink-faint">
@@ -153,7 +153,7 @@ export function PaymentsClient({ demo, appUrl }: { demo: boolean; appUrl: string
           </p>
         </div>
       ) : (
-        <div className="overflow-hidden rounded-[10px] border border-line bg-surface">
+        <div className="overflow-hidden rounded-panel border border-line bg-surface shadow-panel">
           {rows.map((r) => (
             <div
               key={r.id}

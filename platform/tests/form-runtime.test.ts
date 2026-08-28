@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   visibleFields, visibleSteps, pruneHiddenAnswers, validateForm, validateStep,
   numberQuestions, collectMetadata, activeWarnings, isStepUnlocked, expandField,
+  resolveConsentClauses,
 } from '@/lib/forms/runtime';
 import { buildFluVaccinationForm } from '@/lib/services/flu-vaccination';
 import type { FormSchema } from '@/types/form-schema';
@@ -289,5 +290,91 @@ describe('follow-ups on Yes/No use the string the control writes', () => {
     expect(expandField(allergy, { hasAllergy: 'no' }).map((f) => f.id)).toEqual([
       'hasAllergy',
     ]);
+  });
+});
+
+describe('consent clauses', () => {
+  const CLAUSE_A = { id: 'a', text: 'Form-wide statement.' };
+  const CLAUSE_B = { id: 'b', text: 'This question only.' };
+
+  const schema: FormSchema = {
+    schemaVersion: 1,
+    title: 'Consent',
+    consentClauses: [CLAUSE_A],
+    steps: [],
+  };
+
+  it('falls back to the form-wide list', () => {
+    const field = { id: 'consent', type: 'consentList' as const, label: 'Consent' };
+    expect(resolveConsentClauses(field, schema)).toEqual([CLAUSE_A]);
+  });
+
+  it('prefers the question’s own list', () => {
+    const field = {
+      id: 'consent',
+      type: 'consentList' as const,
+      label: 'Consent',
+      consentClauses: [CLAUSE_B],
+    };
+    expect(resolveConsentClauses(field, schema)).toEqual([CLAUSE_B]);
+  });
+
+  /*
+   * The one that would break silently. An empty list on the field is a
+   * deliberate "show nothing", and must not fall through to the form-wide list
+   * — a `||` here instead of `??` would inherit ten statements the pharmacy
+   * had explicitly cleared.
+   */
+  it('treats an empty list on the question as deliberate, not missing', () => {
+    const field = {
+      id: 'consent',
+      type: 'consentList' as const,
+      label: 'Consent',
+      consentClauses: [],
+    };
+    expect(resolveConsentClauses(field, schema)).toEqual([]);
+  });
+
+  it('returns nothing when neither is set', () => {
+    const bare: FormSchema = { schemaVersion: 1, title: 'Bare', steps: [] };
+    const field = { id: 'consent', type: 'consentList' as const, label: 'Consent' };
+    expect(resolveConsentClauses(field, bare)).toEqual([]);
+  });
+});
+
+describe('validation patterns', () => {
+  function withPattern(pattern: string): FormSchema {
+    return {
+      schemaVersion: 1,
+      title: 'Pattern',
+      steps: [
+        {
+          id: 's1',
+          title: 'One',
+          fields: [
+            { id: 'code', type: 'shortText', label: 'Code', validation: { pattern } },
+          ],
+        },
+      ],
+    };
+  }
+
+  it('applies a valid pattern', () => {
+    const schema = withPattern('^[A-Z]{3}$');
+    expect(validateForm(schema, { code: 'ABC' }).valid).toBe(true);
+    expect(validateForm(schema, { code: 'abc' }).valid).toBe(false);
+  });
+
+  /*
+   * An unparseable pattern used to reach `new RegExp` unguarded and THROW,
+   * which took down validation for the whole step rather than failing one
+   * field — a patient would have met a crash, not a validation message.
+   * It is now ignored: the wrong answer to let through, and far better than
+   * that.
+   */
+  it('ignores an unparseable pattern instead of throwing', () => {
+    const schema = withPattern('([unclosed');
+    expect(() => validateForm(schema, { code: 'anything' })).not.toThrow();
+    expect(validateForm(schema, { code: 'anything' }).valid).toBe(true);
   });
 });

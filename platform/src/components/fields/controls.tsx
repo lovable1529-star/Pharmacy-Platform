@@ -41,8 +41,8 @@ export interface FieldProps {
 // ─────────────────────────────────────────────────────────────
 
 const inputClass =
-  'w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[15px] text-ink ' +
-  'placeholder:text-ink-faint focus:border-brand-400 focus:outline-none ' +
+  'w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[15px] text-ink ' +
+  'placeholder:text-ink-faint transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none ' +
   'focus-visible:outline-2 focus-visible:outline-brand-500 focus-visible:outline-offset-1';
 
 export function FieldShell({
@@ -99,7 +99,7 @@ export function FieldWarning({
   return (
     <div
       className={cn(
-        'mt-3 flex items-start gap-2.5 rounded-[7px] border px-3.5 py-2.5 text-[13.5px] leading-snug',
+        'mt-3 flex items-start gap-2.5 rounded-control border px-3.5 py-2.5 text-[13.5px] leading-snug',
         severity === 'stop' && 'border-stop-200 bg-stop-50 text-stop-700',
         severity === 'warn' && 'border-review-200 bg-review-50 text-review-700',
         severity === 'info' && 'border-brand-200 bg-brand-50 text-brand-700',
@@ -140,7 +140,7 @@ export function PillToggle({ field, value, onChange, disabled }: FieldProps) {
             aria-pressed={selected}
             onClick={() => onChange(selected ? undefined : option.value)}
             className={cn(
-              'flex min-w-[104px] flex-1 items-center justify-center gap-2 rounded-[8px] border px-4 py-3 text-[15px] font-medium transition-colors sm:flex-none',
+              'flex min-w-[104px] flex-1 items-center justify-center gap-2 rounded-control border px-4 py-3 text-[15px] font-medium transition-colors sm:flex-none',
               selected
                 ? 'border-brand-600 bg-brand-600 text-white'
                 : 'border-line bg-surface text-ink-soft hover:border-brand-300 hover:text-ink',
@@ -207,7 +207,7 @@ export function RadioList({ field, value, onChange, disabled }: FieldProps) {
             disabled={disabled}
             onClick={() => onChange(option.value)}
             className={cn(
-              'flex items-start gap-3 rounded-[8px] border px-3.5 py-3 text-left transition-colors',
+              'flex items-start gap-3 rounded-control border px-3.5 py-3 text-left transition-colors',
               selected
                 ? 'border-brand-500 bg-brand-50'
                 : 'border-line bg-surface hover:border-brand-300',
@@ -315,7 +315,7 @@ export function CheckList({ field, value, onChange, disabled }: FieldProps) {
             disabled={disabled}
             onClick={() => toggle(option.value)}
             className={cn(
-              'flex items-start gap-3 rounded-[7px] border px-3.5 py-2.5 text-left transition-colors',
+              'flex items-start gap-3 rounded-control border px-3.5 py-2.5 text-left transition-colors',
               isSelected ? 'border-brand-400 bg-brand-50' : 'border-line bg-surface hover:border-brand-300',
               disabled && 'cursor-not-allowed opacity-55',
             )}
@@ -401,6 +401,35 @@ export function PhoneField({ field, value, onChange, disabled }: FieldProps) {
   );
 }
 
+/**
+ * A plain calendar date.
+ *
+ * `date` was in the FieldType union with no case in the renderer's switch, so a
+ * date question fell through to the default text box: no picker, no validation,
+ * and a free-text string stored where an ISO date was expected. Nothing shipped
+ * one, because it was also missing from the palette — the type existed and was
+ * unreachable from both ends.
+ *
+ * Distinct from `dateOfBirth`, which is a three-part day/month/year entry
+ * because typing a birth date into a picker means scrolling back seventy years.
+ * This is for near dates — last vaccination, travel date — where a picker wins.
+ *
+ * Stores an ISO `YYYY-MM-DD` string, the same shape `dateOfBirth` produces, so
+ * everything downstream that already handles a date keeps working.
+ */
+export function DateInput({ field, value, onChange, disabled }: FieldProps) {
+  return (
+    <input
+      id={field.id}
+      type="date"
+      disabled={disabled}
+      value={typeof value === 'string' ? value : ''}
+      onChange={(e) => onChange(e.target.value === '' ? undefined : e.target.value)}
+      className={inputClass}
+    />
+  );
+}
+
 export function TextInput({ field, value, onChange, disabled }: FieldProps) {
   const inputType =
     field.type === 'email' ? 'email' : field.type === 'phone' ? 'tel' : field.type === 'number' ? 'number' : 'text';
@@ -473,7 +502,7 @@ export function DateOfBirthInput({ field, value, onChange, disabled }: FieldProp
     }
   }
 
-  const box = 'rounded-[7px] border border-line bg-surface px-3 py-2.5 text-center text-[15px] tabular text-ink focus:border-brand-400 focus:outline-none';
+  const box = 'rounded-control border border-line bg-surface px-3 py-2.5 text-center text-[15px] tabular text-ink transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none';
 
   return (
     <div className="flex max-w-[320px] gap-2">
@@ -541,11 +570,11 @@ export function MeasurementInput({ field, value, onChange, disabled }: FieldProp
     }
   }
 
-  const numberBox = 'w-full rounded-[7px] border border-line bg-surface px-3 py-2.5 text-[15px] tabular text-ink focus:border-brand-400 focus:outline-none';
+  const numberBox = 'w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[15px] tabular text-ink transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none';
 
   return (
     <div>
-      <div className="mb-2.5 inline-flex gap-1 rounded-[8px] bg-sunk p-1">
+      <div className="mb-2.5 inline-flex gap-1 rounded-control bg-sunk p-1">
         {[
           { key: metricUnit, label: kind === 'weight' ? 'Kilograms' : 'Centimetres' },
           { key: imperialUnit, label: kind === 'weight' ? 'Stones & pounds' : kind === 'height' ? 'Feet & inches' : 'Inches' },
@@ -616,7 +645,7 @@ export function DerivedValue({ field, answers }: FieldProps) {
   }
 
   return (
-    <div className="inline-flex items-baseline gap-2.5 rounded-[8px] border border-line bg-sunk px-4 py-3">
+    <div className="inline-flex items-baseline gap-2.5 rounded-control border border-line bg-sunk px-4 py-3">
       <span className="tabular font-display text-[24px] font-semibold text-ink">
         {computed ?? '—'}
       </span>
@@ -687,7 +716,7 @@ export function FileUploadInput({ field, value, onChange, disabled }: FieldProps
       >
         <span
           className={cn(
-            'flex h-10 w-10 shrink-0 items-center justify-center rounded-[8px]',
+            'flex h-10 w-10 shrink-0 items-center justify-center rounded-control',
             stored ? 'bg-safe-100 text-safe-700' : 'bg-surface text-ink-faint',
           )}
         >
@@ -871,7 +900,7 @@ export function ConsentList({
         disabled={disabled}
         onClick={() => onChange(accepted ? undefined : true)}
         className={cn(
-          'flex w-full items-start gap-3 rounded-[8px] border px-4 py-3.5 text-left transition-colors',
+          'flex w-full items-start gap-3 rounded-control border px-4 py-3.5 text-left transition-colors',
           accepted ? 'border-brand-500 bg-brand-50' : 'border-line bg-surface hover:border-brand-300',
           disabled && 'cursor-not-allowed opacity-55',
         )}
@@ -885,7 +914,9 @@ export function ConsentList({
           {accepted ? <Check size={13} strokeWidth={3} /> : null}
         </span>
         <span className="text-[14.5px] font-medium leading-snug text-ink">
-          I have read and agree to all of the above.
+          {/* The fallback is the wording every form used before this was
+              configurable, so existing published versions are unchanged. */}
+          {field.confirmLabel ?? 'I have read and agree to all of the above.'}
         </span>
       </button>
     </div>
