@@ -935,3 +935,191 @@ export const clinicianDeclaration = pgTable('clinician_declaration', {
   index('clinician_declaration_admin_idx').on(t.administrationId),
   index('clinician_declaration_submission_idx').on(t.submissionId),
 ]);
+
+// ─────────────────────────────────────────────────────────────
+// Prescription lifecycle
+//
+// §8 and §18. A prescription was a PDF generated on demand with a number
+// written onto the consultation. The specification treats it as a record with a
+// lifecycle: raised, paid for, generated, routed to a branch, dispensed,
+// collected — each step with a person and a time against it.
+//
+// Snapshotted for the same reason the vaccination record is: a price list or a
+// medicine name edited next year must not change what a prescription issued
+// today says it was for.
+// ─────────────────────────────────────────────────────────────
+
+export const prescriptionStatusEnum = pgEnum('prescription_status', [
+  'PENDING_PAYMENT', 'ISSUED', 'DISPENSED', 'COLLECTED', 'CANCELLED',
+]);
+
+export const prescription = pgTable('prescription', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  submissionId: uuid('submission_id').references(() => submission.id),
+  consultationId: uuid('consultation_id').references(() => consultation.id),
+  patientId: uuid('patient_id').notNull().references(() => patient.id),
+  /** Where the patient chose to collect — §8.5 routes the work by this. */
+  branchId: uuid('branch_id').notNull().references(() => branch.id),
+  /** The pharmacist who approved it. */
+  clinicianId: uuid('clinician_id').references(() => clinician.id),
+  medicineId: uuid('medicine_id').references(() => medicine.id),
+
+  /** Human reference. Allocated per branch per year — see migration 14. */
+  number: text('number'),
+  status: prescriptionStatusEnum('status').default('PENDING_PAYMENT').notNull(),
+
+  // Snapshots
+  medicineNameSnapshot: text('medicine_name_snapshot').notNull(),
+  strengthSnapshot: text('strength_snapshot'),
+  quantity: text('quantity'),
+  directions: text('directions'),
+  priceMinorSnapshot: integer('price_minor_snapshot'),
+  clinicianNameSnapshot: text('clinician_name_snapshot'),
+  registrationNumberSnapshot: text('registration_number_snapshot'),
+  /** Where the approving signature was captured from, at the moment of issue. */
+  signatureSnapshot: text('signature_snapshot'),
+
+  /** §8.1 keeps payment status independent of prescription status. */
+  paidOnline: boolean('paid_online').default(false).notNull(),
+  issuedAt: timestamp('issued_at', { withTimezone: true }),
+  documentUrl: text('document_url'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('prescription_patient_idx').on(t.patientId, t.createdAt),
+  index('prescription_branch_idx').on(t.branchId, t.status),
+  uniqueIndex('prescription_number_idx').on(t.organisationId, t.number),
+]);
+
+/** §8.3 — the dispensing pharmacist reviews the consultation and signs off. */
+export const dispensingSignoff = pgTable('dispensing_signoff', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  prescriptionId: uuid('prescription_id').notNull().references(() => prescription.id),
+  clinicianId: uuid('clinician_id').notNull().references(() => clinician.id),
+  clinicianNameSnapshot: text('clinician_name_snapshot').notNull(),
+  registrationNumberSnapshot: text('registration_number_snapshot').notNull(),
+  /** Whether the question a patient raised was actually put to them. */
+  patientSpokenTo: boolean('patient_spoken_to').default(false).notNull(),
+  notes: text('notes'),
+  signedAt: timestamp('signed_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [uniqueIndex('dispensing_signoff_prescription_idx').on(t.prescriptionId)]);
+
+/** §8.4 — whoever collects prints their name, signs and dates it. */
+export const collectionSignoff = pgTable('collection_signoff', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  prescriptionId: uuid('prescription_id').notNull().references(() => prescription.id),
+  collectedByName: text('collected_by_name').notNull(),
+  /** Not always the patient — a relative may collect. */
+  isPatient: boolean('is_patient').default(true).notNull(),
+  signatureUrl: text('signature_url'),
+  collectedAt: timestamp('collected_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [uniqueIndex('collection_signoff_prescription_idx').on(t.prescriptionId)]);
+
+// ─────────────────────────────────────────────────────────────
+// Documents, consent, GP notifications, urgent work
+// ─────────────────────────────────────────────────────────────
+
+export const documentCategoryEnum = pgEnum('document_category', [
+  'CONSULTATION_RECORD', 'PRESCRIPTION', 'APPROVAL_RECORD',
+  'REJECTION_RECORD', 'PATIENT_EVIDENCE', 'TREATMENT_REVIEW', 'VACCINATION_RECORD',
+]);
+
+/**
+ * §10 — the register.
+ *
+ * Files already live in private storage; what did not exist was a list of what
+ * has been produced, in what category, for whom. Every row carries the patient
+ * so "everything on file for this person" is one query rather than a sweep of
+ * the bucket.
+ */
+export const document = pgTable('document', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  category: documentCategoryEnum('category').notNull(),
+  patientId: uuid('patient_id').references(() => patient.id),
+  submissionId: uuid('submission_id').references(() => submission.id),
+  consultationId: uuid('consultation_id').references(() => consultation.id),
+  prescriptionId: uuid('prescription_id').references(() => prescription.id),
+  appointmentId: uuid('appointment_id'),
+  title: text('title').notNull(),
+  /** Object key in the private bucket. Never a public URL. */
+  storagePath: text('storage_path').notNull(),
+  mimeType: text('mime_type'),
+  sizeBytes: integer('size_bytes'),
+  createdBy: uuid('created_by').references(() => appUser.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('document_patient_idx').on(t.patientId, t.createdAt),
+  index('document_category_idx').on(t.organisationId, t.category),
+]);
+
+/**
+ * §8A / §25.6 — consent as a record, not an answer.
+ *
+ * Consent lived inside the answers, which meant proving what someone agreed to
+ * required reading the form version and reconstructing the wording. Stored here
+ * with the text itself, so "what exactly did this patient consent to, on this
+ * date" is answerable directly.
+ */
+export const consentRecord = pgTable('consent_record', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  patientId: uuid('patient_id').references(() => patient.id),
+  submissionId: uuid('submission_id').references(() => submission.id),
+  consentVersion: text('consent_version').notNull(),
+  consentTextSnapshot: text('consent_text_snapshot').notNull(),
+  accepted: boolean('accepted').default(true).notNull(),
+  privacyPolicyVersion: text('privacy_policy_version'),
+  privacyAcknowledged: boolean('privacy_acknowledged').default(false).notNull(),
+  /** The patient, or the staff member who captured it on their behalf. */
+  capturedBy: text('captured_by').notNull(),
+  acceptedAt: timestamp('accepted_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('consent_record_patient_idx').on(t.patientId, t.acceptedAt),
+  index('consent_record_submission_idx').on(t.submissionId),
+]);
+
+/**
+ * §8.6 — one row per notification attempt, with its result.
+ *
+ * The consultation carried a single `gp_notified_at` column, which can record
+ * that something was sent but not that it failed, nor that it was sent twice,
+ * nor what happened the second time.
+ */
+export const gpNotification = pgTable('gp_notification', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  consultationId: uuid('consultation_id').references(() => consultation.id),
+  administrationId: uuid('administration_id').references(() => vaccineAdministration.id),
+  gpSurgeryId: uuid('gp_surgery_id').references(() => gpSurgery.id),
+  /** Where it actually went, even if the surgery address changes later. */
+  recipientSnapshot: text('recipient_snapshot').notNull(),
+  status: text('status').notNull(),
+  errorMessage: text('error_message'),
+  /** Batched sends group many patients into one message per surgery. */
+  batchRef: text('batch_ref'),
+  sentAt: timestamp('sent_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('gp_notification_consultation_idx').on(t.consultationId),
+  index('gp_notification_created_idx').on(t.organisationId, t.createdAt),
+]);
+
+/** §6.3 — the RED queue, and the follow-up call it triggers. */
+export const urgentTask = pgTable('urgent_task', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  submissionId: uuid('submission_id').references(() => submission.id),
+  patientId: uuid('patient_id').references(() => patient.id),
+  branchId: uuid('branch_id').references(() => branch.id),
+  reason: text('reason').notNull(),
+  resolvedAt: timestamp('resolved_at', { withTimezone: true }),
+  resolvedBy: uuid('resolved_by').references(() => appUser.id),
+  resolutionNote: text('resolution_note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('urgent_task_open_idx').on(t.organisationId, t.resolvedAt),
+]);
