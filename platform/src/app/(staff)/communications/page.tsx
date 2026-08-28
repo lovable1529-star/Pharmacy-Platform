@@ -12,6 +12,7 @@ import { getStaffContext } from '@/lib/auth/context';
 import { getConsultationsToNotify } from '@/lib/queries/notifications';
 import { buildGpBatches } from '@/lib/communications/batching';
 import { formatDate } from '@/lib/units';
+import { GpSendClient } from './gp-send-client';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,9 +34,16 @@ export default async function CommunicationsPage() {
       <div className="mb-6">
         <h1 className="text-[28px] leading-tight text-ink">Communications</h1>
         <p className="mt-1 text-[14px] text-ink-faint">
-          One email per surgery at the end of each day, listing every patient seen.
+          One email per surgery at the end of each day. Send by hand below when a
+          record has been corrected, or when a practice needs it sooner.
         </p>
       </div>
+
+      <GpSendClient />
+
+      <h2 className="mb-3 mt-9 font-mono text-[10.5px] uppercase tracking-[0.09em] text-ink-faint">
+        Tonight’s automatic batch
+      </h2>
 
       {unroutable.length > 0 ? (
         <div className="mb-5 flex items-start gap-3 rounded-[9px] border border-stop-200 bg-stop-50 px-4 py-3.5">

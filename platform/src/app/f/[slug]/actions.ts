@@ -26,6 +26,7 @@ import { pruneHiddenAnswers, collectMetadata } from '@/lib/forms/runtime';
 import { isExpired } from '@/lib/forms/draft';
 import { matchOrCreatePatient, readIdentity } from '@/lib/patients/identify';
 import { evaluateRuleset, type RulesetDefinition } from '@/lib/rules/engine';
+import { alertPharmacist } from '@/lib/notifications/alerts';
 import { deriveValues } from '@/lib/clinical/derived';
 import type { FormSchema, Answers } from '@/types/form-schema';
 
@@ -305,10 +306,35 @@ export async function submitPublicForm(
         occurredAt: sealed.occurredAt,
       });
 
-      return { submissionId: row.id, outcome, patientMessage };
+      return {
+        submissionId: row.id,
+        outcome,
+        patientMessage,
+        branchId: existing?.branchId ?? null,
+        serviceName: svc.name,
+        serviceKind: svc.kind,
+        patientName: identity ? `${identity.firstName} ${identity.lastName}` : 'A patient',
+      };
     });
 
     if ('error' in result && result.error) return { ok: false, error: result.error };
+
+    // Tell the pharmacy. His weight-management SOW asks for this by name:
+    // "Email + WhatsApp alert to pharmacist: New repeat request from [Patient
+    // Name]". Best effort — a submission that saved must never be reported as
+    // failed because an alert did not go out.
+    if ('submissionId' in result && result.submissionId) {
+      void alertPharmacist({
+        organisationId: svc.organisationId,
+        branchId: result.branchId ?? null,
+        submissionId: result.submissionId,
+        patientName: result.patientName,
+        serviceName: result.serviceName,
+        serviceKind: result.serviceKind,
+        outcome: result.outcome ?? null,
+        answers,
+      }).catch((error) => console.error('alertPharmacist failed', error));
+    }
 
     return { ok: true, ...result };
   } catch (error) {
