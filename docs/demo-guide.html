@@ -279,7 +279,7 @@
     <div class="col">
       <p>Everything in the platform sits on a single cycle. You describe a
       service once. Patients answer it. The system checks every answer against
-      your own safety rules the moment it arrives. A pharmacist decides. The
+      that service's safety rules the moment it arrives. A pharmacist decides. The
       record is written, and the surgery is told.</p>
       <p>What you learn from running it feeds back into the questions — which is
       the part most systems make impossible.</p>
@@ -639,12 +639,15 @@
     <h2>The check that runs on every answer</h2>
 
     <div class="col">
-      <p>The moment a questionnaire is submitted it is measured against your own
-      rules — the ones you would apply yourself, written down once. Every rule is
-      evaluated, and the system records which rules fired, which did not, and
-      which could not be judged because an answer was missing.</p>
+      <p>The moment a questionnaire is submitted it is measured against that
+      service's clinical rules. Every rule is evaluated, and the system records
+      which fired, which did not, and which could not be judged because an
+      answer was missing.</p>
       <p>A missing answer never quietly passes a safety rule. That is the single
       most important sentence on this page.</p>
+      <p>Each service carries its own ruleset, versioned exactly as its
+      questionnaire is, so a decision made last year can always be replayed
+      against the rules that were actually in force at the time.</p>
     </div>
 
     <figure>
@@ -693,6 +696,22 @@
       at and the conclusion it reached. If a decision is ever questioned — by a
       patient, an inspector, or a colleague — the answer is on the screen rather
       than in someone's memory.</p>
+    </div>
+
+    <h3>Where the rules come from today</h3>
+
+    <div class="col">
+      <p>Questionnaires are yours to build and change on your own. Clinical rules
+      are not yet — they are written with us, per service, and published the same
+      way a form version is. <strong>Weight Management — Repeat Request</strong>
+      currently carries 24 rules; the flu and first-consultation services run
+      without a ruleset, which means they take no automatic view either way and
+      every submission goes to a pharmacist.</p>
+      <p>A rule editor that puts this in your hands — conditions, thresholds,
+      messages, and a simulator to replay a draft ruleset against real past
+      submissions before publishing it — is the next major piece of work. The
+      engine was built for it from the start, which is why replaying history is
+      possible at all.</p>
     </div>
   </section>
 
@@ -855,7 +874,7 @@
       <li><b>Preview</b><span>Open the patient's view. This is exactly what they get on a phone — no login, no app.</span></li>
       <li><b>Fill it in as a patient</b><span>Answer a few questions, then close the tab halfway through on purpose.</span></li>
       <li><b>Appointments</b><span>The booking shows as <em>started</em>, not finished. Reopen and the answers are still there.</span></li>
-      <li><b>Submit it</b><span>The safety check runs immediately and the outcome appears.</span></li>
+      <li><b>Submit it</b><span>Use <em>Weight Management — Repeat Request</em> for this: it is the service carrying a published ruleset, so the safety check runs and an outcome appears.</span></li>
       <li><b>Repeat care → Why?</b><span>Show the full reasoning behind the decision. This is the moment that usually lands hardest.</span></li>
       <li><b>Approve, then start the consultation</b><span>Record what was supplied and produce the printed record with its real number.</span></li>
       <li><b>Patients</b><span>Open the patient and show the whole history sitting in one place.</span></li>
