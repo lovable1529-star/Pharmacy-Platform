@@ -253,12 +253,22 @@ export const stockMovement = pgTable('stock_movement', {
   organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
   branchId: uuid('branch_id').notNull().references(() => branch.id),
   batchId: uuid('batch_id').notNull().references(() => batch.id),
-  /** RECEIPT | ADMINISTRATION | ADJUSTMENT | WASTE | TRANSFER_IN | TRANSFER_OUT */
+  /**
+   * One of MOVEMENT_KINDS — see lib/inventory/movements.ts, which owns the
+   * list, the direction of each, and the rule that stock cannot go below zero.
+   */
   kind: text('kind').notNull(),
+  /** Always positive except for ADJUSTMENT, where the sign is the correction. */
   quantity: integer('quantity').notNull(),
   reason: text('reason'),
+  /** §9.2 — who did it, and what it refers to. */
+  userId: uuid('user_id').references(() => appUser.id),
+  reference: text('reference'),
   occurredAt: timestamp('occurred_at', { withTimezone: true }).defaultNow().notNull(),
-}, (t) => [index('stock_movement_batch_idx').on(t.batchId)]);
+}, (t) => [
+  index('stock_movement_batch_idx').on(t.batchId),
+  index('stock_movement_kind_idx').on(t.organisationId, t.kind, t.occurredAt),
+]);
 
 // ─────────────────────────────────────────────────────────────
 // PATIENTS — organisation-scoped, findable at any branch
@@ -1122,4 +1132,40 @@ export const urgentTask = pgTable('urgent_task', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   index('urgent_task_open_idx').on(t.organisationId, t.resolvedAt),
+]);
+
+// ─────────────────────────────────────────────────────────────
+// Inventory categories and notification templates
+// ─────────────────────────────────────────────────────────────
+
+/** §9 — the category layer above products: item category, item, item stock. */
+export const inventoryCategory = pgTable('inventory_category', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  name: text('name').notNull(),
+  description: text('description'),
+  active: boolean('active').default(true).notNull(),
+}, (t) => [uniqueIndex('inventory_category_name_idx').on(t.organisationId, t.name)]);
+
+/**
+ * §15 — message wording as records rather than strings in the source.
+ *
+ * The channel matters to the content, not just to delivery: the specification
+ * asks that SMS avoid clinical detail and prompt a secure login instead, which
+ * is a property of the message and cannot be enforced by the sender alone.
+ */
+export const notificationTemplate = pgTable('notification_template', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  /** Stable key the code refers to, so rewording never breaks a send. */
+  templateKey: text('template_key').notNull(),
+  channel: text('channel').notNull(),
+  subject: text('subject'),
+  body: text('body').notNull(),
+  /** Whether this wording may carry clinical detail. False for SMS. */
+  clinicalDetailAllowed: boolean('clinical_detail_allowed').default(false).notNull(),
+  active: boolean('active').default(true).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('notification_template_key_idx').on(t.organisationId, t.templateKey, t.channel),
 ]);
