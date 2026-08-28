@@ -1,0 +1,861 @@
+<title>Karsons Platform Walkthrough</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Public+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+  /* ── Tokens ────────────────────────────────────────────────────────
+     The palette is the product's own clinical language: purple is
+     chrome and never means anything clinical; green, amber and red are
+     reserved for triage and are used here for nothing else. */
+  :root {
+    --ink:        #1A1626;
+    --ink-soft:   #443C5A;
+    --ink-faint:  #726A88;
+    --canvas:     #FBFAFD;
+    --surface:    #FFFFFF;
+    --sunk:       #F2EFF7;
+    --line:       #E5E1EE;
+    --line-soft:  #F0EDF6;
+    --brand:      #6B4FBB;
+    --brand-dim:  #F1ECFB;
+    --brand-deep: #4A3487;
+    --go:         #2E7D52;
+    --go-dim:     #E6F3EB;
+    --warn:       #A96A08;
+    --warn-dim:   #FBF1DD;
+    --stop:       #B3261E;
+    --stop-dim:   #FBEAE8;
+    --shadow-sm:  0 1px 2px rgba(26,22,38,.05);
+    --shadow:     0 1px 2px rgba(26,22,38,.05), 0 10px 30px -14px rgba(26,22,38,.2);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink:        #EFEBF7;
+      --ink-soft:   #BCB3D0;
+      --ink-faint:  #8D84A6;
+      --canvas:     #100D1A;
+      --surface:    #1A1629;
+      --sunk:       #241E37;
+      --line:       #302947;
+      --line-soft:  #262038;
+      --brand:      #B79EF2;
+      --brand-dim:  #261F3E;
+      --brand-deep: #CDBBF8;
+      --go:         #74D3A0;
+      --go-dim:     #16291F;
+      --warn:       #E8B063;
+      --warn-dim:   #2D2214;
+      --stop:       #F29A92;
+      --stop-dim:   #301A18;
+      --shadow-sm:  0 1px 2px rgba(0,0,0,.45);
+      --shadow:     0 1px 2px rgba(0,0,0,.45), 0 10px 30px -14px rgba(0,0,0,.7);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --ink:        #EFEBF7;
+    --ink-soft:   #BCB3D0;
+    --ink-faint:  #8D84A6;
+    --canvas:     #100D1A;
+    --surface:    #1A1629;
+    --sunk:       #241E37;
+    --line:       #302947;
+    --line-soft:  #262038;
+    --brand:      #B79EF2;
+    --brand-dim:  #261F3E;
+    --brand-deep: #CDBBF8;
+    --go:         #74D3A0;
+    --go-dim:     #16291F;
+    --warn:       #E8B063;
+    --warn-dim:   #2D2214;
+    --stop:       #F29A92;
+    --stop-dim:   #301A18;
+    --shadow-sm:  0 1px 2px rgba(0,0,0,.45);
+    --shadow:     0 1px 2px rgba(0,0,0,.45), 0 10px 30px -14px rgba(0,0,0,.7);
+  }
+
+  body {
+    margin: 0;
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+    font-size: 16.5px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .page { max-width: 1080px; margin: 0 auto; padding: 0 30px 100px; }
+  .col  { max-width: 68ch; }
+
+  /* ── Masthead ──────────────────────────────────────────────────── */
+  .masthead { padding: 76px 0 40px; }
+  .kicker {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11.5px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase;
+    color: var(--brand); margin: 0 0 18px;
+  }
+  h1 {
+    font-family: Newsreader, ui-serif, Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(36px, 6vw, 62px);
+    line-height: 1.04; letter-spacing: -.022em;
+    text-wrap: balance; margin: 0 0 20px;
+  }
+  h1 em { font-style: italic; color: var(--brand); }
+  .standfirst {
+    font-size: 19.5px; line-height: 1.55;
+    color: var(--ink-soft); max-width: 56ch; margin: 0;
+  }
+
+  /* ── Sections ──────────────────────────────────────────────────── */
+  section { padding: 54px 0; border-top: 1px solid var(--line); scroll-margin-top: 20px; }
+  .sec-label {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: 11px; font-weight: 500;
+    letter-spacing: .15em; text-transform: uppercase;
+    color: var(--ink-faint); margin: 0 0 14px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .sec-label::before {
+    content: ""; width: 22px; height: 2px;
+    background: var(--brand); border-radius: 2px; flex: none;
+  }
+  h2 {
+    font-family: Newsreader, ui-serif, Georgia, serif;
+    font-weight: 500;
+    font-size: clamp(27px, 3.6vw, 38px);
+    line-height: 1.14; letter-spacing: -.016em;
+    text-wrap: balance; margin: 0 0 18px; max-width: 22ch;
+  }
+  h3 {
+    font-family: "Public Sans", sans-serif;
+    font-weight: 600; font-size: 17px;
+    letter-spacing: .004em; margin: 38px 0 10px;
+  }
+  p { margin: 0 0 16px; }
+  .col ul, .col ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 8px; }
+  strong { font-weight: 600; }
+  em.q { font-style: italic; color: var(--ink-soft); }
+
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .86em; background: var(--sunk);
+    border: 1px solid var(--line-soft); border-radius: 4px;
+    padding: 1px 5px;
+  }
+
+  /* ── Figures ───────────────────────────────────────────────────── */
+  figure {
+    margin: 30px 0 34px; padding: 26px 24px 20px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 14px; box-shadow: var(--shadow);
+  }
+  figure.bleed { padding-left: 18px; padding-right: 18px; }
+  .figscroll { overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; }
+  figcaption {
+    margin-top: 16px; padding-top: 13px;
+    border-top: 1px solid var(--line-soft);
+    font-size: 13.5px; color: var(--ink-faint); line-height: 1.5;
+  }
+  figcaption b { color: var(--ink-soft); font-weight: 600; }
+
+  /* SVG text roles */
+  .svg-t   { font-family: "Public Sans", sans-serif; font-size: 13px; font-weight: 600; fill: var(--ink); }
+  .svg-s   { font-family: "Public Sans", sans-serif; font-size: 11.5px; fill: var(--ink-faint); }
+  .svg-m   { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 500; fill: var(--ink-faint); letter-spacing: .06em; }
+  .svg-w   { font-family: "Public Sans", sans-serif; font-size: 13px; font-weight: 600; fill: #FFFFFF; }
+
+  /* ── Cards ─────────────────────────────────────────────────────── */
+  .grid { display: grid; gap: 14px; margin: 26px 0 30px; }
+  .grid.two   { grid-template-columns: repeat(auto-fit, minmax(258px, 1fr)); }
+  .grid.three { grid-template-columns: repeat(auto-fit, minmax(212px, 1fr)); }
+  .card {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 11px; padding: 17px 19px; box-shadow: var(--shadow-sm);
+  }
+  .card h4 {
+    margin: 0 0 7px; font-size: 15px; font-weight: 600;
+    font-family: "Public Sans", sans-serif;
+  }
+  .card p { margin: 0; font-size: 14px; color: var(--ink-soft); line-height: 1.55; }
+  .card .ico {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px;
+    font-weight: 600; color: var(--brand); letter-spacing: .08em;
+    text-transform: uppercase; display: block; margin-bottom: 9px;
+  }
+
+  /* ── Callouts ──────────────────────────────────────────────────── */
+  .note {
+    border: 1px solid var(--line); border-left: 3px solid var(--brand);
+    background: var(--surface); border-radius: 9px;
+    padding: 16px 19px; margin: 0 0 22px; max-width: 68ch;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .tag {
+    display: block; font-family: "IBM Plex Mono", monospace;
+    font-size: 10.5px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--brand); margin-bottom: 7px;
+  }
+  .note.green { border-left-color: var(--go); background: var(--go-dim); }
+  .note.green .tag { color: var(--go); }
+
+  /* ── Tables ────────────────────────────────────────────────────── */
+  .tablewrap {
+    overflow-x: auto; border: 1px solid var(--line);
+    border-radius: 11px; background: var(--surface);
+    margin: 26px 0 30px; box-shadow: var(--shadow-sm);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 11px 15px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+    font-weight: 600; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--ink-faint); background: var(--sunk); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: 0; }
+
+  /* ── Run sheet ─────────────────────────────────────────────────── */
+  .runsheet { counter-reset: rs; display: grid; gap: 10px; margin: 26px 0 0; padding: 0; list-style: none; }
+  .runsheet li {
+    counter-increment: rs; margin: 0;
+    display: grid; grid-template-columns: 32px 1fr; gap: 14px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; padding: 15px 17px;
+  }
+  .runsheet li::before {
+    content: counter(rs, decimal-leading-zero);
+    font-family: "IBM Plex Mono", monospace; font-size: 12px;
+    font-weight: 600; color: var(--brand); padding-top: 2px;
+  }
+  .runsheet b { display: block; font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+  .runsheet span { font-size: 14px; color: var(--ink-soft); line-height: 1.5; }
+
+  footer {
+    border-top: 1px solid var(--line); padding-top: 24px; margin-top: 44px;
+    font-size: 13.5px; color: var(--ink-faint);
+  }
+
+  @media (max-width: 640px) {
+    .page { padding: 0 20px 76px; }
+    .masthead { padding-top: 48px; }
+    figure { padding: 18px 14px 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <p class="kicker">Karsons Pharmacy Group · Platform walkthrough</p>
+    <h1>Your services, <em>your questions,</em> your data.</h1>
+    <p class="standfirst">
+      A clinical services platform where the questionnaires are yours to build
+      and change — not ours to code. This is what it does, how the parts fit
+      together, and what to look at first.
+    </p>
+  </header>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section id="loop">
+    <p class="sec-label">The shape of it</p>
+    <h2>One loop, from your question to your record</h2>
+
+    <div class="col">
+      <p>Everything in the platform sits on a single cycle. You describe a
+      service once. Patients answer it. The system checks every answer against
+      your own safety rules the moment it arrives. A pharmacist decides. The
+      record is written, and the surgery is told.</p>
+      <p>What you learn from running it feeds back into the questions — which is
+      the part most systems make impossible.</p>
+    </div>
+
+    <figure class="bleed">
+      <div class="figscroll">
+        <svg viewBox="0 0 1000 258" role="img" aria-label="The service cycle: build, publish, patient answers, automatic check, pharmacist decides, record and notify — feeding back into build.">
+          <defs>
+            <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-faint)"></path>
+            </marker>
+            <marker id="arb" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--brand)"></path>
+            </marker>
+          </defs>
+
+          <!-- nodes -->
+          <g>
+            <rect x="8"   y="54" width="146" height="76" rx="11" fill="var(--brand-dim)" stroke="var(--brand)" stroke-width="1.5"></rect>
+            <text class="svg-m" x="24" y="78" fill="var(--brand)">YOU</text>
+            <text class="svg-t" x="24" y="99">Build the form</text>
+            <text class="svg-s" x="24" y="116">Drag questions in</text>
+          </g>
+          <g>
+            <rect x="178" y="54" width="146" height="76" rx="11" fill="var(--brand-dim)" stroke="var(--brand)" stroke-width="1.5"></rect>
+            <text class="svg-m" x="194" y="78" fill="var(--brand)">YOU</text>
+            <text class="svg-t" x="194" y="99">Publish</text>
+            <text class="svg-s" x="194" y="116">Becomes version 2</text>
+          </g>
+          <g>
+            <rect x="348" y="54" width="146" height="76" rx="11" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="svg-m" x="364" y="78">PATIENT</text>
+            <text class="svg-t" x="364" y="99">Answers it</text>
+            <text class="svg-s" x="364" y="116">Phone, tablet, counter</text>
+          </g>
+          <g>
+            <rect x="518" y="54" width="146" height="76" rx="11" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="svg-m" x="534" y="78">AUTOMATIC</text>
+            <text class="svg-t" x="534" y="99">Safety check</text>
+            <text class="svg-s" x="534" y="116">Green, amber or red</text>
+          </g>
+          <g>
+            <rect x="688" y="54" width="146" height="76" rx="11" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="svg-m" x="704" y="78">PHARMACIST</text>
+            <text class="svg-t" x="704" y="99">Decides</text>
+            <text class="svg-s" x="704" y="116">Approve or query</text>
+          </g>
+          <g>
+            <rect x="858" y="54" width="134" height="76" rx="11" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="svg-m" x="874" y="78">RECORD</text>
+            <text class="svg-t" x="874" y="99">Filed &amp; sent</text>
+            <text class="svg-s" x="874" y="116">GP told that night</text>
+          </g>
+
+          <!-- forward arrows -->
+          <g stroke="var(--ink-faint)" stroke-width="1.5" marker-end="url(#ar)" fill="none">
+            <path d="M158 92 H172"></path>
+            <path d="M328 92 H342"></path>
+            <path d="M498 92 H512"></path>
+            <path d="M668 92 H682"></path>
+            <path d="M838 92 H852"></path>
+          </g>
+
+          <!-- feedback loop -->
+          <path d="M925 134 V196 Q925 208 913 208 H93 Q81 208 81 196 V134"
+                fill="none" stroke="var(--brand)" stroke-width="1.5"
+                stroke-dasharray="5 4" marker-end="url(#arb)"></path>
+          <text class="svg-s" x="452" y="203" fill="var(--brand)" text-anchor="middle">What you learn changes the questions — without a developer</text>
+
+          <text class="svg-m" x="8" y="30">THE CYCLE</text>
+          <line x1="86" y1="26" x2="992" y2="26" stroke="var(--line)" stroke-width="1"></line>
+        </svg>
+      </div>
+      <figcaption>
+        <b>The whole product in one line.</b> Only the first two boxes are work
+        for you, and only when something changes. The middle four run themselves.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section id="designer">
+    <p class="sec-label">Part one</p>
+    <h2>Building a questionnaire</h2>
+
+    <div class="col">
+      <p>Open <strong>Services</strong>, pick a service, press <strong>Edit
+      form</strong>. You get a working surface with three columns: a palette of
+      question types on the left, your form in the middle, and a live preview on
+      the right that behaves exactly as the patient's phone will.</p>
+      <p>There is no code, no formula language, and nothing that needs us. You
+      add a question by clicking the kind of question it is.</p>
+    </div>
+
+    <figure class="bleed">
+      <div class="figscroll">
+        <svg viewBox="0 0 1000 340" role="img" aria-label="The form designer: a palette of question types on the left, the form being built in the middle, and a live patient preview on the right.">
+          <!-- panel 1 -->
+          <rect x="8" y="34" width="238" height="292" rx="11" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+          <text class="svg-m" x="26" y="24">1 · PALETTE</text>
+          <text class="svg-t" x="26" y="60">Question types</text>
+          <g>
+            <rect x="26" y="74" width="202" height="30" rx="7" fill="var(--brand-dim)" stroke="var(--brand)" stroke-width="1.2"></rect>
+            <text class="svg-s" x="38" y="93" fill="var(--brand)">Yes / No — two large pills</text>
+            <rect x="26" y="110" width="202" height="30" rx="7" fill="var(--sunk)"></rect>
+            <text class="svg-s" x="38" y="129">Dropdown · Multi-select</text>
+            <rect x="26" y="146" width="202" height="30" rx="7" fill="var(--sunk)"></rect>
+            <text class="svg-s" x="38" y="165">Short text · Long text</text>
+            <rect x="26" y="182" width="202" height="30" rx="7" fill="var(--sunk)"></rect>
+            <text class="svg-s" x="38" y="201">Measurement · Calculated</text>
+            <rect x="26" y="218" width="202" height="30" rx="7" fill="var(--sunk)"></rect>
+            <text class="svg-s" x="38" y="237">Photo · Signature · Consent</text>
+            <rect x="26" y="254" width="202" height="30" rx="7" fill="var(--sunk)"></rect>
+            <text class="svg-s" x="38" y="273">Date · Date of birth · Number</text>
+          </g>
+          <text class="svg-s" x="26" y="308">21 types, grouped in five families</text>
+
+          <!-- panel 2 -->
+          <rect x="266" y="34" width="386" height="292" rx="11" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+          <text class="svg-m" x="284" y="24">2 · YOUR FORM</text>
+          <text class="svg-t" x="284" y="60">Step 1 — About you</text>
+          <g>
+            <rect x="284" y="72" width="350" height="34" rx="7" fill="var(--sunk)"></rect>
+            <text class="svg-m" x="296" y="93">Q1</text>
+            <text class="svg-s" x="322" y="93">Full name</text>
+            <rect x="284" y="112" width="350" height="34" rx="7" fill="var(--sunk)"></rect>
+            <text class="svg-m" x="296" y="133">Q2</text>
+            <text class="svg-s" x="322" y="133">Date of birth</text>
+
+            <rect x="284" y="152" width="350" height="34" rx="7" fill="var(--brand-dim)" stroke="var(--brand)" stroke-width="1.2"></rect>
+            <text class="svg-m" x="296" y="173" fill="var(--brand)">Q3</text>
+            <text class="svg-s" x="322" y="173" fill="var(--brand)">Any allergies?  ·  Yes / No</text>
+
+            <!-- reveal -->
+            <path d="M300 186 V206 H316" fill="none" stroke="var(--brand)" stroke-width="1.4" stroke-dasharray="4 3"></path>
+            <rect x="316" y="192" width="318" height="30" rx="7" fill="var(--surface)" stroke="var(--brand)" stroke-width="1.2" stroke-dasharray="4 3"></rect>
+            <text class="svg-s" x="328" y="211" fill="var(--brand)">↳ if Yes — “Which ones?”</text>
+          </g>
+          <text class="svg-t" x="284" y="252">Step 2 — Your health</text>
+          <rect x="284" y="262" width="350" height="30" rx="7" fill="var(--sunk)"></rect>
+          <text class="svg-s" x="296" y="281">Q4  Current medicines</text>
+          <text class="svg-s" x="284" y="312">Drag to reorder · click to rename</text>
+
+          <!-- panel 3 -->
+          <rect x="672" y="34" width="320" height="292" rx="11" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+          <text class="svg-m" x="690" y="24">3 · LIVE PREVIEW</text>
+          <rect x="700" y="52" width="264" height="258" rx="16" fill="var(--canvas)" stroke="var(--line)" stroke-width="1.5"></rect>
+          <rect x="760" y="62" width="144" height="6" rx="3" fill="var(--line)"></rect>
+          <text class="svg-s" x="720" y="100">Question 3 of 12</text>
+          <text class="svg-t" x="720" y="126">Any allergies?</text>
+          <g>
+            <rect x="720" y="140" width="106" height="42" rx="10" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="svg-t" x="761" y="166" text-anchor="middle">No</text>
+            <rect x="838" y="140" width="106" height="42" rx="10" fill="var(--brand)"></rect>
+            <text class="svg-w" x="891" y="166" text-anchor="middle">Yes</text>
+          </g>
+          <text class="svg-s" x="720" y="206">Which ones?</text>
+          <rect x="720" y="216" width="224" height="38" rx="9" fill="var(--surface)" stroke="var(--brand)" stroke-width="1.5"></rect>
+          <text class="svg-s" x="732" y="240" fill="var(--ink-faint)">Penicillin…</text>
+          <rect x="720" y="268" width="224" height="34" rx="9" fill="var(--brand)"></rect>
+          <text class="svg-w" x="832" y="290" text-anchor="middle">Continue</text>
+        </svg>
+      </div>
+      <figcaption>
+        <b>Three columns, no code.</b> The preview on the right is the real form
+        engine, not a picture of one — the follow-up box appears there the moment
+        you set it up in the middle.
+      </figcaption>
+    </figure>
+
+    <h3>Follow-up questions on any answer</h3>
+
+    <div class="col">
+      <p>This is the pattern you use most, and it works on any answer, not just
+      Yes. Ask <em class="q">“How did you hear about us?”</em>, and hang a
+      different follow-up off <em class="q">Other</em> than off
+      <em class="q">Friend</em>. A follow-up can have its own follow-up.</p>
+      <p>Patients only ever see the questions that apply to them. Someone with no
+      allergies never sees an allergy box, so a twelve-question form is often
+      six questions long in practice.</p>
+    </div>
+
+    <div class="grid three">
+      <div class="card">
+        <span class="ico">Numbering</span>
+        <h4>“Question 7”</h4>
+        <p>Turn on numbering and every question is numbered automatically, so
+        your team and your patients can refer to the same thing.</p>
+      </div>
+      <div class="card">
+        <span class="ico">Gates</span>
+        <h4>Locked steps</h4>
+        <p>A step can stay locked until earlier answers are given — identity
+        before clinical detail, for instance.</p>
+      </div>
+      <div class="card">
+        <span class="ico">Staff only</span>
+        <h4>Asked on the day</h4>
+        <p>Mark a question as the pharmacist's. It never shows to the patient and
+        appears at the appointment instead.</p>
+      </div>
+      <div class="card">
+        <span class="ico">Warnings</span>
+        <h4>Stop messages</h4>
+        <p>Attach a message to a specific answer — information, caution, or a
+        hard stop shown immediately.</p>
+      </div>
+      <div class="card">
+        <span class="ico">Calculated</span>
+        <h4>BMI and age</h4>
+        <p>Work them out from answers already given, rather than asking the
+        patient to do arithmetic.</p>
+      </div>
+      <div class="card">
+        <span class="ico">Consent</span>
+        <h4>Your wording</h4>
+        <p>The statements a patient agrees to are yours to write, and they are
+        stored with the version they agreed to.</p>
+      </div>
+    </div>
+
+    <h3>Editing a live form is safe</h3>
+
+    <div class="col">
+      <p>This is the part worth understanding properly, because it is what lets
+      you change things without fear. Publishing does not overwrite a form. It
+      creates the next version, and every questionnaire a patient has already
+      completed stays permanently attached to the version they actually saw.</p>
+    </div>
+
+    <figure class="bleed">
+      <div class="figscroll">
+        <svg viewBox="0 0 1000 216" role="img" aria-label="Version timeline: a patient who answered version 1 keeps version 1 forever, while new patients get version 2.">
+          <line x1="40" y1="112" x2="960" y2="112" stroke="var(--line)" stroke-width="2"></line>
+
+          <g>
+            <circle cx="140" cy="112" r="8" fill="var(--brand)"></circle>
+            <text class="svg-m" x="140" y="88" text-anchor="middle" fill="var(--brand)">MARCH</text>
+            <text class="svg-t" x="140" y="146" text-anchor="middle">Version 1</text>
+            <text class="svg-s" x="140" y="164" text-anchor="middle">published</text>
+          </g>
+
+          <g>
+            <circle cx="370" cy="112" r="8" fill="var(--go)"></circle>
+            <text class="svg-m" x="370" y="88" text-anchor="middle" fill="var(--go)">APRIL</text>
+            <text class="svg-t" x="370" y="146" text-anchor="middle">Mrs Kelly answers</text>
+            <text class="svg-s" x="370" y="164" text-anchor="middle">bound to version 1, permanently</text>
+          </g>
+
+          <g>
+            <circle cx="630" cy="112" r="8" fill="var(--brand)"></circle>
+            <text class="svg-m" x="630" y="88" text-anchor="middle" fill="var(--brand)">AUGUST</text>
+            <text class="svg-t" x="630" y="146" text-anchor="middle">You add two questions</text>
+            <text class="svg-s" x="630" y="164" text-anchor="middle">version 2 published</text>
+          </g>
+
+          <g>
+            <circle cx="880" cy="112" r="8" fill="var(--go)"></circle>
+            <text class="svg-m" x="880" y="88" text-anchor="middle" fill="var(--go)">TODAY</text>
+            <text class="svg-t" x="880" y="146" text-anchor="middle">Mr Quirk answers</text>
+            <text class="svg-s" x="880" y="164" text-anchor="middle">gets version 2</text>
+          </g>
+
+          <rect x="286" y="26" width="168" height="26" rx="7" fill="var(--go-dim)" stroke="var(--go)" stroke-width="1.2"></rect>
+          <text class="svg-s" x="370" y="44" text-anchor="middle" fill="var(--go)">still reads as version 1</text>
+          <path d="M370 52 V100" stroke="var(--go)" stroke-width="1.3" stroke-dasharray="4 3"></path>
+        </svg>
+      </div>
+      <figcaption>
+        <b>Nothing is rewritten behind you.</b> Open Mrs Kelly's record next year
+        and you see the questions she was actually asked — not today's wording.
+        Renaming a question never breaks your reporting either, because reports
+        follow the question, not its label.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section id="reach">
+    <p class="sec-label">Part two</p>
+    <h2>Getting it in front of patients</h2>
+
+    <div class="col">
+      <p>Four ways in, all leading to the same form and the same record. No
+      patient ever creates an account or remembers a password — a health
+      questionnaire that demands registration does not get filled in.</p>
+    </div>
+
+    <figure class="bleed">
+      <div class="figscroll">
+        <svg viewBox="0 0 1000 232" role="img" aria-label="Four routes to the same questionnaire: online booking, QR code at the counter, a tablet in the consultation room, and a resume link.">
+          <g>
+            <rect x="8" y="20" width="196" height="66" rx="10" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="svg-t" x="26" y="46">Books online</text>
+            <text class="svg-s" x="26" y="66">Link arrives with the booking</text>
+          </g>
+          <g>
+            <rect x="8" y="96" width="196" height="66" rx="10" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="svg-t" x="26" y="122">Scans a QR code</text>
+            <text class="svg-s" x="26" y="142">On the counter, on a poster</text>
+          </g>
+          <g>
+            <rect x="8" y="172" width="196" height="52" rx="10" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="svg-t" x="26" y="196">Walks in</text>
+            <text class="svg-s" x="26" y="214">Tablet in the room</text>
+          </g>
+
+          <g stroke="var(--ink-faint)" stroke-width="1.5" fill="none" marker-end="url(#ar2)">
+            <defs>
+              <marker id="ar2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-faint)"></path>
+              </marker>
+            </defs>
+            <path d="M208 53 Q262 53 262 110 H300"></path>
+            <path d="M208 129 H300"></path>
+            <path d="M208 198 Q262 198 262 132 H300"></path>
+          </g>
+
+          <rect x="306" y="76" width="220" height="106" rx="12" fill="var(--brand-dim)" stroke="var(--brand)" stroke-width="1.8"></rect>
+          <text class="svg-m" x="326" y="104" fill="var(--brand)">ONE FORM</text>
+          <text class="svg-t" x="326" y="128">The published version</text>
+          <text class="svg-s" x="326" y="148">No login. Saves as they type.</text>
+          <text class="svg-s" x="326" y="166">Works on any phone.</text>
+
+          <g stroke="var(--ink-faint)" stroke-width="1.5" fill="none" marker-end="url(#ar2)">
+            <path d="M530 129 H586"></path>
+          </g>
+
+          <rect x="592" y="76" width="196" height="106" rx="12" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+          <text class="svg-m" x="612" y="104">IN YOUR SYSTEM</text>
+          <text class="svg-t" x="612" y="128">Appears immediately</text>
+          <text class="svg-s" x="612" y="148">Half-finished shows as</text>
+          <text class="svg-s" x="612" y="166">“started”, not “done”</text>
+
+          <g>
+            <rect x="812" y="76" width="180" height="106" rx="12" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5" stroke-dasharray="5 4"></rect>
+            <text class="svg-m" x="832" y="104">IF THEY STOP</text>
+            <text class="svg-t" x="832" y="128">They pick up</text>
+            <text class="svg-s" x="832" y="148">where they left off —</text>
+            <text class="svg-s" x="832" y="166">nothing retyped</text>
+          </g>
+          <path d="M788 129 H806" stroke="var(--ink-faint)" stroke-width="1.5" stroke-dasharray="4 3"></path>
+        </svg>
+      </div>
+      <figcaption>
+        <b>Answers save as they are typed.</b> A patient who gives up on the bus
+        and finishes at home does not start again, and you can see on
+        Appointments exactly who has started and who has not.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section id="triage">
+    <p class="sec-label">Part three</p>
+    <h2>The check that runs on every answer</h2>
+
+    <div class="col">
+      <p>The moment a questionnaire is submitted it is measured against your own
+      rules — the ones you would apply yourself, written down once. Every rule is
+      evaluated, and the system records which rules fired, which did not, and
+      which could not be judged because an answer was missing.</p>
+      <p>A missing answer never quietly passes a safety rule. That is the single
+      most important sentence on this page.</p>
+    </div>
+
+    <figure>
+      <div class="figscroll">
+        <svg viewBox="0 0 940 210" role="img" aria-label="Three outcomes: green proceed, amber pharmacist review, red do not supply.">
+          <g>
+            <rect x="8" y="14" width="296" height="182" rx="12" fill="var(--go-dim)" stroke="var(--go)" stroke-width="1.6"></rect>
+            <circle cx="42" cy="50" r="13" fill="var(--go)"></circle>
+            <text class="svg-t" x="68" y="55" fill="var(--go)">GREEN</text>
+            <text class="svg-t" x="30" y="94">Nothing of concern</text>
+            <text class="svg-s" x="30" y="118">Proceed as normal. The record</text>
+            <text class="svg-s" x="30" y="136">still shows every rule that was</text>
+            <text class="svg-s" x="30" y="154">considered, and passed.</text>
+          </g>
+          <g>
+            <rect x="322" y="14" width="296" height="182" rx="12" fill="var(--warn-dim)" stroke="var(--warn)" stroke-width="1.6"></rect>
+            <circle cx="356" cy="50" r="13" fill="var(--warn)"></circle>
+            <text class="svg-t" x="382" y="55" fill="var(--warn)">AMBER</text>
+            <text class="svg-t" x="344" y="94">A pharmacist should look</text>
+            <text class="svg-s" x="344" y="118">Goes to the review queue with</text>
+            <text class="svg-s" x="344" y="136">the reason attached. Anything</text>
+            <text class="svg-s" x="344" y="154">uncertain lands here, by design.</text>
+          </g>
+          <g>
+            <rect x="636" y="14" width="296" height="182" rx="12" fill="var(--stop-dim)" stroke="var(--stop)" stroke-width="1.6"></rect>
+            <circle cx="670" cy="50" r="13" fill="var(--stop)"></circle>
+            <text class="svg-t" x="696" y="55" fill="var(--stop)">RED</text>
+            <text class="svg-t" x="658" y="94">Do not supply</text>
+            <text class="svg-s" x="658" y="118">Straight to the top of the queue</text>
+            <text class="svg-s" x="658" y="136">and flagged. The patient is told</text>
+            <text class="svg-s" x="658" y="154">to speak to someone — never a dose.</text>
+          </g>
+        </svg>
+      </div>
+      <figcaption>
+        <b>Uncertain means amber, not green.</b> When no rule matches, the
+        default is a pharmacist's eyes — the tool does not block supply
+        unnecessarily, but it does not wave anything through either.
+      </figcaption>
+    </figure>
+
+    <div class="note">
+      <span class="tag">Worth showing on the day</span>
+      <p>Open a reviewed submission and press <strong>Why?</strong>. You get the
+      full reasoning: every rule considered, in order, with the answer it looked
+      at and the conclusion it reached. If a decision is ever questioned — by a
+      patient, an inspector, or a colleague — the answer is on the screen rather
+      than in someone's memory.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section id="review">
+    <p class="sec-label">Part four</p>
+    <h2>The pharmacist's queue</h2>
+
+    <div class="col">
+      <p><strong>Repeat care</strong> holds everything waiting on a decision,
+      worst first — reds above ambers, and within each band the one that has been
+      waiting longest at the top. The order is worked out across the whole queue,
+      not just the page you are looking at, so a red can never hide on page two.</p>
+      <p>Opening one shows the answers, the triage decision, the reasoning behind
+      it, and the patient's history. From there a pharmacist can approve, ask the
+      patient for more information, or decline with a reason. Every one of those
+      is recorded against their name and the time.</p>
+    </div>
+
+    <div class="grid two">
+      <div class="card">
+        <span class="ico">Approve</span>
+        <h4>Proceed to consultation</h4>
+        <p>The submission moves on and the appointment is ready to start. The
+        decision, the person and the moment are all recorded.</p>
+      </div>
+      <div class="card">
+        <span class="ico">Query</span>
+        <h4>Ask for more</h4>
+        <p>Send it back for one more answer without losing anything already
+        given. The patient reopens the same form where they left it.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section id="data">
+    <p class="sec-label">Part five</p>
+    <h2>Getting the data back out</h2>
+
+    <div class="col">
+      <p>Your data is yours, in formats other systems accept. Nothing here is
+      locked in a shape only this platform can read.</p>
+    </div>
+
+    <figure class="bleed">
+      <div class="figscroll">
+        <svg viewBox="0 0 1000 240" role="img" aria-label="Three ways data leaves the system: spreadsheet export, the printed record, and the nightly email to GP surgeries.">
+          <rect x="8" y="86" width="200" height="72" rx="12" fill="var(--brand-dim)" stroke="var(--brand)" stroke-width="1.8"></rect>
+          <text class="svg-m" x="28" y="112" fill="var(--brand)">THE RECORD</text>
+          <text class="svg-t" x="28" y="136">Everything you hold</text>
+
+          <g stroke="var(--ink-faint)" stroke-width="1.5" fill="none" marker-end="url(#ar3)">
+            <defs>
+              <marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+                <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-faint)"></path>
+              </marker>
+            </defs>
+            <path d="M212 110 Q262 110 262 44 H316"></path>
+            <path d="M212 122 H316"></path>
+            <path d="M212 134 Q262 134 262 198 H316"></path>
+          </g>
+
+          <g>
+            <rect x="322" y="10" width="316" height="68" rx="11" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="svg-t" x="342" y="36">Spreadsheet export</text>
+            <text class="svg-s" x="342" y="58">Patients · consultations · stock · reports · audit</text>
+          </g>
+          <g>
+            <rect x="322" y="88" width="316" height="68" rx="11" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="svg-t" x="342" y="114">The printed record</text>
+            <text class="svg-s" x="342" y="136">Numbered per branch, per year — never reused</text>
+          </g>
+          <g>
+            <rect x="322" y="166" width="316" height="68" rx="11" fill="var(--go-dim)" stroke="var(--go)" stroke-width="1.5"></rect>
+            <text class="svg-t" x="342" y="192" fill="var(--go)">Nightly email to surgeries</text>
+            <text class="svg-s" x="342" y="214" fill="var(--go)">9pm · one message per surgery</text>
+          </g>
+
+          <g stroke="var(--ink-faint)" stroke-width="1.5" fill="none" marker-end="url(#ar3)">
+            <path d="M642 44 H700"></path>
+            <path d="M642 122 H700"></path>
+            <path d="M642 200 H700"></path>
+          </g>
+
+          <text class="svg-s" x="708" y="48">Excel, or whatever you move to next</text>
+          <text class="svg-s" x="708" y="126">Handed over, filed, or posted</text>
+          <text class="svg-s" x="708" y="204">Straight into the GP's inbox</text>
+        </svg>
+      </div>
+      <figcaption>
+        <b>Exports are permission-controlled.</b> Being able to see a list and
+        being able to download all of it are two different rights — a locum who
+        can read patient records cannot necessarily export them.
+      </figcaption>
+    </figure>
+
+    <h3>The nine o'clock email</h3>
+
+    <div class="col">
+      <p>At 9pm each evening the system gathers that day's consultations and
+      sends <strong>one message per surgery</strong>, listing that surgery's
+      patients together in a single table.</p>
+      <p>This is deliberate. Twenty separate emails into a
+      <code>@gov.im</code> inbox is a nuisance that gets ignored; one clear
+      message a day gets read. Anything it cannot route — a patient with no
+      surgery recorded — is set aside and shown to you rather than being
+      dropped.</p>
+      <p>Re-running it is safe. A consultation already sent is never included
+      twice, so a retry cannot double-notify a practice.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section id="rest">
+    <p class="sec-label">Part six</p>
+    <h2>The rest of the day</h2>
+
+    <div class="tablewrap">
+      <table>
+        <thead>
+          <tr><th>Screen</th><th>What it is for</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><strong>Today</strong></td><td>The morning view — who is booked, who has arrived, what is waiting on a decision.</td></tr>
+          <tr><td><strong>Appointments</strong></td><td>One calendar across every service. Book at the counter, reschedule, cancel, mark arrived, or move someone who walked into the wrong branch.</td></tr>
+          <tr><td><strong>Patients</strong></td><td>The record: details, allergies, history, and every consultation with its answers as they stood on the day.</td></tr>
+          <tr><td><strong>Consultations</strong></td><td>Everything supplied, with the printed record and any later additions attached.</td></tr>
+          <tr><td><strong>Repeat care</strong></td><td>The decision queue, worst first.</td></tr>
+          <tr><td><strong>Services</strong></td><td>Your questionnaires and the rules behind them.</td></tr>
+          <tr><td><strong>Inventory</strong></td><td>Batches, expiry and stock by branch — with a recall path that finds who received a given batch.</td></tr>
+          <tr><td><strong>Compliance</strong></td><td>The audit trail: who did what, when. Append-only, and checked nightly for tampering.</td></tr>
+          <tr><td><strong>Users &amp; roles</strong></td><td>Who can do what, per branch. A locum at one branch is not a locum everywhere.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note green">
+      <span class="tag">Built in, not bolted on</span>
+      <p>Four branches, one organisation. Everything is scoped by branch, so
+      Onchan's list is Onchan's list — while an owner can still see across all of
+      them. Nothing about that arrangement is hard-coded: branches, services,
+      rooms and staff are all things you configure.</p>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <section id="run">
+    <p class="sec-label">On the day</p>
+    <h2>A twelve-minute walkthrough</h2>
+
+    <div class="col">
+      <p>An order that tells the story properly — configuration first, because
+      that is the part that makes this yours rather than ours.</p>
+    </div>
+
+    <ol class="runsheet">
+      <li><b>Services → Edit form</b><span>Add a question, give it a follow-up on one specific answer, and watch the preview change as you do it.</span></li>
+      <li><b>Publish it</b><span>Point out the version number going up, and that nobody's existing answers moved.</span></li>
+      <li><b>Preview</b><span>Open the patient's view. This is exactly what they get on a phone — no login, no app.</span></li>
+      <li><b>Fill it in as a patient</b><span>Answer a few questions, then close the tab halfway through on purpose.</span></li>
+      <li><b>Appointments</b><span>The booking shows as <em>started</em>, not finished. Reopen and the answers are still there.</span></li>
+      <li><b>Submit it</b><span>The safety check runs immediately and the outcome appears.</span></li>
+      <li><b>Repeat care → Why?</b><span>Show the full reasoning behind the decision. This is the moment that usually lands hardest.</span></li>
+      <li><b>Approve, then start the consultation</b><span>Record what was supplied and produce the printed record with its real number.</span></li>
+      <li><b>Patients</b><span>Open the patient and show the whole history sitting in one place.</span></li>
+      <li><b>Export</b><span>Download the consultations list as a spreadsheet — the data is his, and it leaves in a format anything can read.</span></li>
+      <li><b>Compliance</b><span>Every step just taken is already in the audit trail, with a name and a time against it.</span></li>
+    </ol>
+  </section>
+
+  <footer>
+    Karsons Pharmacy Group · platform walkthrough · 30 August 2026 ·
+    Payments and stock ordering are outside this walkthrough.
+  </footer>
+
+</div>
