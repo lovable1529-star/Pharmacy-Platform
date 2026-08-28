@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/ui/primitives';
 import { formatDate, formatDateTime } from '@/lib/units';
 import type { ConsultationRow } from '@/lib/queries/clinical';
 
-export function ReportsView({ rows }: { rows: ConsultationRow[] }) {
+export function ReportsView({ rows, canExport }: { rows: ConsultationRow[]; canExport: boolean }) {
   const completed = useMemo(() => rows.filter((r) => r.status === 'COMPLETED'), [rows]);
 
   const totals = useMemo(() => {
@@ -88,6 +88,7 @@ export function ReportsView({ rows }: { rows: ConsultationRow[] }) {
         emptyTitle="Nothing in this period"
         emptyBody="Consultations from the last 90 days appear here."
         exportName="karsons-report"
+        canExport={canExport}
         pageSize={50}
       />
     </div>

@@ -16,7 +16,7 @@ import { formatDate } from '@/lib/units';
 import { ageInYears } from '@/lib/patients/search';
 import type { PatientRow } from '@/lib/queries/clinical';
 
-export function PatientsTable({ rows }: { rows: PatientRow[] }) {
+export function PatientsTable({ rows, canExport }: { rows: PatientRow[]; canExport: boolean }) {
   const router = useRouter();
 
   const columns: Column<PatientRow>[] = [
@@ -61,6 +61,7 @@ export function PatientsTable({ rows }: { rows: PatientRow[] }) {
         emptyBody="Records appear here once patients complete a form or are added by staff."
         onRowClick={(r) => router.push(`/patients/${r.id}`)}
         exportName="karsons-patients"
+        canExport={canExport}
       />
     </div>
   );

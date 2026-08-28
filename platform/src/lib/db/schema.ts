@@ -412,6 +412,14 @@ export const consultation = pgTable('consultation', {
   identityVerified: boolean('identity_verified').default(false).notNull(),
   declarationsAccepted: jsonb('declarations_accepted').$type<string[]>().default([]).notNull(),
   notes: text('notes'),
+  /**
+   * Allocated once, by the database, and permanent thereafter.
+   *
+   * Was derived from digits in the consultation UUID, which collided. A
+   * prescription number is how a supply is referred to afterwards — on a query,
+   * a recall, an audit — so two supplies sharing one is a real problem.
+   */
+  prescriptionNumber: text('prescription_number'),
   /** When the GP practice was last told. Null means they have not been. */
   gpNotifiedAt: timestamp('gp_notified_at', { withTimezone: true }),
   /** Sends so far — a resend after a correction is a second send, not a first. */

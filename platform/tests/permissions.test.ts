@@ -309,3 +309,51 @@ describe('seeded roles', () => {
     }
   });
 });
+
+// ─────────────────────────────────────────────────────────────
+// Export is not implied by view.
+//
+// The audit found `patients:export`, `consultations:export` and
+// `reports:export` in the vocabulary and in no code path: setting a filename on
+// a table was enough to render a button that downloads every row. Reading one
+// patient is not the same as taking the whole list off the premises.
+// ─────────────────────────────────────────────────────────────
+
+describe('export is a separate permission from view', () => {
+  const viewer = actor({
+    grants: [
+      grant({
+        permissions: [
+          'patients:view', 'consultations:view', 'reports:view',
+          'inventory:view', 'compliance:view',
+        ],
+      }),
+    ],
+  });
+
+  it('lets a viewer read but not export patients', () => {
+    expect(can(viewer, 'patients:view')).toBe(true);
+    expect(can(viewer, 'patients:export')).toBe(false);
+  });
+
+  it('holds for every table that offers a CSV', () => {
+    for (const module of ['patients', 'consultations', 'reports', 'inventory', 'compliance'] as const) {
+      expect(can(viewer, `${module}:view`)).toBe(true);
+      expect(can(viewer, `${module}:export`)).toBe(false);
+    }
+  });
+
+  it('grants export only when it is given explicitly', () => {
+    const exporter = actor({
+      grants: [grant({ permissions: ['patients:view', 'patients:export'] })],
+    });
+    expect(can(exporter, 'patients:export')).toBe(true);
+  });
+
+  it('does not let export stand in for view', () => {
+    // Rule 1 of effectivePermissions drops a non-view action without view, so
+    // an export-only grant is meaningless rather than a back door.
+    const odd = actor({ grants: [grant({ permissions: ['patients:export'] })] });
+    expect(can(odd, 'patients:export')).toBe(false);
+  });
+});

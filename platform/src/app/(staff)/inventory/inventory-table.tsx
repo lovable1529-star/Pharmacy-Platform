@@ -25,12 +25,13 @@ function expiryTone(days: number): string {
 }
 
 export function InventoryTable({
-  rows, branchId, companyId, canRecall,
+  rows, branchId, companyId, canRecall, canExport,
 }: {
   rows: StockRow[];
   branchId: string | null;
   companyId: string | null;
   canRecall: boolean;
+  canExport: boolean;
 }) {
   const router = useRouter();
   const [recalling, setRecalling] = useState<string | null>(null);
@@ -128,6 +129,7 @@ export function InventoryTable({
         emptyTitle="No stock recorded"
         emptyBody="Add products and batches in Settings, then record a receipt."
         exportName="karsons-inventory"
+        canExport={canExport}
       />
 
       {recalling && branchId && companyId ? (

@@ -7,7 +7,7 @@
  * holding special-category health data.
  */
 
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   submission, ruleEvaluation, service, patient, reviewEvent, appUser, branch,
@@ -33,7 +33,14 @@ export interface QueueItem {
   trace: RuleTraceEntry[];
 }
 
-const SEVERITY: Record<string, number> = { RED: 0, AMBER: 1, GREEN: 2 };
+/**
+ * A ceiling, not a page size.
+ *
+ * With worst-first ordering applied in the database this is now safe: anything
+ * cut off is genuinely lower priority than everything kept. Raised from 100
+ * because a busy week of AMBERs should not push a RED off the end.
+ */
+const REVIEW_QUEUE_LIMIT = 500;
 
 /**
  * Everything awaiting a decision, worst first.
@@ -73,8 +80,27 @@ export async function getReviewQueue(organisationId: string): Promise<QueueItem[
         inArray(submission.status, ['SUBMITTED', 'IN_REVIEW', 'INFO_REQUESTED']),
       ),
     )
-    .orderBy(desc(submission.submittedAt))
-    .limit(100);
+    /*
+     * Worst first, decided by the DATABASE — before the limit, not after.
+     *
+     * This used to order by date, cut to 100, then sort by severity in
+     * JavaScript. A RED sitting 101st by date was therefore dropped before the
+     * worst-first sort ever saw it: the queue said "worst first" and quietly
+     * omitted the worst. For a clinical review list that is a correctness bug,
+     * not a performance one.
+     *
+     * Within a severity band, oldest first — the one that has been waiting
+     * longest is the one to look at.
+     */
+    .orderBy(
+      sql`case
+            when ${ruleEvaluation.outcome} = 'RED' then 0
+            when ${ruleEvaluation.outcome} = 'AMBER' then 1
+            else 2
+          end`,
+      asc(submission.submittedAt),
+    )
+    .limit(REVIEW_QUEUE_LIMIT);
 
   return rows
     .map((r) => ({
@@ -94,12 +120,10 @@ export async function getReviewQueue(organisationId: string): Promise<QueueItem[
       answers: (r.answers as Record<string, unknown>) ?? {},
       derived: (r.derived as Record<string, unknown>) ?? {},
       trace: (r.trace as RuleTraceEntry[] | null) ?? [],
-    }))
-    .sort((a, b) => {
-      const severity = (SEVERITY[a.outcome ?? 'AMBER'] ?? 1) - (SEVERITY[b.outcome ?? 'AMBER'] ?? 1);
-      if (severity !== 0) return severity;
-      return (a.submittedAt?.getTime() ?? 0) - (b.submittedAt?.getTime() ?? 0);
-    });
+    }));
+
+  // No client-side re-sort: the database already returned them worst-first, and
+  // re-sorting a truncated page was exactly what made the old cap unsafe.
 }
 
 export interface ReviewHistoryEntry {

@@ -11,15 +11,27 @@ import { db } from '@/lib/db/client';
 import {
   consultation, patient, gpSurgery, service, clinician, branch, batch, product,
 } from '@/lib/db/schema';
+import { fromZonedTime } from 'date-fns-tz';
+import { localDateKey, PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
 import type { NotifiableConsultation } from '@/lib/communications/batching';
 
-/** Start and end of a day in the pharmacy's own timezone, expressed as UTC. */
+/**
+ * Start and end of a day in the PHARMACY's timezone, expressed as UTC.
+ *
+ * The comment above this function always claimed that; the implementation did
+ * not do it. `setHours` uses the runtime's zone — UTC on Vercel, UTC+5:30 on a
+ * developer machine — so "today" was whoever-is-running-it's today. Around
+ * midnight the daily summary and every date-filtered report picked up the wrong
+ * consultations, and the GP batch mailed the wrong day's patients.
+ *
+ * Same defect the slot generator had. These two callers were missed then.
+ */
 export function dayBounds(date: Date): { from: Date; to: Date } {
-  const from = new Date(date);
-  from.setHours(0, 0, 0, 0);
-  const to = new Date(date);
-  to.setHours(23, 59, 59, 999);
-  return { from, to };
+  const key = localDateKey(date, PHARMACY_TIMEZONE);
+  return {
+    from: fromZonedTime(`${key}T00:00:00.000`, PHARMACY_TIMEZONE),
+    to: fromZonedTime(`${key}T23:59:59.999`, PHARMACY_TIMEZONE),
+  };
 }
 
 export async function getConsultationsToNotify(
@@ -34,6 +46,7 @@ export async function getConsultationsToNotify(
       consultationId: consultation.id,
       completedAt: consultation.completedAt,
       clinicalData: consultation.clinicalData,
+      gpNotifiedAt: consultation.gpNotifiedAt,
       firstName: patient.firstName,
       lastName: patient.lastName,
       dateOfBirth: patient.dateOfBirth,
@@ -86,10 +99,13 @@ export async function getConsultationsToNotify(
         clinical.fundedBy === 'NHS' || clinical.fundedBy === 'Private'
           ? (clinical.fundedBy as 'NHS' | 'Private')
           : null,
-      notifiedAt:
-        typeof clinical.notifiedAt === 'string' && !includeAlreadySent
-          ? new Date(clinical.notifiedAt)
-          : null,
+      // The COLUMN, not the clinical JSONB.
+      //
+      // These were two separate stores: the nightly batch stamped the blob, the
+      // Communications screen stamped `gp_notified_at`. Neither could see the
+      // other, so a practice notified overnight still appeared unsent the next
+      // morning and got the same record twice.
+      notifiedAt: includeAlreadySent ? null : r.gpNotifiedAt,
     };
   });
 }

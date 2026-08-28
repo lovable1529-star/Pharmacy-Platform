@@ -7,6 +7,7 @@
  */
 
 import { getStaffContext } from '@/lib/auth/context';
+import { can } from '@/lib/tenancy/scope';
 import { getConsultations } from '@/lib/queries/clinical';
 import { ReportsView } from './reports-view';
 
@@ -20,5 +21,5 @@ export default async function ReportsPage() {
   from.setDate(from.getDate() - 90);
 
   const rows = await getConsultations(actor.organisationId, { from });
-  return <ReportsView rows={rows} />;
+  return <ReportsView rows={rows} canExport={can(actor, 'reports:export')} />;
 }

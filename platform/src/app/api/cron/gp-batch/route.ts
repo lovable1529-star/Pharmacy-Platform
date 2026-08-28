@@ -11,7 +11,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { eq, sql } from 'drizzle-orm';
+import { and, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { organisation, consultation } from '@/lib/db/schema';
 import { buildGpBatches } from '@/lib/communications/batching';
@@ -39,24 +39,49 @@ export async function GET(request: Request) {
     const failed = [];
 
     for (const batch of batches) {
+      /*
+       * Claim before sending, not after.
+       *
+       * This used to select, send, then mark. Two overlapping runs — a retry, a
+       * manual trigger landing on a scheduled one — both selected the same
+       * consultations and both emailed the practice. A GP surgery receiving the
+       * same vaccination record twice has to work out which is real.
+       *
+       * The conditional UPDATE is the claim: only rows still unnotified come
+       * back, and only this run owns them. If the send then fails the stamp is
+       * released, so the next run picks them up rather than losing them.
+       */
+      const ids = batch.consultations.map((c) => c.consultationId);
+
+      const claimed = await db
+        .update(consultation)
+        .set({
+          gpNotifiedAt: new Date(),
+          gpNotifyCount: sql`${consultation.gpNotifyCount} + 1`,
+        })
+        .where(and(inArray(consultation.id, ids), isNull(consultation.gpNotifiedAt)))
+        .returning({ id: consultation.id });
+
+      if (claimed.length === 0) {
+        // Another run got there first. Not an error.
+        continue;
+      }
+
       const result = await sendGpBatch(batch, today);
 
       if (result.ok) {
-        sent.push({ surgery: batch.gpSurgeryName, patients: batch.consultations.length });
-
-        // Mark them notified so a retry cannot send twice.
-        for (const c of batch.consultations) {
-          await db
-            .update(consultation)
-            .set({
-              clinicalData: sql`${consultation.clinicalData} || ${JSON.stringify({
-                notifiedAt: new Date().toISOString(),
-                notificationRef: batch.reference,
-              })}::jsonb`,
-            })
-            .where(eq(consultation.id, c.consultationId));
-        }
+        sent.push({ surgery: batch.gpSurgeryName, patients: claimed.length });
       } else {
+        // Release the claim so the next run retries rather than the record
+        // being marked sent when nothing left the building.
+        await db
+          .update(consultation)
+          .set({
+            gpNotifiedAt: null,
+            gpNotifyCount: sql`greatest(${consultation.gpNotifyCount} - 1, 0)`,
+          })
+          .where(inArray(consultation.id, claimed.map((c) => c.id)));
+
         failed.push({ surgery: batch.gpSurgeryName, error: result.error });
         console.error(`[gp-batch] ${batch.gpSurgeryName} failed: ${result.error}`);
       }

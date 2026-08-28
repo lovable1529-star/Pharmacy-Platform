@@ -15,7 +15,7 @@ import { PageHeader } from '@/components/ui/primitives';
 import { formatDate, formatDateTime } from '@/lib/units';
 import type { ConsultationRow } from '@/lib/queries/clinical';
 
-export function ConsultationsTable({ rows }: { rows: ConsultationRow[] }) {
+export function ConsultationsTable({ rows, canExport }: { rows: ConsultationRow[]; canExport: boolean }) {
   const router = useRouter();
   const columns: Column<ConsultationRow>[] = [
     {
@@ -86,6 +86,7 @@ export function ConsultationsTable({ rows }: { rows: ConsultationRow[] }) {
         emptyTitle="No consultations recorded"
         emptyBody="They appear here as soon as a pharmacist completes one."
         exportName="karsons-consultations"
+        canExport={canExport}
       />
     </div>
   );

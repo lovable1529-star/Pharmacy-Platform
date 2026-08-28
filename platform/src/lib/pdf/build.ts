@@ -13,7 +13,7 @@ import {
   consultation, patient, service, branch, company, clinician, batch, product,
   submission, formVersion, ruleEvaluation,
 } from '@/lib/db/schema';
-import { formatPrescriptionNumber } from '@/lib/communications/batching';
+import { allocatePrescriptionNumber } from './numbering';
 import { visibleFields } from '@/lib/forms/runtime';
 import { formatMoney } from '@/lib/units';
 import type { PrescriptionData } from './prescription';
@@ -163,14 +163,22 @@ export async function buildPrescriptionData(
 
   const issuedAt = row.completedAt ?? row.createdAt;
 
+  /*
+   * Allocated by the database, not computed here.
+   *
+   * The previous version took digits out of the consultation UUID and reduced
+   * them modulo a million, which collides. Two supplies sharing a prescription
+   * number is a real operational problem: it is the reference a practice quotes
+   * back on a query or a recall.
+   *
+   * Falls back to the consultation reference only when allocation genuinely
+   * fails, and marks it so, rather than inventing a number that looks official.
+   */
+  const allocated = await allocatePrescriptionNumber(row.consultationId);
+
   return {
-    // Sequence is derived from the consultation id until a per-branch counter
-    // exists; it is stable and unique, which is what matters for referencing.
-    prescriptionNumber: formatPrescriptionNumber(
-      row.branchCode,
-      issuedAt.getFullYear(),
-      parseInt(row.consultationId.replace(/\D/g, '').slice(0, 6) || '1', 10) % 1000000,
-    ),
+    prescriptionNumber:
+      allocated ?? `UNNUMBERED-${row.consultationId.slice(0, 8).toUpperCase()}`,
     issuedAt,
     company: {
       name: row.companyName,

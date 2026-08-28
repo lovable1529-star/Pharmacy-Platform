@@ -12,6 +12,7 @@ export default async function InventoryPage() {
   return (
     <InventoryTable
       rows={rows}
+      canExport={can(actor, 'inventory:export')}
       branchId={activeBranch?.id ?? null}
       companyId={activeBranch?.companyId ?? null}
       canRecall={can(

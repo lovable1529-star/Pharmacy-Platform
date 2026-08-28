@@ -104,7 +104,7 @@ export default async function CompliancePage() {
         </div>
       </div>
 
-      <AuditTable rows={trail} />
+      <AuditTable rows={trail} canExport={can(actor, 'compliance:export')} />
     </div>
   );
 }

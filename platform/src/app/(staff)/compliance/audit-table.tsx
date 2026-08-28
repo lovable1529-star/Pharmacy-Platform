@@ -15,7 +15,7 @@ export interface AuditRow {
   previousHash: string | null;
 }
 
-export function AuditTable({ rows }: { rows: AuditRow[] }) {
+export function AuditTable({ rows, canExport }: { rows: AuditRow[]; canExport: boolean }) {
   const columns: Column<AuditRow>[] = [
     {
       key: 'occurredAt',
@@ -57,6 +57,7 @@ export function AuditTable({ rows }: { rows: AuditRow[] }) {
       emptyTitle="No audit entries yet"
       emptyBody="Every mutation writes one — they appear as soon as anything is recorded."
       exportName="karsons-audit-trail"
+      canExport={canExport}
       pageSize={50}
     />
   );

@@ -51,6 +51,18 @@ export interface DataTableProps<T> {
   onRowClick?: (row: T) => void;
   /** Filename stem for CSV export. Omit to hide the export button. */
   exportName?: string;
+  /**
+   * Whether this user may export.
+   *
+   * Export is a separate permission from view, and it was never checked
+   * anywhere: setting `exportName` was enough to get a button that downloads
+   * every row. Being able to read one patient is not the same as being able to
+   * take the whole list off the premises, which is why the permission exists.
+   *
+   * Defaults to false so a caller that forgets to pass it loses the button
+   * rather than silently granting bulk extraction.
+   */
+  canExport?: boolean;
   pageSize?: number;
   toolbar?: React.ReactNode;
 }
@@ -84,6 +96,7 @@ export function DataTable<T>({
   emptyBody,
   onRowClick,
   exportName,
+  canExport = false,
   pageSize = 25,
   toolbar,
 }: DataTableProps<T>) {
@@ -165,7 +178,7 @@ export function DataTable<T>({
           {sorted.length} {sorted.length === 1 ? 'row' : 'rows'}
         </span>
 
-        {exportName ? (
+        {exportName && canExport ? (
           <button
             type="button"
             onClick={exportCsv}
