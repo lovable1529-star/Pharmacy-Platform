@@ -9,11 +9,13 @@
  */
 
 import { FileText } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { DataTable, PageHeader, type Column } from '@/components/ui/data-table';
 import { formatDate, formatDateTime } from '@/lib/units';
 import type { ConsultationRow } from '@/lib/queries/clinical';
 
 export function ConsultationsTable({ rows }: { rows: ConsultationRow[] }) {
+  const router = useRouter();
   const columns: Column<ConsultationRow>[] = [
     {
       key: 'completedAt',
@@ -75,6 +77,7 @@ export function ConsultationsTable({ rows }: { rows: ConsultationRow[] }) {
         subtitle="Everything recorded across the group. Filter, then export for claims or audit."
       />
       <DataTable
+        onRowClick={(r) => router.push(`/consultations/record/${r.id}`)}
         rows={rows}
         columns={columns}
         rowKey={(r) => r.id}
