@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
@@ -41,9 +42,21 @@ export async function createSupabaseServerClient() {
 }
 
 /** The signed-in Supabase user, or null. Does not resolve roles — see getActor. */
-export async function getSessionUser() {
+/**
+ * The signed-in user, resolved once per request.
+ *
+ * `auth.getUser()` is a network call to Supabase, not a cookie read — it
+ * verifies the token with the auth service. The staff layout and the page it
+ * renders both resolve context, so every navigation was paying for that
+ * round-trip twice before the page's own query ran.
+ *
+ * `cache()` deduplicates within a single request and nothing beyond it, which
+ * is exactly the scope wanted: an authorisation decision must never outlive the
+ * request that made it.
+ */
+export const getSessionUser = cache(async () => {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
   return data.user;
-}
+});

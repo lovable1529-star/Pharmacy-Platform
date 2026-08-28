@@ -9,6 +9,7 @@
  * would let anyone read another pharmacy group's records by editing a form post.
  */
 
+import { cache } from 'react';
 import { eq, and, isNull } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { appUser, roleAssignment, role, rolePermission, branch, company } from '@/lib/db/schema';
@@ -36,8 +37,17 @@ export class AccountDisabledError extends Error {
   }
 }
 
-/** Resolves the signed-in user and their grants. Throws if not signed in. */
-export async function getActor(): Promise<Actor> {
+/**
+ * Resolves the signed-in user and their grants. Throws if not signed in.
+ *
+ * Memoised per request. This runs two queries on top of the auth round-trip,
+ * and the staff layout and the page it renders each need it — without `cache()`
+ * every navigation resolves the same actor twice before doing any real work.
+ *
+ * Request-scoped and no wider: a permission decision that outlived its request
+ * would keep answering after a role was revoked.
+ */
+export const getActor = cache(async function getActor(): Promise<Actor> {
   const sessionUser = await getSessionUser();
   if (!sessionUser) throw new NotAuthenticatedError();
 
@@ -117,16 +127,16 @@ export async function getActor(): Promise<Actor> {
     disabledAt: null,
     grants,
   };
-}
+});
 
 /** Same, but returns null instead of throwing — for pages that render either way. */
-export async function getActorOrNull(): Promise<Actor | null> {
+export const getActorOrNull = cache(async function getActorOrNull(): Promise<Actor | null> {
   try {
     return await getActor();
   } catch {
     return null;
   }
-}
+});
 
 export interface BranchContext {
   id: string;
@@ -141,7 +151,14 @@ export interface BranchContext {
  * this through `accessibleBranches` to build the switcher — keeping the query
  * and the permission logic separate is what makes the permission logic testable.
  */
-export async function getBranchesForActor(actor: Actor): Promise<BranchContext[]> {
+/**
+ * Keyed on the actor object, which is stable because `getActor` is itself
+ * memoised — the same request always gets the same reference back, so this
+ * hits its cache rather than re-querying.
+ */
+export const getBranchesForActor = cache(async function getBranchesForActor(
+  actor: Actor,
+): Promise<BranchContext[]> {
   const rows = await db
     .select({
       id: branch.id,
@@ -155,4 +172,4 @@ export async function getBranchesForActor(actor: Actor): Promise<BranchContext[]
     .where(and(eq(branch.organisationId, actor.organisationId), isNull(branch.archivedAt)));
 
   return rows;
-}
+});

@@ -7,6 +7,7 @@
  * gets ignored rather than obeyed.
  */
 
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { getActor, getBranchesForActor, type BranchContext } from './actor';
@@ -25,7 +26,15 @@ export interface StaffContext {
   roleLabel: string;
 }
 
-export async function getStaffContext(): Promise<StaffContext> {
+/**
+ * Memoised per request.
+ *
+ * The staff layout resolves context to render the navigation, then the page it
+ * renders resolves it again. That was an auth round-trip plus three queries,
+ * twice, before a page ran its own query — the largest part of the delay
+ * between clicking a tab and seeing it.
+ */
+export const getStaffContext = cache(async function getStaffContext(): Promise<StaffContext> {
   let actor: Actor;
   try {
     actor = await getActor();
@@ -70,4 +79,4 @@ export async function getStaffContext(): Promise<StaffContext> {
     ],
     roleLabel: roleName ?? 'No role',
   };
-}
+});

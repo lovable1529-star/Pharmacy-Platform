@@ -21,11 +21,11 @@ Ranked by real harm, not by the audit's own numbering.
 | 4 | Prescription number derived from UUID digits | confirmed — collides | **done** — needs `14_prescription_numbers.sql` |
 | 5 | Export permissions never enforced | confirmed | **done** |
 | 6 | Cross-tenant object scoping on mutations | partly true — needs a sweep | ☐ |
-| 7 | Duplicate `getStaffContext()` per navigation | confirmed | ☐ |
+| 7 | Duplicate `getStaffContext()` per navigation | confirmed | **done** |
 | 8 | Patient duplicate race under concurrency | confirmed — needs a DB constraint | ☐ |
 | 9 | Inventory: adjustment / transfer / reconcile missing | confirmed | ☐ |
 | 10 | Client-side pagination on large tables | confirmed | ☐ |
-| 11 | Settings loads every tab's data | confirmed | ☐ |
+| 11 | Settings loads every tab's data | **measured — not slow** | **closed, no change** |
 | 12 | RLS vs direct DB connection | confirmed — needs negative tests, not a code change | ☐ |
 | 13 | Migration trees inconsistent (`drizzle/` vs `supabase/`) | confirmed | ☐ |
 | 14 | Walk-in / patient-centric start consultation | partly true | ☐ |
@@ -100,6 +100,52 @@ hiding the button is not the only control.
 
 Needs a sweep of every mutation for `WHERE id = ?` without an
 `organisation_id` predicate. Some were fixed already; the rest is unaudited.
+
+## 7 — Duplicate context resolution
+
+`getStaffContext()` ran once for the staff layout and again for the page it
+rendered. Each pass was a Supabase `auth.getUser()` round-trip plus three
+queries, so every navigation paid for authorisation twice before touching the
+page's own data.
+
+Memoised with React's `cache()` at three levels — session user, actor, and the
+context itself. Request-scoped and no wider: an authorisation decision that
+outlived its request would keep answering after a role was revoked.
+
+**Verified in production**, because dev mode renders twice and made the fix look
+like it had not worked:
+
+    dev:         getStaffContext x2, getActor x2, getSessionUser x2
+    production:  getStaffContext x1, getActor x1, getSessionUser x1
+
+Three navigations produced three executions — cached within a request, never
+across them.
+
+## 11 — Settings: measured, and it is not the problem
+
+Closed without a change. The seven queries run in `Promise.all`, so they cost
+roughly the slowest one rather than the sum. Median server time over three
+passes in production:
+
+    /settings       335ms
+    /consultations  337ms
+    /patients       236ms
+    /               242ms
+
+Settings is indistinguishable from every other page. Lazy-loading the tabs
+would be real work for no measurable gain, so it stays on the list as a
+scale-up item rather than a fix.
+
+## The finding that actually matters for speed
+
+Same pages, same machine, same database:
+
+    next dev     2400-2800ms
+    next start    236-337ms
+
+Roughly ten times. Anything demonstrated from the dev server will feel sluggish
+no matter what is optimised, because dev compiles on demand and renders twice.
+Demo from a production build.
 
 ## 12 — RLS and the direct connection
 
