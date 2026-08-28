@@ -24,6 +24,7 @@
 import { useMemo, useState } from 'react';
 import { Check, ShieldCheck, Loader2, AlertTriangle, Syringe, ClipboardCheck } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { matchAllergens } from '@/lib/clinical/allergens';
 import { AnswerReview } from '@/components/clinical/answer-review';
 import { visibleFieldsForStep, activeWarnings, numberQuestions } from '@/lib/forms/runtime';
 import { formatDate } from '@/lib/units';
@@ -34,6 +35,8 @@ import type { Answers, FormSchema } from '@/types/form-schema';
 export interface ClinicianOption { id: string; fullName: string; gphcNumber: string }
 export interface BatchOption {
   id: string; productName: string; batchNumber: string; expiryDate: string; quantity: number;
+  /** What this product contains that someone can react to. */
+  allergens: string[];
 }
 
 export interface ConsultationFormProps {
@@ -47,6 +50,8 @@ export interface ConsultationFormProps {
   onAmend?: (answers: Answers, reason: string) => Promise<{ ok: boolean; error?: string }>;
   clinicians: ClinicianOption[];
   batches: BatchOption[];
+  /** Substances on the patient's record, lowercase, as stored. */
+  patientAllergies: string[];
   branchName: string;
   onComplete: (input: {
     clinicianId: string;
@@ -59,7 +64,8 @@ export interface ConsultationFormProps {
 }
 
 export function ConsultationForm({
-  patient, schema, patientAnswers, clinicians, batches, branchName, onComplete, onAmend,
+  patient, schema, patientAnswers, clinicians, batches, patientAllergies,
+  branchName, onComplete, onAmend,
 }: ConsultationFormProps) {
   const numbered = useMemo(
     () => (schema.numberQuestions ? numberQuestions(schema) : schema),
@@ -92,6 +98,12 @@ export function ConsultationForm({
   const selectedBatch = batches.find((b) => b.id === batchId);
   const requiredDeclarations = numbered.clinicianDeclarations ?? [];
   const allDeclared = requiredDeclarations.every((d) => declarations.includes(d.id));
+
+  // Does the chosen product contain something this patient reacts to?
+  // Warns rather than blocks — see the note in lib/clinical/allergens.
+  const allergyClash = selectedBatch
+    ? matchAllergens(selectedBatch.allergens, patientAllergies)
+    : [];
 
   const missing: string[] = [];
   if (!verified) missing.push('verify the patient’s identity');
@@ -256,6 +268,17 @@ export function ConsultationForm({
                 {selectedBatch ? (
                   <p className="tabular mt-1 font-mono text-[11.5px] text-ink-faint">
                     Batch {selectedBatch.batchNumber} · expires {formatDate(selectedBatch.expiryDate)} · {selectedBatch.quantity} in stock
+                  </p>
+                ) : null}
+
+                {allergyClash.length > 0 ? (
+                  <p className="mt-2 flex items-start gap-1.5 rounded-[8px] border border-stop-200 bg-stop-50 px-3 py-2 text-[13px] text-stop-700">
+                    <AlertTriangle size={13} strokeWidth={2.4} className="mt-0.5 shrink-0" />
+                    <span>
+                      <strong>{selectedBatch?.productName}</strong> contains{' '}
+                      {allergyClash.join(', ')}, and this patient has a recorded
+                      allergy to it. Check the PGD before administering.
+                    </span>
                   </p>
                 ) : null}
               </div>

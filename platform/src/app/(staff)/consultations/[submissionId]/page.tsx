@@ -11,7 +11,8 @@ import { eq, and, gt } from 'drizzle-orm';
 import { notFound, redirect } from 'next/navigation';
 import { db } from '@/lib/db/client';
 import {
-  submission, service, formVersion, patient, clinician, stockLevel, batch, product, branch,
+  submission, service, formVersion, patient, clinician, stockLevel, batch, product,
+  branch, allergy,
 } from '@/lib/db/schema';
 import { getActorOrNull, getBranchesForActor } from '@/lib/auth/actor';
 import { can, accessibleBranches } from '@/lib/tenancy/scope';
@@ -98,6 +99,7 @@ export default async function ConsultationPage({
       batchNumber: batch.batchNumber,
       expiryDate: batch.expiryDate,
       quantity: stockLevel.quantity,
+      allergens: product.allergens,
     })
     .from(stockLevel)
     .innerJoin(batch, eq(stockLevel.batchId, batch.id))
@@ -105,8 +107,16 @@ export default async function ConsultationPage({
     .where(and(eq(stockLevel.branchId, activeBranch.id), gt(stockLevel.quantity, 0)))
     .orderBy(batch.expiryDate);
 
+  // What this patient is known to react to — from their record, which is the
+  // list the product's allergens are checked against.
+  const recorded = await db
+    .select({ substance: allergy.substance })
+    .from(allergy)
+    .where(eq(allergy.patientId, row.patientId));
+
   return (
     <ConsultationClient
+      patientAllergies={recorded.map((a) => a.substance)}
       submissionId={row.submissionId}
       serviceId={row.serviceId}
       branchId={activeBranch.id}

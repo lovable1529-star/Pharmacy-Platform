@@ -21,6 +21,7 @@ export function ConsultationClient(props: {
   patientAnswers: Answers;
   clinicians: ClinicianOption[];
   batches: BatchOption[];
+  patientAllergies: string[];
 }) {
   const router = useRouter();
 
@@ -32,6 +33,7 @@ export function ConsultationClient(props: {
       patientAnswers={props.patientAnswers}
       clinicians={props.clinicians}
       batches={props.batches}
+      patientAllergies={props.patientAllergies}
       branchName={props.branchName}
       onAmend={async (answers, reason) => {
         const result = await amendSubmission({
