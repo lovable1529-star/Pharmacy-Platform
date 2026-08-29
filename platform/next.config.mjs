@@ -1,7 +1,30 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  serverExternalPackages: ['postgres'],
+  /*
+   * Packages Next must NOT bundle.
+   *
+   * `postgres` opens real sockets. `@react-pdf/renderer` is here because it
+   * depends on pdfkit, which reads Adobe font-metric files (.afm) off disk at
+   * render time. Bundled, those reads resolve to paths that do not exist inside
+   * a serverless function — the PDF route worked locally, where node_modules is
+   * still on disk, and returned 500 on Vercel where it is not.
+   */
+  serverExternalPackages: ['postgres', '@react-pdf/renderer'],
+
+  /*
+   * And ship the font metrics themselves.
+   *
+   * Leaving the package unbundled is not enough on its own: file tracing
+   * follows `require` calls, and pdfkit builds these paths at runtime, so the
+   * tracer never sees them. Naming them explicitly is what puts them in the
+   * deployed function.
+   */
+  outputFileTracingIncludes: {
+    '/api/consultations/[id]/pdf': [
+      './node_modules/.pnpm/**/pdfkit/js/data/*.afm',
+    ],
+  },
 
   experimental: {
     /*
