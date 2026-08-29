@@ -14,34 +14,11 @@ import {
   submission, formVersion, ruleEvaluation,
 } from '@/lib/db/schema';
 import { allocatePrescriptionNumber } from './numbering';
-import { visibleFields } from '@/lib/forms/runtime';
+import { visibleSteps, visibleFieldsForStep } from '@/lib/forms/runtime';
+import { presentAnswer } from '@/lib/forms/present';
 import { formatMoney } from '@/lib/units';
 import type { PrescriptionData } from './prescription';
 import type { Answers, FormField, FormSchema } from '@/types/form-schema';
-
-/** Renders one answer as the short string a dispensing pharmacist can scan. */
-function present(field: FormField, value: unknown): string {
-  if (value === undefined || value === null || value === '') return '—';
-
-  if (typeof value === 'object' && 'si' in (value as object)) {
-    const si = (value as { si: number | null }).si;
-    if (si === null) return '—';
-    return field.measurementKind === 'weight' ? `${si} kg` : `${si} cm`;
-  }
-
-  if (Array.isArray(value)) {
-    return value
-      .map((v) => field.options?.find((o) => o.value === v)?.label ?? String(v))
-      .join(', ');
-  }
-
-  if (value === true) return 'Agreed';
-  if (value === 'yes') return 'Yes';
-  if (value === 'no') return 'No';
-  if (value === 'na') return 'N/A';
-
-  return field.options?.find((o) => o.value === value)?.label ?? String(value);
-}
 
 export async function buildPrescriptionData(
   organisationId: string,
@@ -107,11 +84,29 @@ export async function buildPrescriptionData(
 
   const clinical = (row.clinicalData ?? {}) as Record<string, unknown>;
 
-  // The consultation summary on the reverse: what the patient answered, plus
-  // what the clinician recorded on the day.
-  const summary: { label: string; value: string }[] = [];
+  /*
+   * The consultation summary on the reverse, grouped the way the form is.
+   *
+   * It used to be one flat list of every answered question — twenty-nine rows
+   * on the flu form with nothing separating "your measurements" from "consent".
+   * A pharmacist reading it back at the counter is looking for one section, and
+   * a flat list makes them read all of it to find any of it.
+   *
+   * The grouping is the questionnaire's own steps, so the printed record and
+   * the screen the patient filled in have the same shape.
+   */
+  const sections: { title: string; entries: { label: string; value: string }[] }[] = [];
   let advice: string[] = [];
   let alert: string | null = null;
+  /*
+   * The patient's own signature, kept as the picture it is.
+   *
+   * It was skipped along with info blocks, on the reasoning that a data URL is
+   * not a readable answer — true, but the conclusion was wrong. This is the
+   * mark that makes the consent record evidence of anything, so it belongs on
+   * the printed copy, drawn rather than described.
+   */
+  let patientSignature: string | null = null;
 
   if (row.submissionId) {
     const subRows = await db
@@ -129,9 +124,27 @@ export async function buildPrescriptionData(
       const schema = sub.schema as unknown as FormSchema;
       const answers = (sub.answers ?? {}) as Answers;
 
-      for (const field of visibleFields(schema, answers, { includeClinicianOnly: true })) {
-        if (field.type === 'infoBlock' || field.type === 'signature') continue;
-        summary.push({ label: field.label, value: present(field, answers[field.id]) });
+      for (const step of visibleSteps(schema, answers, { includeClinicianOnly: true })) {
+        const entries: { label: string; value: string }[] = [];
+
+        for (const field of visibleFieldsForStep(step, answers, { includeClinicianOnly: true })) {
+          // An info block asks nothing, and a signature is an image rather than
+          // a value — printing its data URL as text helps nobody.
+          if (field.type === 'infoBlock') continue;
+
+          if (field.type === 'signature') {
+            const signed = answers[field.id];
+            if (typeof signed === 'string' && signed.startsWith('data:image')) {
+              patientSignature = signed;
+            }
+            continue;
+          }
+          entries.push({ label: field.label, value: presentAnswer(field, answers[field.id], answers) });
+        }
+
+        // A step whose questions were all hidden by the answers given is not a
+        // heading with nothing under it.
+        if (entries.length > 0) sections.push({ title: step.title, entries });
       }
 
       // A question from the patient must reach whoever hands the medicine over.
@@ -150,16 +163,22 @@ export async function buildPrescriptionData(
     advice = (evaluation[0]?.advice as string[] | undefined) ?? [];
   }
 
+  // What the pharmacist recorded on the day, kept apart from what the patient
+  // answered in advance. Who said what is a distinction that matters on a
+  // clinical record.
+  const recorded: { label: string; value: string }[] = [];
+
   for (const [key, label] of [
     ['siteOfAdministration', 'Site of administration'],
     ['injectionType', 'Type of injection'],
     ['fundedBy', 'Funded by'],
   ] as const) {
     if (typeof clinical[key] === 'string') {
-      summary.push({ label, value: clinical[key] as string });
+      recorded.push({ label, value: clinical[key] as string });
     }
   }
-  if (row.notes) summary.push({ label: 'Notes', value: row.notes });
+  if (row.notes) recorded.push({ label: 'Notes', value: row.notes });
+  if (recorded.length > 0) sections.push({ title: 'Recorded at the appointment', entries: recorded });
 
   const issuedAt = row.completedAt ?? row.createdAt;
 
@@ -222,8 +241,9 @@ export async function buildPrescriptionData(
       serviceName: row.serviceName,
       completedAt: issuedAt,
       outcome: null,
-      summary,
+      sections,
       advice,
+      patientSignature,
     },
   };
 }
