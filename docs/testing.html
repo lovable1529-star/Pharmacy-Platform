@@ -1,0 +1,1006 @@
+<title>Karsons Platform Test Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Karla:wght@400;500;600&family=Outfit:wght@500;600;700&display=swap">
+
+<style>
+  :root {
+    --ink:       #191C21;
+    --ink-soft:  #444B55;
+    --ink-faint: #737B87;
+    --paper:     #F8F9FA;
+    --surface:   #FFFFFF;
+    --sunk:      #EEF0F3;
+    --line:      #E1E4E9;
+    --line-soft: #EEF0F3;
+    --brand:     #6B4FBB;
+    --brand-dim: #F1ECFB;
+    --pass:      #2E7D52;
+    --pass-dim:  #E6F3EA;
+    --warn:      #A96A08;
+    --warn-dim:  #FBF1DD;
+    --fail:      #B3261E;
+    --fail-dim:  #FBEAE8;
+    --code-bg:   #171A20;
+    --code-ink:  #DEE3EA;
+    --sh-sm:     0 1px 2px rgba(25,28,33,.05);
+    --sh:        0 1px 2px rgba(25,28,33,.05), 0 10px 26px -14px rgba(25,28,33,.25);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink: #E9ECF1; --ink-soft: #AEB5C0; --ink-faint: #7D8492;
+      --paper: #0D0F13; --surface: #16191F; --sunk: #1F232B;
+      --line: #2A2F38; --line-soft: #222730;
+      --brand: #B79EF2; --brand-dim: #241E38;
+      --pass: #74D3A0; --pass-dim: #14261C;
+      --warn: #E8B063; --warn-dim: #2B2013;
+      --fail: #F29A92; --fail-dim: #2E1817;
+      --code-bg: #1F232B; --code-ink: #DEE3EA;
+      --sh-sm: 0 1px 2px rgba(0,0,0,.5);
+      --sh: 0 1px 2px rgba(0,0,0,.5), 0 10px 26px -14px rgba(0,0,0,.75);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink: #E9ECF1; --ink-soft: #AEB5C0; --ink-faint: #7D8492;
+    --paper: #0D0F13; --surface: #16191F; --sunk: #1F232B;
+    --line: #2A2F38; --line-soft: #222730;
+    --brand: #B79EF2; --brand-dim: #241E38;
+    --pass: #74D3A0; --pass-dim: #14261C;
+    --warn: #E8B063; --warn-dim: #2B2013;
+    --fail: #F29A92; --fail-dim: #2E1817;
+    --code-bg: #1F232B; --code-ink: #DEE3EA;
+    --sh-sm: 0 1px 2px rgba(0,0,0,.5);
+    --sh: 0 1px 2px rgba(0,0,0,.5), 0 10px 26px -14px rgba(0,0,0,.75);
+  }
+
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: Karla, ui-sans-serif, system-ui, sans-serif;
+    font-size: 16px; line-height: 1.62; -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 1180px; margin: 0 auto; padding: 0 28px 96px;
+    display: grid; grid-template-columns: 210px minmax(0,1fr); gap: 48px; align-items: start;
+  }
+  header.mast { grid-column: 1/-1; padding: 60px 0 30px; }
+  .kick {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--brand); margin: 0 0 15px;
+  }
+  h1 {
+    font-family: Outfit, ui-sans-serif, sans-serif; font-weight: 700;
+    font-size: clamp(33px, 5.2vw, 52px); line-height: 1.05;
+    letter-spacing: -.025em; text-wrap: balance; margin: 0 0 18px;
+  }
+  .stand { font-size: 18px; color: var(--ink-soft); max-width: 60ch; margin: 0 0 20px; }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 20px;
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px; color: var(--ink-faint);
+    border-top: 1px solid var(--line); padding-top: 15px;
+  }
+
+  nav.rail { position: sticky; top: 24px; }
+  nav.rail h2 {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 12px;
+  }
+  nav.rail ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 1px; }
+  nav.rail a {
+    display: grid; grid-template-columns: 26px minmax(0,1fr); gap: 8px;
+    padding: 6px 8px; border-radius: 6px; text-decoration: none;
+    color: var(--ink-soft); font-size: 13px; line-height: 1.35;
+  }
+  nav.rail a:hover { background: var(--sunk); color: var(--ink); }
+  nav.rail a:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  nav.rail .n { font-family: "IBM Plex Mono", monospace; font-size: 10.5px; color: var(--ink-faint); }
+  nav.rail hr { border: 0; border-top: 1px solid var(--line); margin: 10px 4px; }
+
+  main { min-width: 0; }
+  section { padding: 42px 0; border-top: 1px solid var(--line); scroll-margin-top: 20px; }
+  section:first-child { border-top: 0; padding-top: 6px; }
+  .secn {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .13em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 11px;
+  }
+  h2 {
+    font-family: Outfit, sans-serif; font-weight: 600;
+    font-size: clamp(24px, 3.2vw, 32px); line-height: 1.15;
+    letter-spacing: -.02em; text-wrap: balance; margin: 0 0 16px;
+  }
+  h3 { font-family: Outfit, sans-serif; font-weight: 600; font-size: 18px; margin: 30px 0 10px; }
+  p { margin: 0 0 15px; max-width: 68ch; }
+  .col ul, .col ol { margin: 0 0 15px; padding-left: 21px; max-width: 66ch; }
+  li { margin-bottom: 6px; }
+
+  code {
+    font-family: "IBM Plex Mono", monospace; font-size: .85em;
+    background: var(--sunk); border: 1px solid var(--line-soft);
+    border-radius: 4px; padding: 1px 5px;
+  }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); border-radius: 9px;
+    padding: 14px 16px; overflow-x: auto; margin: 0 0 18px;
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; line-height: 1.6;
+  }
+
+  .note {
+    border: 1px solid var(--line); border-left: 3px solid var(--brand);
+    background: var(--surface); border-radius: 9px; padding: 15px 18px;
+    margin: 0 0 20px; max-width: 68ch;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .tag {
+    display: block; font-family: "IBM Plex Mono", monospace; font-size: 10px;
+    font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--brand); margin-bottom: 6px;
+  }
+  .note.stop { border-left-color: var(--fail); background: var(--fail-dim); }
+  .note.stop .tag { color: var(--fail); }
+  .note.warn { border-left-color: var(--warn); background: var(--warn-dim); }
+  .note.warn .tag { color: var(--warn); }
+  .note.go { border-left-color: var(--pass); background: var(--pass-dim); }
+  .note.go .tag { color: var(--pass); }
+
+  /* ── Test cases ─────────────────────────────────────────────── */
+  .cases { list-style: none; margin: 22px 0 0; padding: 0; display: grid; gap: 10px; }
+  .case {
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; box-shadow: var(--sh-sm); overflow: hidden;
+  }
+  .case > label {
+    display: grid; grid-template-columns: 22px minmax(0,1fr);
+    column-gap: 13px; row-gap: 7px;
+    padding: 15px 18px; cursor: pointer;
+  }
+  .case input { grid-column: 1; grid-row: 1; margin: 4px 0 0; width: 15px; height: 15px; accent-color: var(--brand); }
+  .case input:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+  .case .id {
+    grid-column: 2; grid-row: 1;
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 600;
+    color: var(--brand); letter-spacing: .05em;
+  }
+  .case .what { grid-column: 2; grid-row: 2; font-size: 15.5px; font-weight: 600; font-family: Outfit, sans-serif; }
+  .case .body { grid-column: 2; grid-row: 3; display: grid; gap: 8px; }
+  .case input:checked ~ .what { color: var(--ink-faint); text-decoration: line-through; text-decoration-color: var(--line); }
+
+  .row { display: grid; grid-template-columns: 68px minmax(0,1fr); gap: 10px; align-items: start; }
+  .row .k {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint); padding-top: 3px;
+  }
+  .row .v { font-size: 14.5px; color: var(--ink-soft); line-height: 1.5; }
+  .row.expect .k { color: var(--pass); }
+  .row.expect .v { color: var(--ink); }
+  .row.refuse .k { color: var(--fail); }
+
+  .reset {
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px;
+    background: none; border: 1px solid var(--line); border-radius: 6px;
+    padding: 5px 11px; color: var(--ink-faint); cursor: pointer; margin-top: 12px;
+  }
+  .reset:hover { border-color: var(--brand); color: var(--brand); }
+  .reset:focus-visible { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+  .tw {
+    overflow-x: auto; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--surface); margin: 20px 0 24px; box-shadow: var(--sh-sm);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  th, td { text-align: left; padding: 10px 13px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 600;
+    letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint);
+    background: var(--sunk); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: 0; }
+
+  footer { grid-column: 1/-1; border-top: 1px solid var(--line); padding-top: 20px; margin-top: 36px; font-size: 13.5px; color: var(--ink-faint); }
+
+  @media (max-width: 900px) {
+    .wrap { grid-template-columns: minmax(0,1fr); gap: 0; padding: 0 20px 76px; }
+    nav.rail { position: static; margin-bottom: 36px; padding: 15px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+  <header class="mast">
+    <p class="kick">Karsons Pharmacy Platform · Test plan</p>
+    <h1>What to test, in what order</h1>
+    <p class="stand">
+      Written to be followed top to bottom by somebody who has never seen the
+      system. Every step says where to go, what to do and what should happen.
+      Tick each one off as you go — your ticks are saved in this browser.
+    </p>
+    <div class="meta">
+      <span>50 test cases</span>
+      <span>Two setup steps first</span>
+      <span>Allow about 90 minutes</span>
+      <span>30 August 2026</span>
+    </div>
+  </header>
+
+  <nav class="rail" aria-label="Contents">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#before"><span class="n">00</span><span>Before you start</span></a></li>
+      <li><a href="#map"><span class="n">01</span><span>How it fits together</span></a></li>
+      <li><a href="#setup"><span class="n">02</span><span>Setup — do this first</span></a></li>
+      <li><a href="#flu"><span class="n">03</span><span>Run A · Vaccination</span></a></li>
+      <li><a href="#glp"><span class="n">04</span><span>Run B · Repeat care</span></a></li>
+      <li><a href="#forms"><span class="n">05</span><span>Run C · Building a form</span></a></li>
+      <li><a href="#records"><span class="n">06</span><span>Run D · Records &amp; reports</span></a></li>
+      <li><a href="#refuse"><span class="n">07</span><span>Things it must refuse</span></a></li>
+      <hr>
+      <li><a href="#notbugs"><span class="n">§</span><span>Not bugs</span></a></li>
+      <li><a href="#report"><span class="n">§</span><span>Reporting a problem</span></a></li>
+    </ol>
+  </nav>
+
+  <main>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="before">
+    <p class="secn">00</p>
+    <h2>Before you start</h2>
+
+    <div class="col">
+      <p>You need a staff login and the address of the live site. Ask whoever set
+      it up if you do not have both.</p>
+      <p>Use a normal browser window for the staff side. When a step asks you to
+      act <strong>as a patient</strong>, open a private or incognito window —
+      otherwise you are still signed in as staff and will not see what a patient
+      sees.</p>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">Two things are empty on a fresh system</span>
+      <p>There are no vaccine batches and nobody is on repeat care yet. Both are
+      normal — a real pharmacy adds them once. <strong>Section 02 sets them
+      up</strong>, and neither of the two main test runs will work until you
+      have done it. If a dropdown looks empty, that is almost always why.</p>
+    </div>
+
+    <h3>Words used here</h3>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Word</th><th>Means</th></tr></thead>
+        <tbody>
+          <tr><td>Service</td><td>Something the pharmacy offers — flu vaccination, weight management.</td></tr>
+          <tr><td>Questionnaire</td><td>The form a patient fills in for a service.</td></tr>
+          <tr><td>Submission</td><td>One completed questionnaire from one patient.</td></tr>
+          <tr><td>Triage</td><td>The automatic safety check. Green, amber or red.</td></tr>
+          <tr><td>Repeat care</td><td>Patients approved to request repeat supplies without a full consultation.</td></tr>
+          <tr><td>Batch</td><td>A numbered box of vaccine with an expiry date.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="map">
+    <p class="secn">01</p>
+    <h2>How it fits together</h2>
+
+    <div class="col">
+      <p>There is one patient record. Everything else attaches to it. You will
+      use these areas, roughly in this order.</p>
+    </div>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>Area</th><th>When you use it</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Settings</strong></td><td>Once, to add stock, pharmacists, branches and GP surgeries.</td></tr>
+          <tr><td><strong>Services</strong></td><td>To build or change a questionnaire. Rarely.</td></tr>
+          <tr><td><strong>Appointments</strong></td><td>Every day — booking, rescheduling, marking people as arrived.</td></tr>
+          <tr><td><strong>Vaccinations</strong></td><td>When somebody comes in for a jab.</td></tr>
+          <tr><td><strong>Repeat care</strong></td><td>When repeat requests need a pharmacist's decision.</td></tr>
+          <tr><td><strong>Prescriptions</strong></td><td>At the counter — dispensing and handing over.</td></tr>
+          <tr><td><strong>Patients</strong></td><td>To look somebody up, or see their history.</td></tr>
+          <tr><td><strong>Inventory</strong></td><td>When stock arrives, expires or is damaged.</td></tr>
+          <tr><td><strong>Documents</strong></td><td>To find a record that was produced earlier.</td></tr>
+          <tr><td><strong>Reports</strong></td><td>Monthly — claims, audits, how busy you have been.</td></tr>
+          <tr><td><strong>Compliance</strong></td><td>If somebody asks who did what, and when.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="setup">
+    <p class="secn">02 · Do this first</p>
+    <h2>Setup</h2>
+
+    <div class="col">
+      <p>Ten minutes. Nothing below this section works without it.</p>
+    </div>
+
+    <ol class="cases" id="g-setup">
+      <li class="case"><label>
+        <input type="checkbox" data-k="s1">
+        <span class="id">SETUP-01</span>
+        <span class="what">Sign in and choose a branch</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v">The site address, then sign in.</span></span>
+          <span class="row"><span class="k">Do</span><span class="v">Look at the top of the left-hand menu and check which branch you are working from. Switch it if you need to.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">You land on <strong>Today</strong>. A branch name is shown. The menu lists Patients, Consultations, Appointments, Repeat care, Vaccinations and more.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="s2">
+        <span class="id">SETUP-02</span>
+        <span class="what">Add a vaccine batch so vaccinations can be given</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Settings → Stock</strong></span></span>
+          <span class="row"><span class="k">Do</span><span class="v">Use <em>Add a batch</em>. Pick a vaccine, type a batch number (anything, e.g. <code>TEST-001</code>), set an expiry date <strong>in the future</strong>, and a quantity of 20.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">The batch appears in the list with “20 in stock”.</span></span>
+          <span class="row"><span class="k">Note</span><span class="v">Add it at the branch you are working from — stock belongs to a branch.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="s3">
+        <span class="id">SETUP-03</span>
+        <span class="what">Check a pharmacist is on the register</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Settings → Pharmacists</strong></span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">At least one name with a GPhC number. If the list is empty, add yourself — you cannot record a vaccination without one.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="s4">
+        <span class="id">SETUP-04</span>
+        <span class="what">Put somebody on repeat care</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Patients</strong> → click any patient → find the <em>Repeat care</em> panel</span></span>
+          <span class="row"><span class="k">Do</span><span class="v">Choose the service <em>Weight Management — Repeat Request</em>. Fill in: Pharmadoctor ID <code>KP-TEST-1</code>, height 170, starting weight 92, medicine <code>Mounjaro</code>, strength <code>7.5mg</code>. Save.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">The panel shows an active enrolment.</span></span>
+          <span class="row"><span class="k">Note</span><span class="v"><strong>Write down that patient's email address.</strong> You need it in Run B, and it must match exactly.</span></span>
+        </span>
+      </label></li>
+    </ol>
+
+    <button class="reset" type="button" data-reset="g-setup">Clear this section</button>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="flu">
+    <p class="secn">03 · Run A</p>
+    <h2>A vaccination, start to finish</h2>
+
+    <div class="col">
+      <p>The shortest complete journey, and the one that touches the most parts
+      of the system at once. Do this run first.</p>
+    </div>
+
+    <ol class="cases" id="g-flu">
+      <li class="case"><label>
+        <input type="checkbox" data-k="f1">
+        <span class="id">FLU-01</span>
+        <span class="what">Open the patient questionnaire</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Services</strong> → find <em>Flu Vaccination</em> → <strong>Preview</strong></span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">The form opens as a patient would see it. Preview does <strong>not</strong> create a real submission — it is safe to click around.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="f2">
+        <span class="id">FLU-02</span>
+        <span class="what">Check the questions change with the answers</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Set Gender to <strong>Male</strong>, then to <strong>Female</strong>.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Pregnancy and breast-feeding questions are <strong>hidden</strong> for Male and <strong>shown</strong> for Female.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="f3">
+        <span class="id">FLU-03</span>
+        <span class="what">Check follow-up questions appear</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Answer <strong>Yes</strong> to “Do you have any other allergies?”</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">A details box appears immediately underneath, and it is required. Answering No hides it again.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="f4">
+        <span class="id">FLU-04</span>
+        <span class="what">Fill it in as a real patient</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v">Open a <strong>private window</strong>. Go to <code>/f/flu-vaccination</code> on the live address.</span></span>
+          <span class="row"><span class="k">Do</span><span class="v">Complete every question, tick the consent, sign, and submit. Use a name you will recognise, e.g. <em>Test Patient One</em>.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">A confirmation. No login was ever needed.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="f5">
+        <span class="id">FLU-05</span>
+        <span class="what">Find them as the pharmacist</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Vaccinations</strong> (staff window)</span></span>
+          <span class="row"><span class="k">Do</span><span class="v">Type the surname into the search box. Then try the date of birth instead.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">They appear, tagged <em>ready to give</em>. Both search methods find them.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="f6">
+        <span class="id">FLU-06</span>
+        <span class="what">Read their answers back</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Open the patient. Read the answers section.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Everything they answered is listed. Anything worth a second look — allergies, being unwell — is visibly marked.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="f7">
+        <span class="id">FLU-07</span>
+        <span class="what">The batch and pharmacist fill themselves in</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">In <em>Record what was given</em>, choose a pharmacist, then choose the batch you added in SETUP-02.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Choosing the pharmacist shows their GPhC number. Choosing the batch shows its expiry. You did not type either.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="f8">
+        <span class="id">FLU-08</span>
+        <span class="what">The injection type disappears when it does not apply</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Set <em>Site of administration</em> to <strong>Left deltoid</strong>, then change it to <strong>Nasal</strong>.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">“Type of injection” is asked for the deltoid and <strong>disappears entirely</strong> for nasal — you are not asked how you injected a nasal spray.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="f9">
+        <span class="id">FLU-09</span>
+        <span class="what">You cannot finish without the declarations</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Fill everything in but leave one of the four pharmacist declarations unticked.</span></span>
+          <span class="row refuse"><span class="k">Expect</span><span class="v">The <em>Complete vaccination</em> button stays disabled. Tick the last one and it becomes available.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="f10">
+        <span class="id">FLU-10</span>
+        <span class="what">Complete it</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Set the site back to a deltoid, choose an injection type, and press <em>Complete vaccination</em>.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">The page shows the vaccination as recorded, naming the vaccine, batch, date and pharmacist.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="f11">
+        <span class="id">FLU-11</span>
+        <span class="what">Stock came down by one</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Inventory</strong></span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">The batch now shows <strong>19</strong>, not 20. This is the check that proves the record and the shelf agree.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="f12">
+        <span class="id">FLU-12</span>
+        <span class="what">A document was filed</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Documents</strong></span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">A <em>Vaccination record</em> for that patient, dated today, with their name as a link to their record.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="f13">
+        <span class="id">FLU-13</span>
+        <span class="what">It cannot be recorded twice</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Go back to <strong>Vaccinations</strong> and open the same patient again.</span></span>
+          <span class="row refuse"><span class="k">Expect</span><span class="v">It says the vaccination is already recorded and gives you <strong>no form</strong> to record a second one. Stock must still read 19.</span></span>
+        </span>
+      </label></li>
+    </ol>
+
+    <button class="reset" type="button" data-reset="g-flu">Clear this section</button>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="glp">
+    <p class="secn">04 · Run B</p>
+    <h2>A repeat request, start to finish</h2>
+
+    <div class="col">
+      <p>Longer, and it is where the clinical safety rules live. You need the
+      patient from <strong>SETUP-04</strong> and their email address.</p>
+    </div>
+
+    <ol class="cases" id="g-glp">
+      <li class="case"><label>
+        <input type="checkbox" data-k="g1">
+        <span class="id">REP-01</span>
+        <span class="what">Wrong details are turned away</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v">Private window → <code>/repeat/weight-management-repeat</code></span></span>
+          <span class="row"><span class="k">Do</span><span class="v">Enter Repeat Care ID <code>KP-TEST-1</code> with a <strong>made-up email</strong>.</span></span>
+          <span class="row refuse"><span class="k">Expect</span><span class="v">Refused, with a link to book an appointment. It must <strong>not</strong> tell you which of the two was wrong.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g2">
+        <span class="id">REP-02</span>
+        <span class="what">Correct details get in</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Enter <code>KP-TEST-1</code> and the <strong>real</strong> email from SETUP-04.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">The questionnaire opens. No password was needed.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g3">
+        <span class="id">REP-03</span>
+        <span class="what">Only sensible doses are offered</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Reach the dose question and open the dropdown. The patient is on Mounjaro 7.5mg.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Only <strong>5mg, 7.5mg and 10mg</strong> — one step either way. 2.5mg and 15mg are not offered at all.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g4">
+        <span class="id">REP-04</span>
+        <span class="what">Answers survive being interrupted</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Answer a few questions, then <strong>close the tab</strong>. Reopen the same link.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Your answers are still there. Nothing was retyped.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g5">
+        <span class="id">REP-05</span>
+        <span class="what">A stable patient is approved automatically</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Finish the form answering: weight <strong>88kg</strong>, no health changes, no side effects, no missed doses, good appetite control, no snacking, same dose, one month. Submit.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Accepted without needing a pharmacist. That is a <strong>green</strong> outcome — 92kg down to 88kg is over the 2% target.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g6">
+        <span class="id">REP-06</span>
+        <span class="what">A concerning answer is stopped</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Start a second request. This time answer <strong>2 or more missed doses</strong>, or <strong>severe side effects</strong>.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">The patient is told to speak to a pharmacist and given a booking link. No supply is offered.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g7">
+        <span class="id">REP-07</span>
+        <span class="what">Red cases appear as urgent</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Repeat care</strong> (staff window)</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">A red <em>Urgent</em> panel at the top, above the normal queue, naming the patient and the reason.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g8">
+        <span class="id">REP-08</span>
+        <span class="what">The queues separate</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Click the <strong>red</strong>, <strong>amber</strong> and <strong>green</strong> buttons at the top in turn.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">The list filters to just that kind. The empty message says “Nothing in this queue”, not “everything has been dealt with”.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g9">
+        <span class="id">REP-09</span>
+        <span class="what">The system explains itself</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Open a request and press <strong>Why?</strong></span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Every rule it considered, what it looked at, and which one decided. This is the most important screen to show a pharmacist.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g10">
+        <span class="id">REP-10</span>
+        <span class="what">Approving an amber needs a reason</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Open an amber request and try to approve it with the note box empty.</span></span>
+          <span class="row refuse"><span class="k">Expect</span><span class="v">Refused, asking why. Add a note and it goes through.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g11">
+        <span class="id">REP-11</span>
+        <span class="what">Approval creates a prescription</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Prescriptions</strong></span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">The patient appears under <em>Awaiting payment</em>, with no prescription number yet. That is correct — the number is only given once paid.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g12">
+        <span class="id">REP-12</span>
+        <span class="what">Payment issues it</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Follow the payment link and complete it. (No real money moves — see <a href="#notbugs">Not bugs</a>.)</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">It moves to <strong>Ready to dispense</strong> and now has a prescription number.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g13">
+        <span class="id">REP-13</span>
+        <span class="what">A patient's question reaches the counter</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Make a request where the patient writes something in “notes or questions for the pharmacist”. Approve it, pay, then open <strong>Dispense</strong>.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Their question is shown in colour on the row <strong>and again</strong> in the dispensing box, and you <strong>cannot sign off</strong> until you tick that you have spoken to them.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g14">
+        <span class="id">REP-14</span>
+        <span class="what">Dispense and hand over</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Sign off the supply, then record the collection with a name.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">It moves through <em>Awaiting collection</em> and into <strong>Collected</strong>, showing who dispensed and who collected.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="g15">
+        <span class="id">REP-15</span>
+        <span class="what">Doing it on their behalf</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Repeat care → On their behalf</strong></span></span>
+          <span class="row"><span class="k">Do</span><span class="v">Search for the patient and start a request for them.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">The <strong>same</strong> questionnaire opens, with the same dose limits. Only patients actually on repeat care are listed.</span></span>
+        </span>
+      </label></li>
+    </ol>
+
+    <button class="reset" type="button" data-reset="g-glp">Clear this section</button>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="forms">
+    <p class="secn">05 · Run C</p>
+    <h2>Building and changing a form</h2>
+
+    <div class="col">
+      <p>This is the part that makes the system the pharmacy's rather than the
+      developer's. Worth showing a client directly.</p>
+    </div>
+
+    <ol class="cases" id="g-forms">
+      <li class="case"><label>
+        <input type="checkbox" data-k="c1">
+        <span class="id">FORM-01</span>
+        <span class="what">Add a question</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Services</strong> → a service → <strong>Edit form</strong></span></span>
+          <span class="row"><span class="k">Do</span><span class="v">Add a Yes/No question from the palette on the left.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">It appears in the middle column and in the live preview on the right, straight away.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="c2">
+        <span class="id">FORM-02</span>
+        <span class="what">Hang a follow-up off one answer</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Give that question a follow-up that only appears when the answer is <strong>Yes</strong>.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">In the preview, answering Yes reveals it and answering No hides it.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="c3">
+        <span class="id">FORM-03</span>
+        <span class="what">Publishing does not disturb old answers</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Publish. Note the version number. Then open a questionnaire somebody completed <strong>earlier</strong>.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">The version number went up by one. The older record still shows the questions <strong>as they were asked at the time</strong> — your new question does not appear in it.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="c4">
+        <span class="id">FORM-04</span>
+        <span class="what">Preview does not create records</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Use <strong>Preview</strong> on a service and fill the whole thing in.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Nothing new appears in Consultations or Repeat care. Preview is for checking wording only.</span></span>
+        </span>
+      </label></li>
+    </ol>
+
+    <button class="reset" type="button" data-reset="g-forms">Clear this section</button>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="records">
+    <p class="secn">06 · Run D</p>
+    <h2>Records, calendar and reports</h2>
+
+    <ol class="cases" id="g-rec">
+      <li class="case"><label>
+        <input type="checkbox" data-k="r1">
+        <span class="id">REC-01</span>
+        <span class="what">Everything is on the patient record</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Patients</strong> → your test patient</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Their details, allergies, and the consultations from Runs A and B all in one place.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="r2">
+        <span class="id">REC-02</span>
+        <span class="what">The calendar shows the same appointments three ways</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Appointments → Calendar</strong></span></span>
+          <span class="row"><span class="k">Do</span><span class="v">Switch between Month, Week and Day. Use the arrows and <em>Today</em>. Click a day in Month view.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Times shown are Isle of Man times. Clicking a day opens that day. Colours match the key at the bottom.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="r3">
+        <span class="id">REC-03</span>
+        <span class="what">Stock movements are explained</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Inventory</strong> → <strong>Move</strong> on your test batch</span></span>
+          <span class="row"><span class="k">Do</span><span class="v">Record 2 as <em>Damaged</em>. Watch the figure before you save.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">It previews “19 → 17” <strong>before</strong> saving, and you type <strong>2</strong>, not −2.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="r4">
+        <span class="id">REC-04</span>
+        <span class="what">Reports count everything</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Reports</strong></span></span>
+          <span class="row"><span class="k">Do</span><span class="v">Set a date range covering today and press Apply.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Totals at the top, breakdowns by status, service, pharmacist, medicine and stock. Your test activity is counted.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="r5">
+        <span class="id">REC-05</span>
+        <span class="what">Everything you did is in the audit trail</span>
+        <span class="body">
+          <span class="row"><span class="k">Go to</span><span class="v"><strong>Compliance</strong></span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">Your actions listed with your name and the time — the vaccination, the approval, the stock change.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="r6">
+        <span class="id">REC-06</span>
+        <span class="what">Exports work where allowed</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">On <strong>Consultations</strong> or <strong>Reports</strong>, use the CSV button if you can see one.</span></span>
+          <span class="row expect"><span class="k">Expect</span><span class="v">A spreadsheet downloads. If there is no button, your role does not include exporting — that is a setting, not a fault.</span></span>
+        </span>
+      </label></li>
+    </ol>
+
+    <button class="reset" type="button" data-reset="g-rec">Clear this section</button>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="refuse">
+    <p class="secn">07</p>
+    <h2>Things it must refuse</h2>
+
+    <div class="col">
+      <p>These are the most valuable tests in the document. Each one <strong>should
+      fail to work</strong> — if any of them succeeds, report it immediately.</p>
+    </div>
+
+    <ol class="cases" id="g-neg">
+      <li class="case"><label>
+        <input type="checkbox" data-k="n1">
+        <span class="id">NEG-01</span>
+        <span class="what">An expired batch cannot be used</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">In Settings → Stock, try to add a batch with an expiry date <strong>in the past</strong>.</span></span>
+          <span class="row refuse"><span class="k">Must</span><span class="v">Refuse, saying the date has passed. Expired batches must also never appear in the vaccination dropdown.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="n2">
+        <span class="id">NEG-02</span>
+        <span class="what">Stock cannot go below zero</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Inventory → Move → try to write off <strong>more than there is</strong>.</span></span>
+          <span class="row refuse"><span class="k">Must</span><span class="v">Refuse, saying how many are actually left.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="n3">
+        <span class="id">NEG-03</span>
+        <span class="what">A dose cannot jump two steps</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">On a repeat request, check the dose dropdown for a patient on 7.5mg.</span></span>
+          <span class="row refuse"><span class="k">Must</span><span class="v">Never offer 2.5mg or 15mg. Only same, one up, one down.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="n4">
+        <span class="id">NEG-04</span>
+        <span class="what">Collection cannot happen before dispensing</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">On Prescriptions, look at an item that is <em>Awaiting payment</em>.</span></span>
+          <span class="row refuse"><span class="k">Must</span><span class="v">Offer no way to dispense or collect it. Nothing leaves before it is issued.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="n5">
+        <span class="id">NEG-05</span>
+        <span class="what">A finished record cannot be edited</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Open the completed consultation from Run A and try to change an answer.</span></span>
+          <span class="row refuse"><span class="k">Must</span><span class="v">Refuse, saying it is part of the clinical record.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="n6">
+        <span class="id">NEG-06</span>
+        <span class="what">A used repeat link cannot be reused</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">Reopen the questionnaire link from a request you already submitted.</span></span>
+          <span class="row refuse"><span class="k">Must</span><span class="v">Say it has already been sent. It must not show a blank form that would create a second request.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="n7">
+        <span class="id">NEG-07</span>
+        <span class="what">A paused patient cannot request</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">On the patient record, set the repeat enrolment to <strong>Paused</strong>. Then try the repeat link again.</span></span>
+          <span class="row refuse"><span class="k">Must</span><span class="v">Refuse with the same message as wrong details. They should also vanish from <em>On their behalf</em>.</span></span>
+        </span>
+      </label></li>
+
+      <li class="case"><label>
+        <input type="checkbox" data-k="n8">
+        <span class="id">NEG-08</span>
+        <span class="what">Required questions cannot be skipped</span>
+        <span class="body">
+          <span class="row"><span class="k">Do</span><span class="v">On any patient form, try to move on leaving a required question blank.</span></span>
+          <span class="row refuse"><span class="k">Must</span><span class="v">Refuse and say which question. Consent especially cannot be skipped.</span></span>
+        </span>
+      </label></li>
+    </ol>
+
+    <button class="reset" type="button" data-reset="g-neg">Clear this section</button>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="notbugs">
+    <p class="secn">§</p>
+    <h2>Not bugs — please do not report these</h2>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>What you will see</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>No emails or texts arrive</td><td>Sending is switched off. Messages are written down but not delivered — the email provider is not connected yet.</td></tr>
+          <tr><td>No money is taken at payment</td><td>Payments are simulated on purpose. The workflow is real; the card processing is not connected, pending a decision on NMS and GPhC requirements.</td></tr>
+          <tr><td>GP surgeries do not receive anything</td><td>Same reason. The evening send is built and scheduled but not switched on.</td></tr>
+          <tr><td>Flu questionnaires get no green/amber/red</td><td>Deliberate. Flu has no automatic rules — a pharmacist judges suitability against the PGD. Only weight management repeat requests are triaged.</td></tr>
+          <tr><td>Patients cannot log in</td><td>By design. Forms need no account; access is by link, or by Repeat Care ID and email.</td></tr>
+          <tr><td>Pages take a second or two</td><td>The database is currently hosted a long way away. A known, planned change — not a fault in the software.</td></tr>
+          <tr><td>A service called <code>xyz</code> appears</td><td>Leftover test data. Harmless, and can be archived in Services.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ══════════════════════════════════════════════════════ -->
+  <section id="report">
+    <p class="secn">§</p>
+    <h2>If something is wrong</h2>
+
+    <div class="col">
+      <p>Five lines is enough, and these five make a problem fixable rather than
+      guessable:</p>
+    </div>
+
+    <pre>Test:      FLU-11
+Where:     Inventory, Onchan branch
+I did:     Completed a vaccination for Test Patient One using batch TEST-001
+Expected:  Stock to drop from 20 to 19
+Got:       Still shows 20
+Time:      30 Aug, about 14:20</pre>
+
+    <div class="note">
+      <span class="tag">The time matters</span>
+      <p>Every action is recorded with a timestamp, so a rough time lets the
+      exact record be found. “Yesterday afternoon” is usually enough.</p>
+    </div>
+
+    <div class="note go">
+      <span class="tag">Most valuable thing you can do</span>
+      <p>Try to break the rules in section 07 — supply somebody who should be
+      blocked, take out stock that is not there, dispense something not paid for.
+      Anything that <em>succeeds</em> when it should not is worth more than ten
+      cosmetic notes.</p>
+    </div>
+  </section>
+
+  </main>
+
+  <footer>
+    Karsons Pharmacy Platform · test plan · 30 August 2026 ·
+    Your ticks are stored in this browser only and are not shared.
+  </footer>
+
+</div>
+
+<script>
+  (function () {
+    var KEY = 'karsons-test-plan';
+
+    function load() {
+      try { return JSON.parse(localStorage.getItem(KEY) || '{}') || {}; }
+      catch (e) { return {}; }
+    }
+    function save(state) {
+      try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) { /* private window */ }
+    }
+
+    var state = load();
+    var boxes = document.querySelectorAll('.case input[type=checkbox]');
+
+    boxes.forEach(function (box) {
+      if (state[box.dataset.k]) box.checked = true;
+      box.addEventListener('change', function () {
+        state[box.dataset.k] = box.checked;
+        save(state);
+      });
+    });
+
+    document.querySelectorAll('[data-reset]').forEach(function (button) {
+      button.addEventListener('click', function () {
+        var list = document.getElementById(button.dataset.reset);
+        if (!list) return;
+        list.querySelectorAll('input[type=checkbox]').forEach(function (b) {
+          b.checked = false;
+          delete state[b.dataset.k];
+        });
+        save(state);
+      });
+    });
+  })();
+</script>
