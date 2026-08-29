@@ -144,7 +144,12 @@ const save = action<SaveWindowInput>('settings:edit')
           slotMinutes: input.slotMinutes,
           capacity: input.capacity,
         })
-        .where(eq(availability.id, input.id))
+        .where(
+          and(
+            eq(availability.id, input.id),
+            eq(availability.organisationId, actor.organisationId),
+          ),
+        )
         .returning({ id: availability.id });
 
       if (!updated) throw new Error('That window no longer exists.');
@@ -204,13 +209,22 @@ export async function saveOpeningWindow(input: SaveWindowInput) {
 
 const remove = action<{ id: string; branchId: string }>('settings:edit')
   .scopedTo((input) => ({ branchId: input.branchId }))
-  .handler(async (input, { tx }) => {
+  .handler(async (input, { tx, actor }) => {
     // Archived, never deleted. Appointments already booked inside this window
     // must keep making sense when someone looks at them next year.
+    //
+    // `scopedTo` above checks the CALLER holds permission at input.branchId.
+    // It says nothing about which branch the row belongs to, so without the
+    // predicate below another tenant's opening hours could be archived by id.
     const [archived] = await tx
       .update(availability)
       .set({ archivedAt: new Date() })
-      .where(eq(availability.id, input.id))
+      .where(
+        and(
+          eq(availability.id, input.id),
+          eq(availability.organisationId, actor.organisationId),
+        ),
+      )
       .returning({ id: availability.id });
 
     if (!archived) throw new Error('That window no longer exists.');

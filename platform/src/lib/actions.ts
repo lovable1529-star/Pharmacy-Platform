@@ -27,6 +27,7 @@
  *     });
  */
 
+import { headers } from 'next/headers';
 import { sql, desc, eq } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { auditEvent } from '@/lib/db/schema';
@@ -60,6 +61,36 @@ export interface ActionOutcome<T> {
 }
 
 type ScopeResolver<TInput> = (input: TInput) => ScopeTarget;
+
+/**
+ * Where the request came from, for the audit entry.
+ *
+ * §16.3 lists IP address among the columns an audit log must carry. The column
+ * and the hash both already accounted for it — every entry was simply written
+ * with null, and the Compliance screen has been showing a blank column since it
+ * was built.
+ *
+ * `x-forwarded-for` is a list when a request passes through more than one
+ * proxy; the FIRST entry is the client, the rest are the hops. Vercel appends
+ * rather than replaces, so taking the last would record our own edge.
+ *
+ * Deliberately best-effort. `headers()` throws outside a request — a seed
+ * script, a test, a job invoked directly — and an audit entry that fails to
+ * write is far worse than one missing an address it could not know. The
+ * previous behaviour (null) remains the fallback rather than an error.
+ */
+async function requestOrigin(): Promise<{ ipAddress: string | null; userAgent: string | null }> {
+  try {
+    const h = await headers();
+    const forwarded = h.get('x-forwarded-for');
+    const ip = forwarded
+      ? (forwarded.split(',')[0] ?? '').trim() || null
+      : h.get('x-real-ip');
+    return { ipAddress: ip || null, userAgent: h.get('user-agent') };
+  } catch {
+    return { ipAddress: null, userAgent: null };
+  }
+}
 
 /**
  * Appends one entry to the organisation's hash chain.
@@ -137,11 +168,16 @@ class ActionBuilder<TInput> {
         const outcome = await fn(input, { actor, tx, target });
 
         if (outcome.audit) {
+          // Read inside the transaction but before the append, because the
+          // origin is part of the sealed entry and therefore part of the hash.
+          const origin = await requestOrigin();
           await appendAudit(tx, {
             ...outcome.audit,
             organisationId: actor.organisationId,
             userId: actor.userId,
             branchId: target.branchId ?? null,
+            ipAddress: outcome.audit.ipAddress ?? origin.ipAddress,
+            userAgent: outcome.audit.userAgent ?? origin.userAgent,
           });
         }
 

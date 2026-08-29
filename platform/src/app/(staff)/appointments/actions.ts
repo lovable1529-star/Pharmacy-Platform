@@ -41,7 +41,7 @@ const LEAD_TIME_MINUTES = 0; // Staff can book right up to the minute; patients 
  * than being a quiet status update.
  */
 const arrive = action<{ appointmentId: string }>('appointments:edit').handler(
-  async (input, { tx }) => {
+  async (input, { tx, actor }) => {
     const [updated] = await tx
       .update(appointment)
       // The clock, not just the flag. Status said THAT they had arrived and
@@ -50,6 +50,11 @@ const arrive = action<{ appointmentId: string }>('appointments:edit').handler(
       .where(
         and(
           eq(appointment.id, input.appointmentId),
+      // Scoped to the organisation in the WHERE itself, not by a prior read.
+      // §16.1: changing an id in a request must never reach another tenant's
+      // record. A predicate on the mutation cannot be forgotten the way a
+      // read-then-write guard can.
+          eq(appointment.organisationId, actor.organisationId),
           // Do not resurrect a cancelled booking by checking it in.
           ne(appointment.status, 'CANCELLED'),
         ),
@@ -86,11 +91,16 @@ export async function markArrived(appointmentId: string) {
 // ─────────────────────────────────────────────────────────────
 
 const noShow = action<{ appointmentId: string }>('appointments:edit').handler(
-  async (input, { tx }) => {
+  async (input, { tx, actor }) => {
     const [updated] = await tx
       .update(appointment)
       .set({ status: 'DID_NOT_ATTEND', updatedAt: new Date() })
-      .where(eq(appointment.id, input.appointmentId))
+      .where(
+        and(
+          eq(appointment.id, input.appointmentId),
+          eq(appointment.organisationId, actor.organisationId),
+        ),
+      )
       .returning({ id: appointment.id, reference: appointment.reference });
 
     if (!updated) throw new Error('That appointment no longer exists.');
@@ -124,7 +134,7 @@ export async function markNoShow(appointmentId: string) {
 
 const cancel = action<{ appointmentId: string; reason: string }>(
   'appointments:delete',
-).handler(async (input, { tx }) => {
+).handler(async (input, { tx, actor }) => {
   const [before] = await tx
     .select({
       status: appointment.status,
@@ -132,7 +142,12 @@ const cancel = action<{ appointmentId: string; reason: string }>(
       submissionId: appointment.submissionId,
     })
     .from(appointment)
-    .where(eq(appointment.id, input.appointmentId))
+    .where(
+      and(
+        eq(appointment.id, input.appointmentId),
+        eq(appointment.organisationId, actor.organisationId),
+      ),
+    )
     .limit(1);
 
   if (!before) throw new Error('That appointment no longer exists.');
@@ -148,7 +163,12 @@ const cancel = action<{ appointmentId: string; reason: string }>(
       cancellationReason: input.reason.trim() || null,
       updatedAt: new Date(),
     })
-    .where(eq(appointment.id, input.appointmentId))
+    .where(
+      and(
+        eq(appointment.id, input.appointmentId),
+        eq(appointment.organisationId, actor.organisationId),
+      ),
+    )
     .returning({ id: appointment.id, reference: appointment.reference });
 
   if (!updated) throw new Error('Could not cancel that appointment.');

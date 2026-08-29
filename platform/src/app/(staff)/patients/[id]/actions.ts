@@ -15,7 +15,7 @@
  * this user at this time" is.
  */
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
 import { patient } from '@/lib/db/schema';
@@ -36,11 +36,20 @@ export interface UpdatePatientInput {
 }
 
 const update = action<UpdatePatientInput>('patients:edit').handler(
-  async (input, { tx }) => {
+  async (input, { tx, actor }) => {
     const [before] = await tx
       .select()
       .from(patient)
-      .where(eq(patient.id, input.id))
+      .where(
+      // Scoped to the organisation in the WHERE itself, not by a prior read.
+      // §16.1: changing an id in a request must never reach another tenant's
+      // record. A predicate on the mutation cannot be forgotten the way a
+      // read-then-write guard can.
+        and(
+          eq(patient.id, input.id),
+          eq(patient.organisationId, actor.organisationId),
+        ),
+      )
       .limit(1);
 
     if (!before) throw new Error('That patient record no longer exists.');
@@ -62,7 +71,12 @@ const update = action<UpdatePatientInput>('patients:edit').handler(
         gpSurgeryId: input.gpSurgeryId,
         updatedAt: new Date(),
       })
-      .where(eq(patient.id, input.id))
+      .where(
+        and(
+          eq(patient.id, input.id),
+          eq(patient.organisationId, actor.organisationId),
+        ),
+      )
       .returning();
 
     if (!after) throw new Error('Could not save those changes.');
