@@ -16,6 +16,7 @@ import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import { AlertTriangle, Check, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { SearchSelect } from '@/components/ui/search-select';
+import { DateOfBirthField } from '@/components/ui/date-of-birth';
 import { updatePatient } from '../actions';
 
 export interface EditablePatient {
@@ -129,12 +130,11 @@ export function EditPatientForm({
         <div className="mt-3.5 flex flex-wrap gap-3.5">
           <div className="min-w-[200px] flex-1">
             <label className={labelCls} htmlFor="dateOfBirth">Date of birth</label>
-            <input
+            <DateOfBirthField
               id="dateOfBirth"
-              type="date"
               value={form.dateOfBirth}
-              onChange={(e) => set('dateOfBirth')(e.target.value)}
-              className={cn(inputCls, dobChanged && 'border-review-600')}
+              onChange={set('dateOfBirth')}
+              warn={dobChanged}
             />
           </div>
           <div className="min-w-[200px] flex-1">

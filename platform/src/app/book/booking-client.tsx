@@ -19,6 +19,7 @@ import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import { enGB } from 'date-fns/locale';
 import { Check, Loader2, MapPin, ArrowLeft, AlertTriangle, CalendarX2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { DateOfBirthField } from '@/components/ui/date-of-birth';
 import {
   getAvailableSlots, bookAppointment,
   type BookingOption, type BranchOption, type DaySlots,
@@ -315,15 +316,11 @@ export function BookingClient({
               <label htmlFor="dob" className="mb-1.5 block text-[13px] font-medium text-ink">
                 Date of birth
               </label>
-              <input
+              <DateOfBirthField
                 id="dob"
-                type="date"
-                autoComplete="bday"
-                value={dateOfBirth}
-                onChange={(e) => setDateOfBirth(e.target.value)}
                 required
-                max={new Date().toISOString().slice(0, 10)}
-                className={field}
+                value={dateOfBirth}
+                onChange={setDateOfBirth}
               />
               <p className="mt-1.5 text-[12px] text-ink-faint">
                 So we can find your record if you have been in before.

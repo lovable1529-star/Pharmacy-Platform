@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from 'react';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
 import { Check, Upload, Camera, Eraser, Info, AlertTriangle, OctagonX, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { DateOfBirthField } from '@/components/ui/date-of-birth';
 import { SearchSelect } from '@/components/ui/search-select';
 import { canUpload, uploadFile, useUploadTarget } from './upload-context';
 import { isStoredFileRef, formatFileSize } from './stored-file';
@@ -488,34 +489,23 @@ export function AddressInput({ field, value, onChange, disabled }: FieldProps) {
 // ─────────────────────────────────────────────────────────────
 
 export function DateOfBirthInput({ field, value, onChange, disabled }: FieldProps) {
-  const parts = typeof value === 'string' && value.includes('-') ? value.split('-') : ['', '', ''];
-  const [year, month, day] = [parts[0] ?? '', parts[1] ?? '', parts[2] ?? ''];
-
-  function update(next: { d?: string; m?: string; y?: string }) {
-    const d = next.d ?? day;
-    const m = next.m ?? month;
-    const y = next.y ?? year;
-    if (d && m && y.length === 4) {
-      onChange(`${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`);
-    } else {
-      onChange(`${y}-${m}-${d}`);
-    }
-  }
-
-  const box = 'rounded-control border border-line bg-surface px-3 py-2.5 text-center text-[15px] tabular text-ink transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none';
-
+  /*
+   * The patient's questionnaire and the staff forms now share one control.
+   *
+   * This file had its own three boxes with no auto-advance, no paste, no age
+   * shown and no validation — and it emitted `1990-3-` while you were still
+   * typing, which is neither empty nor a date. The staff side meanwhile used
+   * the browser's picker, which opens on this month and made somebody entering
+   * a birth date page back through decades.
+   */
   return (
-    <div className="flex max-w-[320px] gap-2">
-      <input aria-label="Day" inputMode="numeric" maxLength={2} disabled={disabled}
-        value={day} placeholder="DD" onChange={(e) => update({ d: e.target.value })}
-        className={cn(box, 'w-[70px]')} />
-      <input aria-label="Month" inputMode="numeric" maxLength={2} disabled={disabled}
-        value={month} placeholder="MM" onChange={(e) => update({ m: e.target.value })}
-        className={cn(box, 'w-[70px]')} />
-      <input aria-label="Year" inputMode="numeric" maxLength={4} disabled={disabled}
-        value={year} placeholder="YYYY" onChange={(e) => update({ y: e.target.value })}
-        className={cn(box, 'w-[92px]')} />
-    </div>
+    <DateOfBirthField
+      id={field.id}
+      disabled={disabled}
+      required={field.required}
+      value={typeof value === 'string' ? value : ''}
+      onChange={(next) => onChange(next || undefined)}
+    />
   );
 }
 

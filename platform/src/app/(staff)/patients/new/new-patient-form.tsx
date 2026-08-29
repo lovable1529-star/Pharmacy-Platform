@@ -8,6 +8,7 @@ import { cn } from '@/lib/cn';
 import { SearchSelect } from '@/components/ui/search-select';
 import { formatDate } from '@/lib/units';
 import { similarity, type PatientRecord } from '@/lib/patients/search';
+import { DateOfBirthField } from '@/components/ui/date-of-birth';
 import { createPatient } from './actions';
 
 const input =
@@ -180,8 +181,12 @@ export function NewPatientForm({
           </div>
           <div>
             <label className={label} htmlFor="dob">Date of birth</label>
-            <input id="dob" type="date" required value={form.dateOfBirth}
-              onChange={(e) => set('dateOfBirth')(e.target.value)} className={input} />
+            <DateOfBirthField
+              id="dob"
+              required
+              value={form.dateOfBirth}
+              onChange={set('dateOfBirth')}
+            />
           </div>
           <div>
             <label className={label} htmlFor="gender">Gender</label>

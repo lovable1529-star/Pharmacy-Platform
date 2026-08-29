@@ -22,6 +22,7 @@ import { Loader2, Check } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { SearchSelect } from '@/components/ui/search-select';
 import { PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
+import { DateOfBirthField } from '@/components/ui/date-of-birth';
 import { getCounterSlots, bookAtCounterAction, type DaySlots } from '../actions';
 import 'react-day-picker/style.css';
 
@@ -202,13 +203,10 @@ export function CounterBookingForm({
 
           <div>
             <label className={label} htmlFor="dob">Date of birth</label>
-            <input
+            <DateOfBirthField
               id="dob"
-              type="date"
               value={dateOfBirth}
-              onChange={(e) => setDateOfBirth(e.target.value)}
-              max={new Date().toISOString().slice(0, 10)}
-              className={input}
+              onChange={setDateOfBirth}
             />
             {/*
               Without this the patient record cannot be created here, and the
