@@ -320,3 +320,116 @@ describe('supporting bits', () => {
     expect(ref.slice(4)).not.toMatch(/[OI01]/);
   });
 });
+
+describe('breaks and closures — §12', () => {
+  const WINDOW = {
+    id: 'w1', branchId: 'b1', serviceId: null,
+    weekday: 4, // Thursday
+    startMinute: 9 * 60, endMinute: 17 * 60,
+    slotMinutes: 30, capacity: 1,
+  };
+  // Thursday 27 August 2026, midday, so the local date is unambiguous.
+  const DAY = new Date('2026-08-27T12:00:00Z');
+  const PAST = new Date('2026-08-01T00:00:00Z');
+
+  function slotsWith(extra: Record<string, unknown> = {}) {
+    return generateSlots({
+      windows: [WINDOW], bookings: [], day: DAY, branchId: 'b1',
+      now: PAST, ...extra,
+    });
+  }
+
+  it('gives a full day when nothing blocks it', () => {
+    expect(slotsWith()).toHaveLength(16);
+  });
+
+  it('removes the slots a lunch break covers', () => {
+    const slots = slotsWith({
+      breaks: [{
+        branchId: 'b1', serviceId: null, weekday: 4,
+        startMinute: 13 * 60, endMinute: 14 * 60,
+      }],
+    });
+    // Two half-hour slots disappear.
+    expect(slots).toHaveLength(14);
+    expect(slots.some((s) => localTimeOf(s.startsAt) === '13:00')).toBe(false);
+    expect(slots.some((s) => localTimeOf(s.startsAt) === '14:00')).toBe(true);
+  });
+
+  it('splits the day rather than truncating it', () => {
+    // The reason breaks remove slots instead of shortening the window: a
+    // shortened window would drop the whole afternoon.
+    const slots = slotsWith({
+      breaks: [{
+        branchId: 'b1', serviceId: null, weekday: 4,
+        startMinute: 13 * 60, endMinute: 14 * 60,
+      }],
+    });
+    expect(slots.some((s) => localTimeOf(s.startsAt) === '09:00')).toBe(true);
+    expect(slots.some((s) => localTimeOf(s.startsAt) === '16:30')).toBe(true);
+  });
+
+  it('excludes a slot that is only partly covered', () => {
+    // Half a slot is not a bookable appointment.
+    const slots = slotsWith({
+      breaks: [{
+        branchId: 'b1', serviceId: null, weekday: 4,
+        startMinute: 13 * 60 + 15, endMinute: 13 * 60 + 25,
+      }],
+    });
+    expect(slots.some((s) => localTimeOf(s.startsAt) === '13:00')).toBe(false);
+  });
+
+  it('ignores a break on another weekday', () => {
+    expect(slotsWith({
+      breaks: [{
+        branchId: 'b1', serviceId: null, weekday: 1,
+        startMinute: 13 * 60, endMinute: 14 * 60,
+      }],
+    })).toHaveLength(16);
+  });
+
+  it('closes the whole day when both minutes are null', () => {
+    // The bank holiday case. Getting it wrong means somebody books on
+    // Christmas Day and turns up to a locked door.
+    expect(slotsWith({
+      closures: [{ branchId: 'b1', closedOn: '2026-08-27', startMinute: null, endMinute: null }],
+    })).toHaveLength(0);
+  });
+
+  it('closes every branch when the closure names none', () => {
+    expect(slotsWith({
+      closures: [{ branchId: null, closedOn: '2026-08-27', startMinute: null, endMinute: null }],
+    })).toHaveLength(0);
+  });
+
+  it('closes only part of a day when given minutes', () => {
+    const slots = slotsWith({
+      closures: [{
+        branchId: 'b1', closedOn: '2026-08-27',
+        startMinute: 15 * 60, endMinute: 17 * 60,
+      }],
+    });
+    expect(slots).toHaveLength(12);
+    expect(slots.some((s) => localTimeOf(s.startsAt) === '15:00')).toBe(false);
+  });
+
+  it('ignores a closure on a different date', () => {
+    expect(slotsWith({
+      closures: [{ branchId: 'b1', closedOn: '2026-08-28', startMinute: null, endMinute: null }],
+    })).toHaveLength(16);
+  });
+
+  it('ignores a closure at another branch', () => {
+    expect(slotsWith({
+      closures: [{ branchId: 'b2', closedOn: '2026-08-27', startMinute: null, endMinute: null }],
+    })).toHaveLength(16);
+  });
+});
+
+/** The pharmacy's clock, not the runner's. */
+function localTimeOf(date: Date): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Isle_of_Man',
+  }).format(date);
+}

@@ -25,6 +25,7 @@ import { getStaffContext } from '@/lib/auth/context';
 import { createBooking } from '@/lib/scheduling/book';
 import { buildFormUrl } from '@/lib/forms/draft';
 import { resolveAppUrl } from '@/lib/app-url';
+import { loadScheduleExclusions } from '@/lib/queries/schedule';
 
 const LEAD_TIME_MINUTES = 0; // Staff can book right up to the minute; patients cannot.
 
@@ -257,6 +258,7 @@ export async function getRescheduleSlots(
         branchId: appointment.branchId,
         serviceId: appointment.serviceId,
         startsAt: appointment.startsAt,
+        organisationId: appointment.organisationId,
       })
       .from(appointment)
       .where(eq(appointment.id, appointmentId))
@@ -270,9 +272,15 @@ export async function getRescheduleSlots(
     const from = new Date();
     const to = new Date(Date.now() + (days + 1) * 24 * 60 * 60_000);
 
-    const [windows, bookings] = await Promise.all([
+    const [windows, bookings, exclusions] = await Promise.all([
       loadWindows(branchId),
       loadBookings(branchId, from, to),
+      // §12 — a slot inside lunch or on a closed day must not be offered.
+      loadScheduleExclusions(row.organisationId, {
+        branchId,
+        from: from.toISOString().slice(0, 10),
+        to: to.toISOString().slice(0, 10),
+      }),
     ]);
 
     // The slot it currently occupies must appear free — otherwise the booking
@@ -290,6 +298,8 @@ export async function getRescheduleSlots(
       branchId,
       serviceId: row.serviceId,
       leadTimeMinutes: LEAD_TIME_MINUTES,
+      breaks: exclusions.breaks,
+      closures: exclusions.closures,
     });
 
     return {
@@ -540,15 +550,20 @@ export async function getCounterSlots(
   days = 21,
 ): Promise<{ ok: boolean; days?: DaySlots[]; error?: string }> {
   try {
-    const { activeBranch } = await getStaffContext();
+    const { actor, activeBranch } = await getStaffContext();
     if (!activeBranch) return { ok: false, error: 'You have no branch access.' };
 
     const from = new Date();
     const to = new Date(Date.now() + (days + 1) * 24 * 60 * 60_000);
 
-    const [windows, bookings] = await Promise.all([
+    const [windows, bookings, exclusions] = await Promise.all([
       loadWindows(activeBranch.id),
       loadBookings(activeBranch.id, from, to),
+      loadScheduleExclusions(actor.organisationId, {
+        branchId: activeBranch.id,
+        from: from.toISOString().slice(0, 10),
+        to: to.toISOString().slice(0, 10),
+      }),
     ]);
 
     const generated = generateSlotsForRange({
@@ -556,6 +571,8 @@ export async function getCounterSlots(
       branchId: activeBranch.id,
       serviceId,
       leadTimeMinutes: LEAD_TIME_MINUTES,
+      breaks: exclusions.breaks,
+      closures: exclusions.closures,
     });
 
     return {

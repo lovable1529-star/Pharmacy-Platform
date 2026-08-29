@@ -28,6 +28,7 @@ import {
 import { bookingConfirmation } from '@/lib/email/patient';
 import { sendPatientEmail } from '@/lib/email/patient';
 import { resolveAppUrl } from '@/lib/app-url';
+import { loadScheduleExclusions } from '@/lib/queries/schedule';
 
 /** Nothing inside the next two hours — the pharmacy needs notice. */
 const LEAD_TIME_MINUTES = 120;
@@ -140,14 +141,19 @@ export async function getAvailableSlots(
   const to = new Date(from);
   to.setDate(to.getDate() + days);
 
-  const [windows, bookings] = await Promise.all([
+  const [windows, bookings, exclusions] = await Promise.all([
     loadWindows(branchId),
     loadBookings(branchId, from, to),
+    // §12 — lunch breaks and bank holidays. Without these a patient can book
+    // a slot the pharmacy is not open for and turn up to a locked door.
+    loadBranchExclusions(branchId, from, to),
   ]);
 
   return generateSlotsForRange({
     windows, bookings, from, days, branchId, serviceId,
     leadTimeMinutes: LEAD_TIME_MINUTES,
+    breaks: exclusions.breaks,
+    closures: exclusions.closures,
   }).map((day) => ({
     date: day.date,
     slots: day.slots.map((s) => ({
@@ -155,6 +161,29 @@ export async function getAvailableSlots(
       endsAt: s.endsAt.toISOString(),
     })),
   }));
+}
+
+
+/**
+ * The branch's own organisation, then its exclusions.
+ *
+ * The public booking path has no signed-in actor to read an organisation from,
+ * so it is resolved from the branch being booked at.
+ */
+async function loadBranchExclusions(branchId: string, from: Date, to: Date) {
+  const [row] = await db
+    .select({ organisationId: branch.organisationId })
+    .from(branch)
+    .where(eq(branch.id, branchId))
+    .limit(1);
+
+  if (!row) return { breaks: [], closures: [] };
+
+  return loadScheduleExclusions(row.organisationId, {
+    branchId,
+    from: from.toISOString().slice(0, 10),
+    to: to.toISOString().slice(0, 10),
+  });
 }
 
 export interface BookInput {

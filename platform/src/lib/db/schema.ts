@@ -1135,17 +1135,8 @@ export const urgentTask = pgTable('urgent_task', {
 ]);
 
 // ─────────────────────────────────────────────────────────────
-// Inventory categories and notification templates
+// Notification templates
 // ─────────────────────────────────────────────────────────────
-
-/** §9 — the category layer above products: item category, item, item stock. */
-export const inventoryCategory = pgTable('inventory_category', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
-  name: text('name').notNull(),
-  description: text('description'),
-  active: boolean('active').default(true).notNull(),
-}, (t) => [uniqueIndex('inventory_category_name_idx').on(t.organisationId, t.name)]);
 
 /**
  * §15 — message wording as records rather than strings in the source.

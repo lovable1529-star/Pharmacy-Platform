@@ -52,6 +52,27 @@ export interface ExistingBooking {
   cancelled?: boolean;
 }
 
+/** A recurring gap in a working day — lunch, a training hour. */
+export interface Break {
+  branchId: string;
+  /** Null applies it to every service at that branch. */
+  serviceId: string | null;
+  weekday: number;
+  startMinute: number;
+  endMinute: number;
+}
+
+/** A dated closure — a bank holiday, a one-off. */
+export interface Closure {
+  /** Null closes every branch. */
+  branchId: string | null;
+  /** `2026-12-25`, in pharmacy-local terms. */
+  closedOn: string;
+  /** Both null closes the whole day. */
+  startMinute: number | null;
+  endMinute: number | null;
+}
+
 export interface Slot {
   startsAt: Date;
   endsAt: Date;
@@ -158,6 +179,10 @@ export interface GenerateSlotsInput {
   includeUnavailable?: boolean;
   /** Defaults to the pharmacy's own zone, which is almost always what you want. */
   timeZone?: string;
+  /** §12 — recurring gaps. Omitted, the day is treated as unbroken. */
+  breaks?: Break[];
+  /** §12 — dated closures. Omitted, no day is closed. */
+  closures?: Closure[];
 }
 
 /**
@@ -172,11 +197,48 @@ export function generateSlots(input: GenerateSlotsInput): Slot[] {
   const {
     windows, bookings, day, branchId, serviceId,
     now = new Date(), leadTimeMinutes = 0, includeUnavailable = false,
-    timeZone = PHARMACY_TIMEZONE,
+    timeZone = PHARMACY_TIMEZONE, breaks, closures,
   } = input;
 
   const applicable = windowsForDay(windows, day, { branchId, serviceId, timeZone });
   if (applicable.length === 0) return [];
+
+  /*
+   * §12 — breaks and closures.
+   *
+   * Applied by REMOVING slots rather than by shortening windows, because a
+   * lunch break in the middle of a session splits it in two and a window has
+   * one start and one end. Shortening would silently drop the afternoon.
+   *
+   * A whole-day closure — both minutes null — takes the day out entirely. That
+   * is the bank holiday case, and getting it wrong means somebody books an
+   * appointment on Christmas Day and turns up to a locked door.
+   */
+  const dayKey = localDateKey(day, timeZone);
+  const todaysClosures = (closures ?? []).filter(
+    (c) => c.closedOn === dayKey && (c.branchId === null || c.branchId === branchId),
+  );
+
+  if (todaysClosures.some((c) => c.startMinute === null || c.endMinute === null)) {
+    return [];
+  }
+
+  const weekday = localWeekday(day, timeZone);
+  const blocked: { from: number; to: number }[] = [
+    ...(breaks ?? [])
+      .filter(
+        (b) =>
+          b.weekday === weekday
+          && (!branchId || b.branchId === branchId)
+          && (b.serviceId === null || !serviceId || b.serviceId === serviceId),
+      )
+      .map((b) => ({ from: b.startMinute, to: b.endMinute })),
+    ...todaysClosures.map((c) => ({ from: c.startMinute!, to: c.endMinute! })),
+  ];
+
+  /** Any overlap at all excludes the slot — a half-covered slot is unbookable. */
+  const isBlocked = (from: number, to: number) =>
+    blocked.some((b) => from < b.to && b.from < to);
 
   const live = bookings.filter(
     (b) => !b.cancelled && (!branchId || b.branchId === branchId),
@@ -192,6 +254,8 @@ export function generateSlots(input: GenerateSlotsInput): Slot[] {
       minute + window.slotMinutes <= window.endMinute;
       minute += window.slotMinutes
     ) {
+      if (isBlocked(minute, minute + window.slotMinutes)) continue;
+
       const startsAt = atMinutes(day, minute, timeZone);
       const endsAt = atMinutes(day, minute + window.slotMinutes, timeZone);
       const key = startsAt.getTime();

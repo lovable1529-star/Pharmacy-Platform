@@ -1,5 +1,5 @@
 -- ============================================================
--- 20 — Inventory transaction types, categories, notification templates
+-- 20 — Inventory transaction types and notification templates
 --
 -- §9 and §15.
 --
@@ -59,20 +59,6 @@ begin
   end if;
 end
 $$;
-
--- ── §9 — item categories ────────────────────────────────────
-
-create table if not exists public.inventory_category (
-  id               uuid primary key default gen_random_uuid(),
-  organisation_id  uuid not null references public.organisation(id),
-  name             text not null,
-  description      text,
-  active           boolean not null default true
-);
-
-create unique index if not exists inventory_category_name_idx
-  on public.inventory_category (organisation_id, name);
-alter table public.inventory_category enable row level security;
 
 -- ── §15 — message wording as records ────────────────────────
 --
@@ -138,8 +124,6 @@ select
     where table_name = 'stock_movement' and column_name = 'user_id')      as movement_user,
   (select count(*) from pg_constraint
     where conname = 'stock_movement_kind_check')                          as kind_constraint,
-  (select count(*) from information_schema.tables
-    where table_name = 'inventory_category')                              as categories,
   (select count(*) from public.notification_template)                     as templates,
   (select coalesce(string_agg(distinct kind, ', '), 'none') from public.stock_movement
     where kind not in (
