@@ -601,6 +601,8 @@ export interface CounterBookingInput {
   email: string | null;
   phone: string | null;
   patientId: string | null;
+  /** Ignored when an existing patient was chosen; used to create one otherwise. */
+  dateOfBirth: string | null;
   notes: string | null;
   sendEmail: boolean;
 }
@@ -621,6 +623,7 @@ const bookAtCounter = action<CounterBookingInput>('appointments:add')
       email: input.email,
       phone: input.phone,
       patientId: input.patientId,
+      dateOfBirth: input.dateOfBirth,
       notes: input.notes,
       // Zero, not two hours: staff book people who are standing in front of them.
       leadTimeMinutes: LEAD_TIME_MINUTES,

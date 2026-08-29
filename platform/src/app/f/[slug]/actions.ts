@@ -140,7 +140,7 @@ export async function submitPublicForm(
       // A token means this questionnaire was created when the appointment was
       // booked, and we complete that row. Without one this is a walk-up at the
       // counter, which is still allowed.
-      let existing: { id: string; branchId: string | null } | null = null;
+      let existing: { id: string; branchId: string | null; patientId: string | null } | null = null;
 
       if (token) {
         const [draft] = await tx
@@ -148,6 +148,7 @@ export async function submitPublicForm(
             id: submission.id,
             status: submission.status,
             branchId: submission.branchId,
+            patientId: submission.patientId,
             expiresAt: submission.resumeExpiresAt,
           })
           .from(submission)
@@ -163,12 +164,24 @@ export async function submitPublicForm(
           return { error: 'Those answers have already been sent to us.' };
         }
 
-        existing = { id: draft.id, branchId: draft.branchId };
+        existing = { id: draft.id, branchId: draft.branchId, patientId: draft.patientId };
       }
 
-      // ── Identify the patient ──────────────────────────────
+      /*
+       * ── Identify the patient ──────────────────────────────
+       *
+       * The booking already established one, so start from that. Recomputing
+       * from the answers alone used to NULL it out for any service whose form
+       * does not ask for a name and a date of birth — the questionnaire arrived
+       * unattached, and the consultation dead-ended at "no patient record yet"
+       * with no way forward for the receptionist.
+       *
+       * A form that DOES carry identity still gets to match, because a patient
+       * correcting their own name on the form is better information than the
+       * name somebody typed when booking on their behalf.
+       */
       const identity = readIdentity(answers);
-      let patientId: string | null = null;
+      let patientId: string | null = existing?.patientId ?? null;
 
       if (identity) {
         const matched = await matchOrCreatePatient(tx, {

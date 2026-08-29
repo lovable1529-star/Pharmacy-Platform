@@ -109,7 +109,14 @@ function WaitBadge({ row, now }: { row: AppointmentRow; now: Date }) {
   return null;
 }
 
-/** What the questionnaire looks like from behind the counter. */
+/**
+ * What the questionnaire looks like from behind the counter.
+ *
+ * Once a form is in, the badge becomes a LINK to read it. A receptionist
+ * fielding "what did I put?" over the counter had no way to look, and telling
+ * them to open a consultation to read an answer is a longer route to the same
+ * page — with an edit button on it they did not ask for.
+ */
 function FormBadge({ row }: { row: AppointmentRow }) {
   if (row.formState === 'submitted') {
     const tone =
@@ -119,7 +126,7 @@ function FormBadge({ row }: { row: AppointmentRow }) {
           ? 'bg-review-100 text-review-700'
           : 'bg-safe-100 text-safe-700';
 
-    return (
+    const badge = (
       <span
         className={cn(
           'flex items-center gap-1.5 rounded-[5px] px-2 py-0.5 font-mono text-[10px] uppercase tracking-wide',
@@ -130,6 +137,20 @@ function FormBadge({ row }: { row: AppointmentRow }) {
         {row.outcome ? `Form · ${row.outcome}` : 'Form in'}
       </span>
     );
+
+    // A staff route, not the public form with a token in the URL: the normal
+    // permission checks apply and there is nothing here to forward outside the
+    // pharmacy. It renders the answers with no way to change them, so looking
+    // something up cannot become editing it by accident.
+    return row.submissionId ? (
+      <Link
+        href={`/appointments/form/${row.submissionId}`}
+        title="Read the completed form"
+        className="transition-opacity hover:opacity-75"
+      >
+        {badge}
+      </Link>
+    ) : badge;
   }
 
   if (row.formState === 'started') {

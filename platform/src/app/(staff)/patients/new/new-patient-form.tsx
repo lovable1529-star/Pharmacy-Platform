@@ -18,18 +18,36 @@ interface Candidate extends PatientRecord {
   reason: string;
 }
 
+export interface Prefill {
+  firstName: string; lastName: string; dateOfBirth: string;
+  phone: string; email: string;
+  addressLine1: string; town: string; postcode: string;
+}
+
 export function NewPatientForm({
-  surgeries, branchId, companyId, existing,
+  surgeries, branchId, companyId, existing, linkSubmissionId = null, prefill = null,
 }: {
   surgeries: { id: string; name: string }[];
   branchId: string | null;
   companyId: string | null;
   existing: PatientRecord[];
+  /** The questionnaire that sent us here — attached on save. */
+  linkSubmissionId?: string | null;
+  /** What is already known, so nobody types from memory. */
+  prefill?: Prefill | null;
 }) {
   const router = useRouter();
   const [form, setForm] = useState({
-    firstName: '', lastName: '', dateOfBirth: '', gender: '', genderSelfDescribed: '',
-    phone: '', email: '', addressLine1: '', town: '', postcode: '', gpSurgeryId: '',
+    firstName: prefill?.firstName ?? '',
+    lastName: prefill?.lastName ?? '',
+    dateOfBirth: prefill?.dateOfBirth ?? '',
+    gender: '', genderSelfDescribed: '',
+    phone: prefill?.phone ?? '',
+    email: prefill?.email ?? '',
+    addressLine1: prefill?.addressLine1 ?? '',
+    town: prefill?.town ?? '',
+    postcode: prefill?.postcode ?? '',
+    gpSurgeryId: '',
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -87,10 +105,17 @@ export function NewPatientForm({
       gpSurgeryId: form.gpSurgeryId || null,
       branchId,
       companyId,
+      linkSubmissionId,
     });
 
     setBusy(false);
-    if (result.ok) router.push(`/patients/${result.id}`);
+    if (result.ok) {
+      // Back where they came from, now unblocked. They came to get on with a
+      // consultation, not to admire a new patient record.
+      router.push(
+        linkSubmissionId ? `/consultations/${linkSubmissionId}` : `/patients/${result.id}`,
+      );
+    }
     else setError(result.error);
   }
 

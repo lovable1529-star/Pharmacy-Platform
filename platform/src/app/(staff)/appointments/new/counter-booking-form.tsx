@@ -58,6 +58,7 @@ export function CounterBookingForm({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState<string | undefined>();
+  const [dateOfBirth, setDateOfBirth] = useState('');
   const [notes, setNotes] = useState('');
   const [sendEmail, setSendEmail] = useState(true);
 
@@ -103,6 +104,7 @@ export function CounterBookingForm({
       email: email.trim() || null,
       phone: phone ?? null,
       patientId: null,
+      dateOfBirth: dateOfBirth || null,
       notes: notes.trim() || null,
       sendEmail: sendEmail && Boolean(email.trim()),
     });
@@ -196,6 +198,27 @@ export function CounterBookingForm({
               className={input}
               placeholder="As it should appear on the record"
             />
+          </div>
+
+          <div>
+            <label className={label} htmlFor="dob">Date of birth</label>
+            <input
+              id="dob"
+              type="date"
+              value={dateOfBirth}
+              onChange={(e) => setDateOfBirth(e.target.value)}
+              max={new Date().toISOString().slice(0, 10)}
+              className={input}
+            />
+            {/*
+              Without this the patient record cannot be created here, and the
+              consultation dead-ends at "no patient record yet" later — which is
+              exactly what used to happen on services whose form does not ask
+              for a name and date of birth.
+            */}
+            <p className="mt-1.5 text-[12px] text-ink-faint">
+              Needed to create or find their patient record.
+            </p>
           </div>
 
           <div className="flex flex-wrap gap-3.5">

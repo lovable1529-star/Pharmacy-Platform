@@ -143,13 +143,14 @@ export default async function ConsultationPage({
             A consultation has to be recorded against one, so that comes first.
           </p>
           <p className="mt-3 text-[13.5px] leading-relaxed text-ink-faint">
-            A record is created automatically when a form carries a first name, a
-            last name and a date of birth. If this service does not ask for all
-            three, add the patient by hand and the two will be joined up.
+            Bookings made from now on create the record straight away. This one
+            predates that, or was made without a date of birth. Adding the patient
+            below carries across everything already on the form and attaches it to
+            this consultation — you will come straight back here.
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
-              href="/patients/new"
+              href={`/patients/new?from=${row.submissionId}`}
               className="rounded-control bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700"
             >
               Add this patient

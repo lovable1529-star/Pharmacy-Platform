@@ -193,6 +193,8 @@ export interface BookInput {
   name: string;
   email: string;
   phone: string;
+  /** Creates the patient record at the moment of booking. */
+  dateOfBirth: string;
 }
 
 export interface BookResult {
@@ -247,6 +249,7 @@ export async function bookAppointment(input: BookInput): Promise<BookResult> {
         serviceId: input.serviceId,
         startsAt,
         name: input.name,
+        dateOfBirth: input.dateOfBirth,
         email: input.email,
         phone: input.phone,
         leadTimeMinutes: LEAD_TIME_MINUTES,

@@ -24,6 +24,8 @@ import {
   appointment, availability, branch, company, service, submission,
 } from '@/lib/db/schema';
 import { generateResumeToken, resumeExpiry } from '@/lib/forms/draft';
+import { matchOrCreatePatient } from '@/lib/patients/identify';
+import { splitName, isIsoDate } from '@/lib/patients/name';
 import {
   buildAppointmentReference, isSlotBookable, localWeekdayOf,
   type AvailabilityWindow, type ExistingBooking,
@@ -38,6 +40,16 @@ export interface CreateBookingInput {
   email: string | null;
   phone: string | null;
   patientId?: string | null;
+  /**
+   * Date of birth, collected at booking.
+   *
+   * This is what lets a patient record exist from the moment an appointment
+   * does. Without it the record could only be created later, from a form that
+   * happened to ask for a name and a date of birth — which flu does and weight
+   * management does not, so the second one dead-ended at "no patient record
+   * yet" with no way forward.
+   */
+  dateOfBirth?: string | null;
   notes?: string | null;
   leadTimeMinutes: number;
 }
@@ -165,6 +177,34 @@ export async function createBooking(
   const id = crypto.randomUUID();
   const reference = buildAppointmentReference(ctx.branchCode, id);
 
+  /*
+   * Establish the patient FIRST, so the appointment and its draft both carry
+   * one from the moment they exist.
+   *
+   * Matching, not blind creation: somebody booking their third flu jab is the
+   * same person, and `matchOrCreatePatient` already escalates name and date of
+   * birth through phone and email to decide that.
+   */
+  let patientId = input.patientId ?? null;
+
+  if (!patientId && isIsoDate(input.dateOfBirth)) {
+    const parts = splitName(input.name);
+    if (parts) {
+      const matched = await matchOrCreatePatient(tx, {
+        organisationId: input.organisationId,
+        identity: {
+          firstName: parts.firstName,
+          lastName: parts.lastName,
+          dateOfBirth: input.dateOfBirth!,
+          email: input.email?.trim() || null,
+          phone: input.phone?.trim() || null,
+        },
+        registeredBranchId: input.branchId,
+      });
+      patientId = matched.id;
+    }
+  }
+
   const [created] = await tx
     .insert(appointment)
     .values({
@@ -173,7 +213,7 @@ export async function createBooking(
       companyId: ctx.companyId,
       branchId: input.branchId,
       serviceId: input.serviceId,
-      patientId: input.patientId ?? null,
+      patientId,
       startsAt: input.startsAt,
       endsAt,
       bookedName: input.name.trim(),
@@ -200,7 +240,7 @@ export async function createBooking(
         organisationId: input.organisationId,
         serviceId: input.serviceId,
         formVersionId: ctx.publishedFormVersionId,
-        patientId: input.patientId ?? null,
+        patientId,
         branchId: input.branchId,
         status: 'DRAFT',
         answers: {},

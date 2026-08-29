@@ -67,6 +67,7 @@ export function BookingClient({
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState<string | undefined>();
+  const [dateOfBirth, setDateOfBirth] = useState('');
 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,7 +106,9 @@ export function BookingClient({
   const selectedBranch = branches.find((b) => b.id === branchId);
 
   const phoneValid = !phone || isValidPhoneNumber(phone);
-  const canSubmit = Boolean(slot && name.trim() && email.trim() && phoneValid && !busy);
+  // A date of birth in the future is a typo, not a patient.
+  const dobValid = Boolean(dateOfBirth) && dateOfBirth <= new Date().toISOString().slice(0, 10);
+  const canSubmit = Boolean(slot && name.trim() && email.trim() && phoneValid && dobValid && !busy);
 
   async function submit() {
     if (!slot) return;
@@ -113,7 +116,7 @@ export function BookingClient({
     setError(null);
 
     const result = await bookAppointment({
-      serviceId, branchId, startsAt: slot, name, email, phone: phone ?? '',
+      serviceId, branchId, startsAt: slot, name, email, phone: phone ?? '', dateOfBirth,
     });
 
     setBusy(false);
@@ -306,6 +309,25 @@ export function BookingClient({
                 required
                 className={field}
               />
+            </div>
+
+            <div>
+              <label htmlFor="dob" className="mb-1.5 block text-[13px] font-medium text-ink">
+                Date of birth
+              </label>
+              <input
+                id="dob"
+                type="date"
+                autoComplete="bday"
+                value={dateOfBirth}
+                onChange={(e) => setDateOfBirth(e.target.value)}
+                required
+                max={new Date().toISOString().slice(0, 10)}
+                className={field}
+              />
+              <p className="mt-1.5 text-[12px] text-ink-faint">
+                So we can find your record if you have been in before.
+              </p>
             </div>
 
             <div>

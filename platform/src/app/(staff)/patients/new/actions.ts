@@ -1,8 +1,9 @@
 'use server';
 
+import { and, eq, isNull } from 'drizzle-orm';
 import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
-import { patient } from '@/lib/db/schema';
+import { patient, submission, appointment } from '@/lib/db/schema';
 
 export interface NewPatientInput {
   firstName: string;
@@ -18,6 +19,14 @@ export interface NewPatientInput {
   gpSurgeryId: string | null;
   branchId: string | null;
   companyId: string | null;
+  /**
+   * The questionnaire that sent the user here, if any.
+   *
+   * Without it the receptionist created a patient and was returned to the same
+   * "no patient record yet" wall, because nothing joined the two — while the
+   * screen promised they would be joined up.
+   */
+  linkSubmissionId?: string | null;
 }
 
 const create = action<NewPatientInput>('patients:edit')
@@ -45,6 +54,41 @@ const create = action<NewPatientInput>('patients:edit')
       .returning();
 
     if (!created) throw new Error('Could not create the record.');
+
+    /*
+     * Attach the questionnaire and its appointment to the patient just created.
+     *
+     * Both, because the appointment is what the worklist reads and the
+     * submission is what the consultation reads — linking one and not the other
+     * moves the dead end rather than removing it.
+     *
+     * `isNull` on each: if something else has since attached a patient, that
+     * one wins. Overwriting it would silently move a consultation onto a
+     * different person's record.
+     */
+    if (input.linkSubmissionId) {
+      await tx
+        .update(submission)
+        .set({ patientId: created.id, updatedAt: new Date() })
+        .where(
+          and(
+            eq(submission.id, input.linkSubmissionId),
+            eq(submission.organisationId, actor.organisationId),
+            isNull(submission.patientId),
+          ),
+        );
+
+      await tx
+        .update(appointment)
+        .set({ patientId: created.id, updatedAt: new Date() })
+        .where(
+          and(
+            eq(appointment.submissionId, input.linkSubmissionId),
+            eq(appointment.organisationId, actor.organisationId),
+            isNull(appointment.patientId),
+          ),
+        );
+    }
 
     return {
       result: { id: created.id },
