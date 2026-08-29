@@ -27,6 +27,7 @@ import {
 import { cn } from '@/lib/cn';
 import { Control } from '@/components/form/wizard';
 import { visibleSteps, visibleFieldsForStep, numberQuestions } from '@/lib/forms/runtime';
+import { presentAnswer, isImageAnswer } from '@/lib/forms/present';
 import { isStoredFileRef, formatFileSize } from '@/components/fields/stored-file';
 import type { Answers, FormField, FormSchema } from '@/types/form-schema';
 
@@ -60,45 +61,33 @@ const SAFETY_FIELDS = new Set([
   'currentMedication', 'medications', 'otherConditions', 'healthConditions',
 ]);
 
-/** Human-readable rendering of whatever shape an answer happens to be. */
-function present(value: unknown, field: FormField): string {
-  if (value === null || value === undefined || value === '') return '—';
+/*
+ * Rendering moved to `@/lib/forms/present`.
+ *
+ * This file had its own copy, and it printed `[object Object] cm` for every
+ * measurement: the comment said "show what the patient typed" but the code
+ * interpolated `record.raw`, which is the container — `{ stones: 12,
+ * pounds: 4 }` — rather than the numbers in it. The PDF had a second copy that
+ * showed SI instead, so the screen and the printed record disagreed.
+ *
+ * One presenter now serves both. `answers` is passed because a calculated
+ * field like BMI holds no value of its own and is worked out from its
+ * neighbours.
+ */
+function present(value: unknown, field: FormField, answers: Answers): string {
+  return presentAnswer(field, value, answers);
+}
 
-  if (typeof value === 'boolean') return value ? 'Yes' : 'No';
-
-  if (Array.isArray(value)) {
-    if (value.length === 0) return '—';
-    return value
-      .map((v) => field.options?.find((o) => o.value === v)?.label ?? String(v))
-      .join(', ');
-  }
-
-  if (typeof value === 'object') {
-    const record = value as Record<string, unknown>;
-
-    // Files are rendered as a link by the caller; this is the fallback path.
-    if (typeof record.path === 'string' && typeof record.name === 'string') {
-      return String(record.name);
-    }
-
-    // Measurements arrive as { si, unit, raw } — show what the patient typed,
-    // not the SI value, or a patient who entered 12 stone sees 76.2.
-    if ('raw' in record && 'unit' in record) {
-      return `${record.raw} ${record.unit}`;
-    }
-    if ('si' in record) return String(record.si);
-
-    // Address
-    const parts = ['addressLine1', 'town', 'postcode']
-      .map((k) => record[k])
-      .filter((v) => typeof v === 'string' && v.trim());
-    if (parts.length) return parts.join(', ');
-
-    return JSON.stringify(value);
-  }
-
-  const option = field.options?.find((o) => o.value === value);
-  return option?.label ?? String(value);
+/**
+ * Whether an uploaded file is worth trying to draw.
+ *
+ * Extension only. The alternative is fetching it to sniff the bytes, which
+ * means an authenticated request per row on a screen that already makes
+ * several — and being wrong is cheap here, because a file that will not decode
+ * hides itself and leaves the link.
+ */
+function isLikelyImage(name: string): boolean {
+  return /\.(png|jpe?g|gif|webp|avif|heic|heif)$/i.test(name);
 }
 
 /** An answer that should catch the eye before a needle comes out. */
@@ -216,7 +205,7 @@ export function AnswerReview({ schema, answers, onAmend }: Props) {
             {flagged.map(({ field, value }) => (
               <div key={field.id} className="flex flex-wrap gap-x-2 text-[13.5px]">
                 <dt className="font-medium text-review-700">{field.label}</dt>
-                <dd className="m-0 text-ink-soft">{present(value, field)}</dd>
+                <dd className="m-0 text-ink-soft">{present(value, field, answers)}</dd>
               </div>
             ))}
           </dl>
@@ -301,21 +290,58 @@ export function AnswerReview({ schema, answers, onAmend }: Props) {
                                 concerning ? 'font-medium text-review-700' : 'text-ink',
                               )}
                             >
-                              {isStoredFileRef(value) ? (
+                              {/*
+                                A signature is a picture of a person agreeing to
+                                treatment. It was rendered through the text path,
+                                so the record showed three kilobytes of
+                                `data:image/png;base64,iVBOR…` where the mark
+                                should be — unreadable, and no evidence of
+                                anything.
+                              */}
+                              {isImageAnswer(field, value) ? (
+                                <img
+                                  src={value as string}
+                                  alt={`${field.label} — as signed by the patient`}
+                                  className="h-[54px] w-auto max-w-[220px] rounded-[5px] border border-line bg-surface object-contain p-1"
+                                />
+                              ) : isStoredFileRef(value) ? (
                                 <a
                                   href={`/api/uploads/view?path=${encodeURIComponent(value.path)}`}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="inline-flex items-center gap-1.5 text-brand-700 underline"
+                                  className="inline-flex flex-col gap-1.5 text-brand-700"
                                 >
-                                  <Paperclip size={12} />
-                                  {value.name}
-                                  <span className="text-ink-faint no-underline">
-                                    ({formatFileSize(value.size)})
+                                  {/*
+                                    Photographed evidence — a medicine box, a
+                                    previous prescription — is looked at, not
+                                    read. The thumbnail is the answer; the file
+                                    name underneath is how you find it again.
+                                    Served through the authenticated route, so
+                                    private storage stays private.
+
+                                    A PDF or anything else that will not decode
+                                    falls back to the link on its own: `onError`
+                                    hides the broken image rather than leaving a
+                                    torn icon on a clinical record.
+                                  */}
+                                  {isLikelyImage(value.name) ? (
+                                    <img
+                                      src={`/api/uploads/view?path=${encodeURIComponent(value.path)}`}
+                                      alt={field.label}
+                                      onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                      className="max-h-[150px] w-auto max-w-[240px] rounded-[6px] border border-line bg-surface object-contain"
+                                    />
+                                  ) : null}
+                                  <span className="inline-flex items-center gap-1.5 underline">
+                                    <Paperclip size={12} />
+                                    {value.name}
+                                    <span className="text-ink-faint no-underline">
+                                      ({formatFileSize(value.size)})
+                                    </span>
                                   </span>
                                 </a>
                               ) : (
-                                present(value, field)
+                                present(value, field, answers)
                               )}
                             </dd>
                             {onAmend ? (
