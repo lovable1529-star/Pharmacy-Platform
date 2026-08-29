@@ -19,22 +19,26 @@ const nextConfig = {
    * `require` calls, and pdfkit resolves these at runtime, so the tracer never
    * sees them and the deployed function has no fonts to render with.
    *
-   * ── Both directories, and the second one is the one that matters ────────
+   * ── Why the whole package, and not a list of paths ─────────────────────
    *
-   * pdfkit 0.20 carries its standard fonts twice:
+   * This was fixed three times by naming a narrower path, and each fix
+   * uncovered the next file:
    *
-   *   js/data/*.afm            15 files, the legacy Adobe metrics
-   *   js/standard-fonts/*.cjs  29 files, real modules it require()s
+   *   1. js/data/*.afm             the legacy Adobe metrics — not what 0.20
+   *                                actually loads
+   *   2. js/standard-fonts/*       the real font modules — but a single `*`
+   *                                does not descend
+   *   3. js/standard-fonts/chunks/standardGlyphNames-*.cjs
+   *                                a shared chunk the fonts require
    *
-   * Only the first was listed here, so the deployed function had the metrics
-   * and not the fonts, and every render died on:
+   * Every round cost a deploy and a log dive, because all of it resolves
+   * locally where node_modules is on disk and none of it is visible to the
+   * tracer, which follows `require` calls and cannot see a path pdfkit builds
+   * at runtime.
    *
-   *   Cannot find module '…/pdfkit/js/standard-fonts/Helvetica.cjs'
-   *   MODULE_NOT_FOUND
-   *
-   * It passed locally because node_modules is still on disk there — the same
-   * reason the original .afm bug looked fixed. Both patterns are kept: the
-   * .afm files are what an embedded font falls back to.
+   * So: ship the package. It is 11 MB against a 250 MB function limit, it has
+   * no symlinks inside it, and it means no future pdfkit release can move a
+   * file and break rendering in production while passing every local check.
    *
    * ── Why `pdfkit@*` and not `**` ─────────────────────────────────────────
    *
@@ -52,8 +56,7 @@ const nextConfig = {
    */
   outputFileTracingIncludes: {
     '/api/consultations/[id]/pdf': [
-      './node_modules/.pnpm/pdfkit@*/node_modules/pdfkit/js/standard-fonts/*',
-      './node_modules/.pnpm/pdfkit@*/node_modules/pdfkit/js/data/*.afm',
+      './node_modules/.pnpm/pdfkit@*/node_modules/pdfkit/**',
     ],
   },
 
