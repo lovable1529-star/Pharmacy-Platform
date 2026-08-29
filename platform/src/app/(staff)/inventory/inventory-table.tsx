@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/ui/primitives';
 import { formatDate } from '@/lib/units';
 import type { StockRow } from '@/lib/queries/clinical';
 import { RecallDialog } from './recall-dialog';
+import { MovementDialog } from './movement-dialog';
 
 function expiryTone(days: number): string {
   if (days <= 0) return 'bg-stop-100 text-stop-700';
@@ -25,16 +26,18 @@ function expiryTone(days: number): string {
 }
 
 export function InventoryTable({
-  rows, branchId, companyId, canRecall, canExport,
+  rows, branchId, companyId, canRecall, canEdit, canExport,
 }: {
   rows: StockRow[];
   branchId: string | null;
   companyId: string | null;
   canRecall: boolean;
+  canEdit: boolean;
   canExport: boolean;
 }) {
   const router = useRouter();
   const [recalling, setRecalling] = useState<string | null>(null);
+  const [moving, setMoving] = useState<StockRow | null>(null);
 
   const total = rows.reduce((n, r) => n + r.quantity, 0);
   const expiring = rows.filter((r) => r.daysToExpiry <= 90 && r.quantity > 0).length;
@@ -88,6 +91,27 @@ export function InventoryTable({
     },
   ];
 
+  if (canEdit && branchId) {
+    columns.push({
+      key: 'move',
+      header: '',
+      align: 'right',
+      value: () => null,
+      // Only the branch you are working from: stock is per branch, and moving
+      // it somewhere you are not standing is how a count drifts.
+      render: (r) =>
+        r.branchId !== branchId ? null : (
+          <button
+            type="button"
+            onClick={() => setMoving(r)}
+            className="rounded-[6px] border border-line px-2.5 py-1 text-[12px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+          >
+            Move
+          </button>
+        ),
+    });
+  }
+
   if (canRecall && branchId && companyId) {
     columns.push({
       key: 'recall',
@@ -131,6 +155,19 @@ export function InventoryTable({
         exportName="karsons-inventory"
         canExport={canExport}
       />
+
+      {moving && branchId ? (
+        <MovementDialog
+          batchId={moving.batchId}
+          branchId={branchId}
+          companyId={companyId}
+          productName={moving.productName}
+          batchNumber={moving.batchNumber}
+          currentQuantity={moving.quantity}
+          recalled={moving.recalledAt !== null}
+          onClose={() => setMoving(null)}
+        />
+      ) : null}
 
       {recalling && branchId && companyId ? (
         <RecallDialog

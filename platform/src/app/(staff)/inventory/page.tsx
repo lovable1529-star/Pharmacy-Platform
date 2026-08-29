@@ -15,6 +15,11 @@ export default async function InventoryPage() {
       canExport={can(actor, 'inventory:export')}
       branchId={activeBranch?.id ?? null}
       companyId={activeBranch?.companyId ?? null}
+      canEdit={can(
+        actor,
+        'inventory:edit',
+        activeBranch ? { branchId: activeBranch.id, companyId: activeBranch.companyId } : {},
+      )}
       canRecall={can(
         actor,
         'inventory:disable',
