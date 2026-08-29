@@ -24,8 +24,9 @@
  */
 
 import { useState } from 'react';
+import Link from 'next/link';
 import {
-  X, Check, Ban, MessageCircleQuestion, ChevronRight, Loader2, CircleSlash, CircleCheck,
+  X, Check, Ban, MessageCircleQuestion, ChevronRight, Loader2, CircleSlash, CircleCheck, Plus,
 
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
@@ -90,6 +91,13 @@ export function ReviewQueue({
         subtitle={`${items.length} request${items.length === 1 ? '' : 's'} awaiting a decision, worst first.`}
         actions={
           <div className="flex flex-wrap gap-2">
+            <Link
+              href="/repeat-care/new"
+              className="flex items-center gap-1.5 rounded-control bg-brand-600 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700"
+            >
+              <Plus size={13} strokeWidth={2.4} />
+              On their behalf
+            </Link>
             <button
               type="button"
               onClick={() => setQueue('ALL')}
