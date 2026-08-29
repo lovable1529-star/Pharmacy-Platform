@@ -22,9 +22,29 @@ import { requestPayment } from '@/lib/payments/lifecycle';
 import { changeSubmissionStatus } from '@/lib/workflow/history';
 import { raisePrescription } from '@/lib/prescriptions/issue';
 import { registerDocument } from '@/lib/documents/register';
+import { approvalBlocker } from '@/lib/prescriptions/approval';
 import { IllegalTransitionError } from '@/lib/workflow/status';
 
 export type ReviewAction = 'APPROVED' | 'REJECTED' | 'INFO_REQUESTED';
+
+/**
+ * An approval that could not have been completed, refused before it starts.
+ *
+ * Approving raises a prescription, and `raisePrescription` needs a patient and
+ * a branch. It was gated on `patientId && branchId` and simply did nothing when
+ * either was absent — so the review event, the status change and the approval
+ * document were all written, no prescription existed, and NOTHING said so. The
+ * request left the queue looking dealt with.
+ *
+ * A half-completed approval is worse than a refused one. Refusing leaves the
+ * request in the queue, where it is visible, and names what is missing.
+ */
+class CannotApproveError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CannotApproveError';
+  }
+}
 
 const STATUS_FOR: Record<ReviewAction, 'APPROVED' | 'REJECTED' | 'INFO_REQUESTED'> = {
   APPROVED: 'APPROVED',
@@ -44,6 +64,37 @@ interface DecideInput {
 const decide = action<DecideInput>('repeat_care:edit')
   .scopedTo((input) => ({ branchId: input.branchId ?? null, companyId: input.companyId ?? null }))
   .handler(async (input, { tx, actor }) => {
+    /*
+     * Checked before anything is written, and inside the transaction so the
+     * row cannot change underneath the decision.
+     */
+    if (input.decision === 'APPROVED') {
+      const [subject] = await tx
+        .select({
+          patientId: submission.patientId,
+          branchId: submission.branchId,
+          answers: submission.answers,
+        })
+        .from(submission)
+        .where(
+          and(
+            eq(submission.id, input.submissionId),
+            eq(submission.organisationId, actor.organisationId),
+          ),
+        )
+        .limit(1);
+
+      if (!subject) throw new CannotApproveError('That request no longer exists.');
+
+      const blocker = approvalBlocker({
+        patientId: subject.patientId,
+        branchId: subject.branchId,
+        answers: (subject.answers ?? {}) as Record<string, unknown>,
+      });
+
+      if (blocker) throw new CannotApproveError(blocker);
+    }
+
     await tx.insert(reviewEvent).values({
       organisationId: actor.organisationId,
       submissionId: input.submissionId,
@@ -247,7 +298,9 @@ export async function reviewSubmission(input: DecideInput & { outcome?: string |
     return {
       ok: false as const,
       error:
-        error instanceof IllegalTransitionError
+        error instanceof CannotApproveError
+          ? error.message
+          : error instanceof IllegalTransitionError
           ? `${error.message} Refresh — someone may have decided this already.`
           : error instanceof Error && error.name === 'AuthorisationError'
             ? 'You do not have permission to review repeat requests.'

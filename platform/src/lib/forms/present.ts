@@ -33,6 +33,27 @@ function isMeasurement(value: Record<string, unknown>): boolean {
 }
 
 /**
+ * The SI number behind a measurement answer, for arithmetic rather than display.
+ *
+ * Every measurement is stored as `{ si, unit, raw }`, so reading one with
+ * `Number(answers.weight)` yields NaN. There were two identical private copies
+ * of this — in the submit path and in the amend path — and a third was about to
+ * be written for the enrolment baseline. Three private copies of "how do you
+ * read a weight" is how the units drift apart.
+ *
+ * Returns null rather than 0 for a missing value: a baseline weight of zero
+ * would be read by the rules engine as a real measurement.
+ */
+export function siValue(answers: Answers, key: string): number | null {
+  const value = answers[key];
+  if (typeof value === 'object' && value !== null && 'si' in value) {
+    const si = (value as { si: unknown }).si;
+    return typeof si === 'number' ? si : null;
+  }
+  return typeof value === 'number' ? value : null;
+}
+
+/**
  * A measurement in the units the patient chose, not the units we store.
  *
  * Storage is always SI so the rules engine has one number to compare. Reading

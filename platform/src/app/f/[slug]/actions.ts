@@ -29,6 +29,7 @@ import { matchOrCreatePatient, readIdentity } from '@/lib/patients/identify';
 import { evaluateRuleset, type RulesetDefinition } from '@/lib/rules/engine';
 import { alertPharmacist } from '@/lib/notifications/alerts';
 import { deriveValues } from '@/lib/clinical/derived';
+import { siValue } from '@/lib/forms/present';
 import { loadPreviousSupply } from '@/lib/clinical/previous-supply';
 import { loadDoseLadders } from '@/lib/clinical/ladders';
 import { captureConsent } from '@/lib/workflow/consent';
@@ -43,15 +44,6 @@ export interface SubmitResult {
   error?: string;
 }
 
-/** Height and weight arrive as { si, unit, raw } from the measurement control. */
-function siValue(answers: Answers, key: string): number | null {
-  const value = answers[key];
-  if (typeof value === 'object' && value !== null && 'si' in value) {
-    const si = (value as { si: unknown }).si;
-    return typeof si === 'number' ? si : null;
-  }
-  return typeof value === 'number' ? value : null;
-}
 
 /**
  * Autosave.

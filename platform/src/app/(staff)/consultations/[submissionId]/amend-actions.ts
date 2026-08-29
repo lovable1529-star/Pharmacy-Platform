@@ -33,6 +33,7 @@ import {
 import { pruneHiddenAnswers, collectMetadata } from '@/lib/forms/runtime';
 import { evaluateRuleset, type RulesetDefinition } from '@/lib/rules/engine';
 import { deriveValues } from '@/lib/clinical/derived';
+import { siValue } from '@/lib/forms/present';
 import type { FormSchema, Answers } from '@/types/form-schema';
 
 export interface AmendInput {
@@ -42,14 +43,6 @@ export interface AmendInput {
   reason: string;
 }
 
-function siValue(answers: Answers, key: string): number | null {
-  const value = answers[key];
-  if (typeof value === 'object' && value !== null && 'si' in value) {
-    const si = (value as { si: unknown }).si;
-    return typeof si === 'number' ? si : null;
-  }
-  return typeof value === 'number' ? value : null;
-}
 
 const amend = action<AmendInput>('consultations:edit').handler(
   async (input, { tx, actor }) => {

@@ -23,9 +23,13 @@ import { getStaffContext } from '@/lib/auth/context';
 import { db } from '@/lib/db/client';
 import {
   consultation, patient, service, branch, clinician, batch, product,
-  submission, formVersion, ruleEvaluation,
+  submission, formVersion, ruleEvaluation, repeatEnrolment,
 } from '@/lib/db/schema';
 import { AnswerReview } from '@/components/clinical/answer-review';
+import { enrolmentBaseline, baselineGaps } from '@/lib/clinical/enrolment-baseline';
+import { loadDoseLadders } from '@/lib/clinical/ladders';
+import { getRepeatServices } from '@/app/(staff)/patients/[id]/enrolment-actions';
+import { EnrolPanel } from './enrol-panel';
 import { getAddenda } from './addendum-actions';
 import { AddendaPanel } from './addenda-panel';
 import { PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
@@ -76,6 +80,7 @@ export default async function ConsultationRecordPage({
       lastName: patient.lastName,
       dateOfBirth: patient.dateOfBirth,
       serviceName: service.name,
+      serviceKind: service.kind,
       branchName: branch.name,
       clinicianName: clinician.fullName,
       gphcNumber: clinician.gphcNumber,
@@ -141,6 +146,51 @@ export default async function ConsultationRecordPage({
 
   const addenda = await getAddenda(row.id);
 
+  /*
+   * Repeat care — the offer, or the fact that they are already on it.
+   *
+   * Only for pathways that lead somewhere: a vaccination record has no repeat
+   * supply behind it, and offering enrolment there would be noise on every flu
+   * jab the pharmacy gives.
+   */
+  const offersRepeat = row.serviceKind !== 'VACCINATION';
+
+  let repeat: React.ComponentProps<typeof EnrolPanel> | null = null;
+
+  if (offersRepeat) {
+    const [repeatServices, enrolments, ladders] = await Promise.all([
+      getRepeatServices(actor.organisationId),
+      db
+        .select({ status: repeatEnrolment.status, serviceName: service.name })
+        .from(repeatEnrolment)
+        .innerJoin(service, eq(repeatEnrolment.serviceId, service.id))
+        .where(
+          and(
+            eq(repeatEnrolment.patientId, row.patientId),
+            eq(repeatEnrolment.organisationId, actor.organisationId),
+          ),
+        )
+        .limit(1),
+      loadDoseLadders(db, actor.organisationId),
+    ]);
+
+    const baseline = enrolmentBaseline(answers, {
+      // Dated from the consultation, not from today: enrolling somebody a week
+      // after their appointment must not reset "three weeks at this dose".
+      startedOn: row.completedAt ?? row.createdAt,
+      ladders,
+    });
+
+    repeat = {
+      patientId: row.patientId,
+      patientName: `${row.firstName} ${row.lastName}`,
+      services: repeatServices,
+      existing: enrolments[0] ?? null,
+      baseline,
+      gaps: baselineGaps(baseline),
+    };
+  }
+
   const clinical = (row.clinicalData ?? {}) as Record<string, unknown>;
   const text = (key: string) =>
     typeof clinical[key] === 'string' ? (clinical[key] as string) : null;
@@ -171,6 +221,8 @@ export default async function ConsultationRecordPage({
           Download PDF
         </a>
       </div>
+
+      {repeat ? <EnrolPanel {...repeat} /> : null}
 
       <AddendaPanel consultationId={row.id} addenda={addenda} />
 
