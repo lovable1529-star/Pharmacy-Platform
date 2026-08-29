@@ -30,6 +30,10 @@ import { and, eq, lte, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import { notification } from '@/lib/db/schema';
 import { sendPatientEmail } from '@/lib/email/patient';
+import {
+  loadTemplate, render, hasUnfilled,
+  type Substitutions, type Channel as TemplateChannel,
+} from './templates';
 
 export type Channel = 'EMAIL' | 'SMS' | 'WHATSAPP';
 
@@ -43,6 +47,56 @@ export interface QueueInput {
   entityType?: string | null;
   entityId?: string | null;
   scheduledFor?: Date;
+}
+
+/**
+ * Queue a message built from a configured template — §15.
+ *
+ * Preferred over `queueNotification` for anything a patient reads, because the
+ * wording is then editable and, more importantly, the channel's rule about
+ * clinical detail is applied where the message is BUILT rather than trusted to
+ * whoever assembled the string.
+ *
+ * Clinical values are handed over separately and simply never reach a template
+ * that is not allowed them, so an SMS cannot name a medicine even if a caller
+ * passes one in.
+ */
+export async function queueFromTemplate(input: {
+  organisationId: string;
+  channel: Channel;
+  recipient: string;
+  templateKey: string;
+  values: Substitutions;
+  entityType?: string | null;
+  entityId?: string | null;
+  scheduledFor?: Date;
+}): Promise<string | null> {
+  // WHATSAPP is treated as SMS for wording: both are short, unencrypted at
+  // rest on somebody's phone, and neither should carry clinical detail.
+  const channel: TemplateChannel = input.channel === 'EMAIL' ? 'EMAIL' : 'SMS';
+  const template = await loadTemplate(db, input.organisationId, input.templateKey, channel);
+  const body = render(template, input.values);
+
+  if (hasUnfilled(body)) {
+    // A placeholder that never filled means the template asks for something
+    // this channel may not carry. Sending it would show a patient a raw
+    // {token}; refusing it puts the problem in the log where it gets fixed.
+    console.warn('[notifications] template has unfilled placeholders', {
+      key: input.templateKey, channel,
+    });
+  }
+
+  return queueNotification({
+    organisationId: input.organisationId,
+    channel: input.channel,
+    recipient: input.recipient,
+    template: input.templateKey,
+    subject: template.subject,
+    body,
+    entityType: input.entityType ?? null,
+    entityId: input.entityId ?? null,
+    scheduledFor: input.scheduledFor,
+  });
 }
 
 /** How many times a message is retried before it is left alone. */

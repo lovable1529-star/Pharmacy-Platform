@@ -21,7 +21,7 @@ import {
   payment, submission, service, patient, branch, organisation,
   prescription,
 } from '@/lib/db/schema';
-import { queueNotification } from '@/lib/notifications/outbox';
+import { queueNotification, queueFromTemplate } from '@/lib/notifications/outbox';
 import { resolveAppUrl } from '@/lib/app-url';
 import { changeSubmissionStatus } from '@/lib/workflow/history';
 import { issuePrescription } from '@/lib/prescriptions/issue';
@@ -292,6 +292,26 @@ export async function settlePayment(input: {
             <p>The prescription can now be prepared.</p>`,
           entityType: 'payment',
           entityId: settled.id,
+        });
+      }
+
+      /*
+       * §15 — "prescription ready", in wording the pharmacy controls.
+       *
+       * Separate from the receipt below: one is about money, the other about
+       * medicine, and a patient who paid on collection still needs the second.
+       * Only safe values are supplied, so the same template key used on SMS
+       * cannot name what they are collecting.
+       */
+      if (context.patientEmail) {
+        await queueFromTemplate({
+          organisationId: settled.organisationId,
+          channel: 'EMAIL',
+          recipient: context.patientEmail,
+          templateKey: 'prescription.ready',
+          values: { safe: { firstName: context.patientName ?? 'there' } },
+          entityType: 'submission',
+          entityId: settled.submissionId ?? null,
         });
       }
 
