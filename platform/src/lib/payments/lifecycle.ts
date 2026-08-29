@@ -19,10 +19,12 @@ import { and, eq, ne } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   payment, submission, service, patient, branch, organisation,
+  prescription,
 } from '@/lib/db/schema';
 import { queueNotification } from '@/lib/notifications/outbox';
 import { resolveAppUrl } from '@/lib/app-url';
 import { changeSubmissionStatus } from '@/lib/workflow/history';
+import { issuePrescription } from '@/lib/prescriptions/issue';
 import { canTransition, type SubmissionStatus } from '@/lib/workflow/status';
 import {
   generatePaymentToken, paymentExpiry, activeProvider, formatMoney,
@@ -231,6 +233,30 @@ export async function settlePayment(input: {
         by: { label: 'Payment received' },
         reason: 'Payment settled',
       });
+
+      /*
+       * §8.7 — the payment condition is what releases the document.
+       *
+       * The number is allocated here rather than at approval, because a
+       * prescription number is the pharmacy's external reference to a real
+       * supply. Allocating one for a request that is approved and then never
+       * paid for would leave a gap in the sequence that reads, to anyone
+       * auditing it later, like a missing prescription.
+       */
+      const [raised] = await tx
+        .select({ id: prescription.id })
+        .from(prescription)
+        .where(eq(prescription.submissionId, submissionId))
+        .limit(1);
+
+      if (raised) {
+        await tx
+          .update(prescription)
+          .set({ paidOnline: true, updatedAt: new Date() })
+          .where(eq(prescription.id, raised.id));
+
+        await issuePrescription(tx, raised.id);
+      }
     });
 
     const [context] = await db

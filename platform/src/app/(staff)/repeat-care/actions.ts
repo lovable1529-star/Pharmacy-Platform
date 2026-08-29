@@ -13,13 +13,14 @@
  * rather than asked for in the interface, so it cannot be skipped.
  */
 
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
-import { submission, reviewEvent, service, patient } from '@/lib/db/schema';
+import { submission, reviewEvent, service, patient, clinician } from '@/lib/db/schema';
 import { db } from '@/lib/db/client';
 import { requestPayment } from '@/lib/payments/lifecycle';
 import { changeSubmissionStatus } from '@/lib/workflow/history';
+import { raisePrescription } from '@/lib/prescriptions/issue';
 import { IllegalTransitionError } from '@/lib/workflow/status';
 
 export type ReviewAction = 'APPROVED' | 'REJECTED' | 'INFO_REQUESTED';
@@ -65,6 +66,57 @@ const decide = action<DecideInput>('repeat_care:edit')
       reason: input.note,
       branchId: input.branchId ?? null,
     });
+
+    /*
+     * Approval raises the prescription — §8.7.
+     *
+     * Raised, not issued: the document and its number wait for the payment
+     * condition. Allocating a number now would leave a gap in the sequence for
+     * every request that is approved and then never paid for, which reads to
+     * anyone auditing it later as a missing prescription.
+     */
+    if (input.decision === 'APPROVED') {
+      const [context] = await tx
+        .select({
+          patientId: submission.patientId,
+          branchId: submission.branchId,
+          answers: submission.answers,
+        })
+        .from(submission)
+        .where(eq(submission.id, input.submissionId))
+        .limit(1);
+
+      if (context?.patientId && context.branchId) {
+        const answers = (context.answers ?? {}) as Record<string, unknown>;
+
+        // The approving pharmacist's own registration, where the person
+        // deciding is also on the register. A manager approving without one
+        // leaves the signature blank rather than borrowing somebody else's.
+        const [signer] = await tx
+          .select({ id: clinician.id })
+          .from(clinician)
+          .where(
+            and(
+              eq(clinician.userId, actor.userId),
+              eq(clinician.organisationId, actor.organisationId),
+            ),
+          )
+          .limit(1);
+
+        await raisePrescription(tx, {
+          organisationId: actor.organisationId,
+          submissionId: input.submissionId,
+          patientId: context.patientId,
+          branchId: context.branchId,
+          clinicianId: signer?.id ?? null,
+          requestedMedicineValue:
+            typeof answers.requestedMedicine === 'string' ? answers.requestedMedicine : null,
+          quantity: typeof answers.supplyQuantity === 'string'
+            ? `${answers.supplyQuantity} month(s)` : null,
+          paidOnline: answers.paymentPreference === 'online',
+        });
+      }
+    }
 
     return {
       result: { status: moved.to },
