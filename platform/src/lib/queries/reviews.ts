@@ -7,10 +7,11 @@
  * holding special-category health data.
  */
 
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   submission, ruleEvaluation, service, patient, reviewEvent, appUser, branch,
+  urgentTask,
 } from '@/lib/db/schema';
 import type { RuleTraceEntry, Outcome } from '@/lib/rules/engine';
 
@@ -181,4 +182,53 @@ export async function getReviewHistory(submissionId: string): Promise<ReviewHist
     .orderBy(desc(reviewEvent.occurredAt));
 
   return rows;
+}
+
+/**
+ * The urgent queue — §6.3.
+ *
+ * Deliberately a different list from the review queue. "A pharmacist should
+ * look at this today" and "ring this patient now" are different jobs, and
+ * ordering one list by severity merges them: the urgent item sits at the top
+ * of a long queue and looks like the worst of a set rather than the only thing
+ * that cannot wait.
+ */
+export interface UrgentItem {
+  id: string;
+  submissionId: string | null;
+  patientId: string | null;
+  patientName: string | null;
+  reason: string;
+  createdAt: Date;
+}
+
+export async function getUrgentTasks(organisationId: string): Promise<UrgentItem[]> {
+  const rows = await db
+    .select({
+      id: urgentTask.id,
+      submissionId: urgentTask.submissionId,
+      patientId: urgentTask.patientId,
+      firstName: patient.firstName,
+      lastName: patient.lastName,
+      reason: urgentTask.reason,
+      createdAt: urgentTask.createdAt,
+    })
+    .from(urgentTask)
+    .leftJoin(patient, eq(urgentTask.patientId, patient.id))
+    .where(
+      and(
+        eq(urgentTask.organisationId, organisationId),
+        isNull(urgentTask.resolvedAt),
+      ),
+    )
+    .orderBy(asc(urgentTask.createdAt));
+
+  return rows.map((r) => ({
+    id: r.id,
+    submissionId: r.submissionId,
+    patientId: r.patientId,
+    patientName: r.firstName && r.lastName ? `${r.firstName} ${r.lastName}` : null,
+    reason: r.reason,
+    createdAt: r.createdAt,
+  }));
 }

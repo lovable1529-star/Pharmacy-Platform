@@ -26,12 +26,13 @@
 import { useState } from 'react';
 import {
   X, Check, Ban, MessageCircleQuestion, ChevronRight, Loader2, CircleSlash, CircleCheck,
+
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Portal } from '@/components/ui/portal';
 import { formatDateTime } from '@/lib/units';
 import { EmptyState, PageHeader, Panel } from '@/components/ui/primitives';
-import type { QueueItem } from '@/lib/queries/reviews';
+import type { QueueItem, UrgentItem } from '@/lib/queries/reviews';
 import { reviewSubmission, type ReviewAction } from './actions';
 
 const OUTCOME_STYLES = {
@@ -40,15 +41,47 @@ const OUTCOME_STYLES = {
   GREEN: 'bg-safe-100 text-safe-700',
 } as const;
 
-export function ReviewQueue({ items }: { items: QueueItem[] }) {
+/** Does this request carry a question the counter needs to raise? — §6.4 */
+function hasQuestion(item: QueueItem): boolean {
+  const keys = [
+    'questionsForPharmacist', 'questions', 'patientQuestion',
+    'notesForPharmacist', 'anythingElse',
+  ];
+  return keys.some((k) => {
+    const value = item.answers[k];
+    return typeof value === 'string' && value.trim().length > 0;
+  });
+}
+
+type Queue = 'ALL' | 'RED' | 'AMBER' | 'GREEN' | 'QUESTION';
+
+export function ReviewQueue({
+  items,
+  urgent = [],
+}: {
+  items: QueueItem[];
+  urgent?: UrgentItem[];
+}) {
   const [openId, setOpenId] = useState<string | null>(null);
+  const [queue, setQueue] = useState<Queue>('ALL');
   const open = items.find((i) => i.submissionId === openId) ?? null;
 
   const counts = {
     RED: items.filter((i) => i.outcome === 'RED').length,
     AMBER: items.filter((i) => i.outcome === 'AMBER').length,
     GREEN: items.filter((i) => i.outcome === 'GREEN').length,
+    QUESTION: items.filter(hasQuestion).length,
   };
+
+  /*
+   * §6.1 asks for the queues to be clearly SEPARATE, not merely counted. A
+   * single list ordered by severity puts the reds on top, which reads as "the
+   * worst of a set" rather than "the ones that cannot wait".
+   */
+  const shown =
+    queue === 'ALL' ? items
+      : queue === 'QUESTION' ? items.filter(hasQuestion)
+        : items.filter((i) => (i.outcome ?? 'AMBER') === queue);
 
   return (
     <div className="page-shell mx-auto max-w-[calc(1080px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
@@ -56,36 +89,109 @@ export function ReviewQueue({ items }: { items: QueueItem[] }) {
         title="Repeat care"
         subtitle={`${items.length} request${items.length === 1 ? '' : 's'} awaiting a decision, worst first.`}
         actions={
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setQueue('ALL')}
+              aria-pressed={queue === 'ALL'}
+              className={cn(
+                'tabular rounded-control border px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.05em] transition-colors',
+                queue === 'ALL'
+                  ? 'border-ink bg-ink text-white'
+                  : 'border-line text-ink-soft hover:border-brand-300',
+              )}
+            >
+              {items.length} all
+            </button>
             {(['RED', 'AMBER', 'GREEN'] as const).map((o) => (
-              <span
+              <button
                 key={o}
+                type="button"
+                onClick={() => setQueue(queue === o ? 'ALL' : o)}
+                aria-pressed={queue === o}
                 className={cn(
-                  'tabular rounded-control px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.05em]',
+                  'tabular rounded-control border px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.05em] transition-[box-shadow,border-color]',
                   OUTCOME_STYLES[o],
+                  queue === o ? 'ring-2 ring-ink ring-offset-1' : 'border-transparent',
                 )}
               >
                 {counts[o]} {o.toLowerCase()}
-              </span>
+              </button>
             ))}
+            {counts.QUESTION > 0 ? (
+              <button
+                type="button"
+                onClick={() => setQueue(queue === 'QUESTION' ? 'ALL' : 'QUESTION')}
+                aria-pressed={queue === 'QUESTION'}
+                className={cn(
+                  'tabular flex items-center gap-1.5 rounded-control border px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.05em] transition-colors',
+                  queue === 'QUESTION'
+                    ? 'border-brand-600 bg-brand-600 text-white'
+                    : 'border-line text-ink-soft hover:border-brand-300',
+                )}
+              >
+                <MessageCircleQuestion size={12} strokeWidth={2.2} />
+                {counts.QUESTION} asked
+              </button>
+            ) : null}
           </div>
         }
       />
 
-      {items.length === 0 ? (
+      {urgent.length > 0 ? (
+        <div className="mb-4 overflow-hidden rounded-panel border border-stop-200 bg-stop-50 shadow-panel">
+          <div className="flex items-center gap-2 border-b border-stop-200 px-4 py-2.5">
+            <CircleSlash size={14} strokeWidth={2.2} className="text-stop-600" />
+            <span className="font-mono text-[11px] uppercase tracking-[0.09em] text-stop-700">
+              Urgent — {urgent.length} needing a call
+            </span>
+          </div>
+          {urgent.map((task) => (
+            <div
+              key={task.id}
+              className="flex items-center gap-4 border-b border-stop-200/60 px-4 py-3 last:border-b-0"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[14px] font-semibold text-ink">
+                  {task.patientName ?? 'Unmatched patient'}
+                </span>
+                <span className="block truncate text-[12.5px] text-stop-700">{task.reason}</span>
+              </span>
+              <span className="tabular hidden shrink-0 font-mono text-[11.5px] text-ink-faint sm:block">
+                {formatDateTime(task.createdAt)}
+              </span>
+              {task.submissionId ? (
+                <button
+                  type="button"
+                  onClick={() => setOpenId(task.submissionId!)}
+                  className="shrink-0 rounded-control border border-stop-200 bg-surface px-2.5 py-1.5 text-[12.5px] font-medium text-stop-700 transition-colors hover:border-stop-600"
+                >
+                  Open
+                </button>
+              ) : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {shown.length === 0 ? (
         <Panel>
           <div className="pt-14">
             <CircleCheck size={28} strokeWidth={1.7} className="mx-auto text-safe-600" />
           </div>
           <EmptyState
-            title="Nothing waiting"
-            body="Every repeat request has been dealt with."
+            title={queue === 'ALL' ? 'Nothing waiting' : 'Nothing in this queue'}
+            body={
+              queue === 'ALL'
+                ? 'Every repeat request has been dealt with.'
+                : 'Nothing matches that filter right now.'
+            }
             className="pt-3"
           />
         </Panel>
       ) : (
         <Panel>
-          {items.map((item) => (
+          {shown.map((item) => (
             <button
               key={item.submissionId}
               type="button"

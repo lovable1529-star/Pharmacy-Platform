@@ -8,7 +8,7 @@
 import { redirect } from 'next/navigation';
 import { getActorOrNull } from '@/lib/auth/actor';
 import { can } from '@/lib/tenancy/scope';
-import { getReviewQueue } from '@/lib/queries/reviews';
+import { getReviewQueue, getUrgentTasks } from '@/lib/queries/reviews';
 import { ReviewQueue } from './queue-client';
 
 export const dynamic = 'force-dynamic';
@@ -29,6 +29,11 @@ export default async function RepeatCarePage() {
     );
   }
 
-  const items = await getReviewQueue(actor.organisationId);
-  return <ReviewQueue items={items} />;
+  // Independent reads — the urgent list is not a slice of the review queue.
+  const [items, urgent] = await Promise.all([
+    getReviewQueue(actor.organisationId),
+    getUrgentTasks(actor.organisationId),
+  ]);
+
+  return <ReviewQueue items={items} urgent={urgent} />;
 }
