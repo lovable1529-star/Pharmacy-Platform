@@ -13,16 +13,28 @@ const nextConfig = {
   serverExternalPackages: ['postgres', '@react-pdf/renderer'],
 
   /*
-   * And ship the font metrics themselves.
+   * Ship pdfkit's font metrics with the PDF route.
    *
-   * Leaving the package unbundled is not enough on its own: file tracing
-   * follows `require` calls, and pdfkit builds these paths at runtime, so the
-   * tracer never sees them. Naming them explicitly is what puts them in the
-   * deployed function.
+   * Marking the package external is not enough on its own: tracing follows
+   * `require` calls, and pdfkit builds these paths at runtime, so the tracer
+   * never sees them and the deployed function has no fonts to render with.
+   *
+   * The pattern is pinned to `pdfkit@*` rather than using `**`, and that
+   * matters. pnpm gives every dependent its own `node_modules/pdfkit`, and
+   * those are SYMLINKS back to the one real copy:
+   *
+   *   .pnpm/@react-pdf+font@4.1.1/node_modules/pdfkit          -> symlink
+   *   .pnpm/@react-pdf+renderer@4.8.1_.../node_modules/pdfkit  -> symlink
+   *   .pnpm/pdfkit@0.20.1/node_modules/pdfkit                  -> the real one
+   *
+   * A `**` here matches all three, and the build then fails trying to create a
+   * directory where a symlink already is:
+   *
+   *   ENOTDIR: not a directory, mkdir '…/@react-pdf+font@4.1.1/node_modules/pdfkit'
    */
   outputFileTracingIncludes: {
     '/api/consultations/[id]/pdf': [
-      './node_modules/.pnpm/**/pdfkit/js/data/*.afm',
+      './node_modules/.pnpm/pdfkit@*/node_modules/pdfkit/js/data/*.afm',
     ],
   },
 
