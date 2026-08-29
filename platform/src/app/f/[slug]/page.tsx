@@ -22,6 +22,10 @@ import {
   service, formVersion, organisation, submission, appointment, branch,
 } from '@/lib/db/schema';
 import { isExpired } from '@/lib/forms/draft';
+import { loadDoseLadders } from '@/lib/clinical/ladders';
+import { loadPreviousSupply } from '@/lib/clinical/previous-supply';
+import { deriveValues } from '@/lib/clinical/derived';
+import { personaliseRepeatSchema } from '@/lib/clinical/personalise';
 import { formatSlotTime, PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
 import type { FormSchema, Answers } from '@/types/form-schema';
 import { PublicForm } from './form-client';
@@ -50,6 +54,7 @@ export default async function PublicFormPage({
       serviceName: service.name,
       description: service.description,
       organisationName: organisation.name,
+      organisationId: service.organisationId,
       schema: formVersion.schema,
       version: formVersion.version,
     })
@@ -62,7 +67,18 @@ export default async function PublicFormPage({
   const row = rows[0];
   if (!row) notFound();
 
-  const schema = row.schema as unknown as FormSchema;
+  const published = row.schema as unknown as FormSchema;
+
+  /*
+   * Personalised per patient at render time — §4.3.
+   *
+   * The dose dropdown and the read-only recommendation are properties of the
+   * person filling this in, not of the form, so they cannot live in the
+   * published version. A copy is tailored here; the published schema is
+   * untouched, because a patient's answers stay bound to it and two people on
+   * different strengths must not create two published versions.
+   */
+  let schema = published;
 
   // ── Resume, if they arrived with a token ──────────────────
   let saved: Answers | null = null;
@@ -78,6 +94,7 @@ export default async function PublicFormPage({
         answers: submission.answers,
         expiresAt: submission.resumeExpiresAt,
         serviceId: submission.serviceId,
+        patientId: submission.patientId,
       })
       .from(submission)
       .where(eq(submission.resumeToken, token))
@@ -110,6 +127,40 @@ export default async function PublicFormPage({
         .limit(1);
 
       if (appt) appointmentInfo = appt;
+
+      // Their previous supply is what the dose limit and the suggestion are
+      // computed from. A first consultation has none, and personalisation
+      // returns the published schema unchanged.
+      const ladders = await loadDoseLadders(db, row.organisationId);
+      const previous = await loadPreviousSupply(db, {
+        organisationId: row.organisationId,
+        patientId: draft.patientId,
+        serviceId: draft.serviceId,
+        ladders,
+      });
+
+      const derived = deriveValues({
+        answers: saved as Record<string, unknown>,
+        previousMedicineValue: previous.previousMedicineValue,
+        previousWeightKg: previous.previousWeightKg,
+        ladders,
+      });
+
+      schema = personaliseRepeatSchema({
+        schema: published,
+        currentMedicineValue: previous.previousMedicineValue,
+        ladders,
+        recommendation: {
+          appetiteSuppression: saved?.appetiteSuppression as string | null,
+          snacking: saved?.snacking as string | null,
+          adverseEffects: saved?.adverseEffects as string | null,
+          weightLossPercent: derived.weightLossPercent,
+          bmi: derived.bmi,
+          missedDoses: derived.missedDoses,
+          pregnancy: saved?.pregnancy as string | null,
+          weeksOnDose: derived.weeksOnDose,
+        },
+      });
     }
   }
 

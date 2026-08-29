@@ -38,6 +38,15 @@ import {
 
 export type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
+/**
+ * Anything you can read through.
+ *
+ * A query that does not mutate is equally correct on the pool or inside a
+ * transaction, and forcing read helpers to take `Tx` meant a page that just
+ * wanted to look something up had to open a transaction to do it.
+ */
+export type Reader = Tx | typeof db;
+
 export interface ActionContext {
   actor: Actor;
   tx: Tx;

@@ -19,12 +19,12 @@
  */
 
 import { and, asc, eq } from 'drizzle-orm';
-import type { Tx } from '@/lib/actions';
+import type { Reader } from '@/lib/actions';
 import { medicine, medicineStrength } from '@/lib/db/schema';
 import { DOSE_LADDERS, type DoseLadders } from './derived';
 
 export async function loadDoseLadders(
-  tx: Tx,
+  tx: Reader,
   organisationId: string,
 ): Promise<DoseLadders> {
   const rows = await tx

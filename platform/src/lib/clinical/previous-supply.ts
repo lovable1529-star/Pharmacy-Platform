@@ -23,7 +23,7 @@
  */
 
 import { and, eq } from 'drizzle-orm';
-import type { Tx } from '@/lib/actions';
+import type { Reader } from '@/lib/actions';
 import { repeatEnrolment } from '@/lib/db/schema';
 import { DOSE_LADDERS, type DoseLadders } from '@/lib/clinical/derived';
 
@@ -65,7 +65,7 @@ export function medicineValue(
  * dependent rules skip exactly as they do today.
  */
 export async function loadPreviousSupply(
-  tx: Tx,
+  tx: Reader,
   input: {
     organisationId: string;
     patientId: string | null;
