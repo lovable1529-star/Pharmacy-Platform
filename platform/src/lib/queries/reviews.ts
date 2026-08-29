@@ -11,7 +11,7 @@ import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   submission, ruleEvaluation, service, patient, reviewEvent, appUser, branch,
-  urgentTask,
+  urgentTask, repeatEnrolment, formVersion,
 } from '@/lib/db/schema';
 import type { RuleTraceEntry, Outcome } from '@/lib/rules/engine';
 
@@ -32,6 +32,19 @@ export interface QueueItem {
   answers: Record<string, unknown>;
   derived: Record<string, unknown>;
   trace: RuleTraceEntry[];
+  /**
+   * What the pharmacy's own record says they are currently on.
+   *
+   * Read from the enrolment rather than from the questionnaire on purpose: the
+   * previous scope of work is explicit that patients must not be able to
+   * circumvent the clinical checks, and a self-reported current strength is
+   * exactly the field somebody would adjust to make a two-step jump look like
+   * one.
+   */
+  previousMedicine: string | null;
+  previousStrength: string | null;
+  /** Which questionnaire version this was answered against. */
+  formVersionId: string;
 }
 
 /**
@@ -69,12 +82,27 @@ export async function getReviewQueue(organisationId: string): Promise<QueueItem[
       decidingRuleId: ruleEvaluation.decidingRuleId,
       trace: ruleEvaluation.trace,
       advice: ruleEvaluation.advice,
+      previousMedicine: repeatEnrolment.medicine,
+      previousStrength: repeatEnrolment.strength,
+      formVersionId: submission.formVersionId,
     })
     .from(submission)
     .innerJoin(service, eq(submission.serviceId, service.id))
     .leftJoin(patient, eq(submission.patientId, patient.id))
     .leftJoin(branch, eq(submission.branchId, branch.id))
     .leftJoin(ruleEvaluation, eq(ruleEvaluation.submissionId, submission.id))
+    /*
+     * Safe as a join rather than a subquery: `repeat_enrolment` carries a
+     * unique index on (patient_id, service_id), so this cannot multiply rows
+     * the way an appointment join would.
+     */
+    .leftJoin(
+      repeatEnrolment,
+      and(
+        eq(repeatEnrolment.patientId, submission.patientId),
+        eq(repeatEnrolment.serviceId, submission.serviceId),
+      ),
+    )
     .where(
       and(
         eq(submission.organisationId, organisationId),
@@ -121,6 +149,9 @@ export async function getReviewQueue(organisationId: string): Promise<QueueItem[
       answers: (r.answers as Record<string, unknown>) ?? {},
       derived: (r.derived as Record<string, unknown>) ?? {},
       trace: (r.trace as RuleTraceEntry[] | null) ?? [],
+      previousMedicine: r.previousMedicine,
+      previousStrength: r.previousStrength,
+      formVersionId: r.formVersionId,
     }));
 
   // No client-side re-sort: the database already returned them worst-first, and
@@ -156,6 +187,39 @@ export async function getReviewQueueCount(organisationId: string): Promise<numbe
     );
 
   return row?.count ?? 0;
+}
+
+/**
+ * The questionnaires behind a queue, one per VERSION rather than one per row.
+ *
+ * The drawer has to label an answer, and labels live in the schema. Carrying
+ * the schema on every queue item would have added the largest JSONB column in
+ * the table to as many as 500 rows to render at most a handful of distinct
+ * forms — the same mistake `getReviewQueueCount` exists to undo.
+ *
+ * Keyed by form version, not by service, because a published form is immutable
+ * and two requests days apart may have been answered against different
+ * wordings. Labelling last week's answers with this week's questions would
+ * misreport what the patient was actually asked.
+ */
+export async function getQueueSchemas(
+  organisationId: string,
+  formVersionIds: string[],
+): Promise<Record<string, unknown>> {
+  const unique = [...new Set(formVersionIds)];
+  if (unique.length === 0) return {};
+
+  const rows = await db
+    .select({ id: formVersion.id, schema: formVersion.schema })
+    .from(formVersion)
+    .where(
+      and(
+        eq(formVersion.organisationId, organisationId),
+        inArray(formVersion.id, unique),
+      ),
+    );
+
+  return Object.fromEntries(rows.map((r) => [r.id, r.schema]));
 }
 
 export interface ReviewHistoryEntry {

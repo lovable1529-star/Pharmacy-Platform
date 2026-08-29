@@ -23,15 +23,22 @@
  * both calmer to read and marginally better for anyone standing at the counter.
  */
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  X, Check, Ban, MessageCircleQuestion, ChevronRight, Loader2, CircleSlash, CircleCheck, Plus,
+  X, Check, Ban, MessageCircleQuestion, ChevronRight, ChevronDown, Loader2, CircleSlash,
+  CircleCheck, Plus,
 
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Portal } from '@/components/ui/portal';
 import { formatDateTime } from '@/lib/units';
+import {
+  requestFacts, waitingFor, hasQuestionFor, freeTextFieldIds,
+} from '@/lib/repeat-care/summary';
+import { presentAnswer, isImageAnswer } from '@/lib/forms/present';
+import { visibleSteps, visibleFieldsForStep } from '@/lib/forms/runtime';
+import type { Answers, FormSchema } from '@/types/form-schema';
 import { EmptyState, PageHeader, Panel } from '@/components/ui/primitives';
 import type { QueueItem, UrgentItem } from '@/lib/queries/reviews';
 import { reviewSubmission, type ReviewAction } from './actions';
@@ -42,36 +49,64 @@ const OUTCOME_STYLES = {
   GREEN: 'bg-safe-100 text-safe-700',
 } as const;
 
-/** Does this request carry a question the counter needs to raise? — §6.4 */
-function hasQuestion(item: QueueItem): boolean {
-  const keys = [
-    'questionsForPharmacist', 'questions', 'patientQuestion',
-    'notesForPharmacist', 'anythingElse',
-  ];
-  return keys.some((k) => {
-    const value = item.answers[k];
-    return typeof value === 'string' && value.trim().length > 0;
-  });
-}
+/**
+ * No outcome is a state, not a blank.
+ *
+ * A request whose service has no published ruleset gets no evaluation row at
+ * all, so `outcome` is null. That was rendered as a dash in an amber-ish chip,
+ * which reads as a loading spinner or a bug — and the header said `0 RED · 0
+ * AMBER · 0 GREEN` beside `3 ALL`, which is simply incoherent.
+ *
+ * It is a real condition a pharmacist needs to recognise: nothing has been
+ * checked, so their reading of the answers is the only check there is.
+ */
+const UNTRIAGED_STYLE = 'bg-sunk text-ink-faint';
 
-type Queue = 'ALL' | 'RED' | 'AMBER' | 'GREEN' | 'QUESTION';
+type Queue = 'ALL' | 'RED' | 'AMBER' | 'GREEN' | 'QUESTION' | 'NONE';
 
 export function ReviewQueue({
   items,
   urgent = [],
+  schemas = {},
 }: {
   items: QueueItem[];
   urgent?: UrgentItem[];
+  /** Questionnaire schemas by form version id, for labelling the answers. */
+  schemas?: Record<string, unknown>;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [queue, setQueue] = useState<Queue>('ALL');
   const open = items.find((i) => i.submissionId === openId) ?? null;
+
+  /*
+   * "Asked a question" needs the questionnaire to answer it honestly.
+   *
+   * `anythingElse` is a yes/no field on the current GLP-1 form, and the old
+   * check counted any non-empty string — so both patients who answered "no"
+   * were flagged as having asked something and the badge read "2 asked" on
+   * three requests carrying no questions at all.
+   */
+  const asked = useMemo(() => {
+    const freeText = new Map<string, Set<string>>();
+    for (const [versionId, schema] of Object.entries(schemas)) {
+      const typed = schema as { steps?: { fields: { id: string; type: string }[] }[] };
+      if (typed?.steps) freeText.set(versionId, freeTextFieldIds({ steps: typed.steps }));
+    }
+    return new Set(
+      items
+        .filter((i) => hasQuestionFor(i.answers, freeText.get(i.formVersionId)))
+        .map((i) => i.submissionId),
+    );
+  }, [items, schemas]);
+
+  const hasQuestion = (item: QueueItem) => asked.has(item.submissionId);
 
   const counts = {
     RED: items.filter((i) => i.outcome === 'RED').length,
     AMBER: items.filter((i) => i.outcome === 'AMBER').length,
     GREEN: items.filter((i) => i.outcome === 'GREEN').length,
     QUESTION: items.filter(hasQuestion).length,
+    NONE: items.filter((i) => i.outcome === null).length,
   };
 
   /*
@@ -82,7 +117,13 @@ export function ReviewQueue({
   const shown =
     queue === 'ALL' ? items
       : queue === 'QUESTION' ? items.filter(hasQuestion)
-        : items.filter((i) => (i.outcome ?? 'AMBER') === queue);
+        : queue === 'NONE' ? items.filter((i) => i.outcome === null)
+          /*
+           * Exact, not `?? 'AMBER'`. Defaulting a missing outcome to amber made
+           * the AMBER button list every untriaged request while its own count
+           * said none — the button read "0 amber" and produced three rows.
+           */
+          : items.filter((i) => i.outcome === queue);
 
   return (
     <div className="page-shell mx-auto max-w-[calc(1080px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
@@ -126,6 +167,21 @@ export function ReviewQueue({
                 {counts[o]} {o.toLowerCase()}
               </button>
             ))}
+            {counts.NONE > 0 ? (
+              <button
+                type="button"
+                onClick={() => setQueue(queue === 'NONE' ? 'ALL' : 'NONE')}
+                aria-pressed={queue === 'NONE'}
+                className={cn(
+                  'tabular rounded-control border px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.05em] transition-colors',
+                  queue === 'NONE'
+                    ? 'border-ink bg-ink text-white'
+                    : 'border-line text-ink-soft hover:border-brand-300',
+                )}
+              >
+                {counts.NONE} untriaged
+              </button>
+            ) : null}
             {counts.QUESTION > 0 ? (
               <button
                 type="button"
@@ -200,50 +256,189 @@ export function ReviewQueue({
       ) : (
         <Panel>
           {shown.map((item) => (
-            <button
+            <QueueRow
               key={item.submissionId}
-              type="button"
-              onClick={() => setOpenId(item.submissionId)}
-              className="flex w-full items-center gap-4 border-b border-line-soft px-4 py-3.5 text-left transition-colors last:border-b-0 hover:bg-sunk"
-            >
-              <span
-                className={cn(
-                  'w-[54px] shrink-0 rounded-[5px] px-2 py-1 text-center font-mono text-[10px] font-medium uppercase tracking-wide',
-                  OUTCOME_STYLES[item.outcome ?? 'AMBER'],
-                )}
-              >
-                {item.outcome ?? '—'}
-              </span>
-
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14.5px] font-semibold text-ink">
-                  {item.patientName ?? 'Unmatched patient'}
-                </span>
-                <span className="block truncate text-[12.5px] text-ink-faint">
-                  {item.serviceName}
-                  {item.submittedAt ? ` · ${formatDateTime(item.submittedAt)}` : ''}
-                </span>
-              </span>
-
-              <span className="hidden shrink-0 font-mono text-[11.5px] text-ink-faint sm:block">
-                {item.reference}
-              </span>
-
-              <span className="flex shrink-0 items-center gap-1.5 rounded-control border border-line px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft">
-                Why?
-                <ChevronRight size={13} strokeWidth={2.2} />
-              </span>
-            </button>
+              item={item}
+              onOpen={() => setOpenId(item.submissionId)}
+            />
           ))}
         </Panel>
       )}
 
-      {open ? <ReviewDrawer item={open} onClose={() => setOpenId(null)} /> : null}
+      {open ? (
+        <ReviewDrawer
+          item={open}
+          schema={(schemas[open.formVersionId] as FormSchema | undefined) ?? null}
+          onClose={() => setOpenId(null)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void }) {
+/**
+ * One request in the queue.
+ *
+ * The row used to carry the patient's name, the service, and a timestamp — none
+ * of which is the question being asked. The question is "is this routine?", and
+ * answering it meant opening every single request to look at four numbers that
+ * were already computed and sitting in the database.
+ *
+ * So the trend is on the row. The facts are uncoloured on purpose: the outcome
+ * chip is the judgement, and a second set of colours here would be a second
+ * opinion competing with the ruleset that produced it.
+ */
+function QueueRow({ item, onOpen }: { item: QueueItem; onOpen: () => void }) {
+  const facts = requestFacts({
+    derived: item.derived,
+    answers: item.answers,
+    previous: { medicine: item.previousMedicine, strength: item.previousStrength },
+  });
+
+  const line = [facts.dose, facts.weightChange, facts.timeOnDose].filter(Boolean);
+  const waited = waitingFor(item.submittedAt);
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full items-center gap-4 border-b border-line-soft px-4 py-3.5 text-left transition-colors last:border-b-0 hover:bg-sunk"
+    >
+      <span
+        className={cn(
+          'w-[54px] shrink-0 rounded-[5px] px-2 py-1 text-center font-mono text-[10px] font-medium uppercase tracking-wide',
+          item.outcome ? OUTCOME_STYLES[item.outcome] : UNTRIAGED_STYLE,
+        )}
+      >
+        {item.outcome ?? 'none'}
+      </span>
+
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[14.5px] font-semibold text-ink">
+          {item.patientName ?? 'Unmatched patient'}
+        </span>
+
+        {/*
+          The clinical line, where there is one. A first consultation carries no
+          dose history and simply shows the service, as it always did.
+        */}
+        {line.length > 0 ? (
+          <span className="block truncate text-[12.5px] text-ink-soft">
+            {line.join(' · ')}
+          </span>
+        ) : null}
+
+        <span className="block truncate text-[12px] text-ink-faint">
+          {item.serviceName}
+          {waited ? ` · ${waited}` : ''}
+        </span>
+      </span>
+
+      <span className="hidden shrink-0 font-mono text-[11.5px] text-ink-faint sm:block">
+        {item.reference}
+      </span>
+
+      <span className="flex shrink-0 items-center gap-1.5 rounded-control border border-line px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft">
+        Why?
+        <ChevronRight size={13} strokeWidth={2.2} />
+      </span>
+    </button>
+  );
+}
+
+/**
+ * The questionnaire, as answered, rendered against the version it was given on.
+ *
+ * Collapsed by default: the trace is what a pharmacist reads first on a triaged
+ * request, and an open form pushes it off the screen. Open by default when
+ * nothing triaged it, because then there is no trace to read and the answers
+ * are the whole of the evidence.
+ */
+function AnswersSection({
+  schema, answers, defaultOpen,
+}: {
+  schema: FormSchema;
+  answers: Answers;
+  defaultOpen: boolean;
+}) {
+  const steps = visibleSteps(schema, answers);
+  const [open, setOpen] = useState(defaultOpen);
+
+  /*
+   * Unanswered questions are dropped rather than listed as dashes. A patient
+   * who skipped an optional question has told us nothing, and a column of "—"
+   * makes the answers they DID give harder to find.
+   *
+   * `empty: ''` rather than the default dash, so "no answer" is testable as a
+   * falsy string instead of matching on punctuation.
+   */
+  const answered = steps
+    .map((step) => ({
+      step,
+      fields: visibleFieldsForStep(step, answers)
+        .map((field) => ({
+          field,
+          value: presentAnswer(field, answers[field.id], answers, { empty: '' }),
+        }))
+        .filter((entry) => entry.value !== ''),
+    }))
+    .filter((group) => group.fields.length > 0);
+
+  if (answered.length === 0) return null;
+
+  return (
+    <Section title="What they told us">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="mb-2 flex items-center gap-1.5 text-[12.5px] font-medium text-brand-600 transition-colors hover:text-brand-700"
+      >
+        {open ? <ChevronDown size={13} strokeWidth={2.2} /> : <ChevronRight size={13} strokeWidth={2.2} />}
+        {open ? 'Hide the answers' : `Show all ${answered.reduce((n, g) => n + g.fields.length, 0)} answers`}
+      </button>
+
+      {open ? (
+        <div className="flex flex-col gap-3.5">
+          {answered.map(({ step, fields }) => (
+            <div key={step.id}>
+              <p className="m-0 mb-1.5 font-mono text-[10px] uppercase tracking-[0.07em] text-ink-faint">
+                {step.title}
+              </p>
+              <dl className="m-0 flex flex-col gap-1.5">
+                {fields.map(({ field, value }) => (
+                  <div
+                    key={field.id}
+                    className="flex gap-3 border-b border-line-soft pb-1.5 last:border-b-0"
+                  >
+                    <dt className="min-w-0 flex-1 text-[12.5px] leading-snug text-ink-soft">
+                      {field.label}
+                    </dt>
+                    <dd className="m-0 max-w-[45%] shrink-0 break-words text-right text-[12.5px] font-medium leading-snug text-ink">
+                      {/*
+                        A picture is described, not drawn. The drawer is a
+                        decision surface a few hundred pixels wide, and the
+                        printed record is where the image belongs.
+                      */}
+                      {isImageAnswer(field, answers[field.id]) ? 'Provided' : value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </Section>
+  );
+}
+
+function ReviewDrawer({
+  item, schema, onClose,
+}: {
+  item: QueueItem;
+  schema: FormSchema | null;
+  onClose: () => void;
+}) {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState<ReviewAction | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -286,10 +481,10 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
           <span
             className={cn(
               'mt-0.5 shrink-0 rounded-[5px] px-2 py-1 font-mono text-[10px] font-medium uppercase tracking-wide',
-              OUTCOME_STYLES[item.outcome ?? 'AMBER'],
+              item.outcome ? OUTCOME_STYLES[item.outcome] : UNTRIAGED_STYLE,
             )}
           >
-            {item.outcome ?? '—'}
+            {item.outcome ?? 'none'}
           </span>
           <div className="min-w-0 flex-1">
             <h2 className="truncate font-display text-[18px] font-semibold text-ink">
@@ -310,6 +505,24 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          {/*
+            No evaluation at all. Distinct from "the rules ran and found
+            nothing": this service has no published ruleset, so the pharmacist
+            reading the answers IS the check. Saying so is the difference
+            between a considered decision and an assumed one.
+          */}
+          {item.outcome === null ? (
+            <div className="mb-5 rounded-control border border-review-200 bg-review-50 px-3.5 py-3">
+              <p className="m-0 text-[13px] font-semibold text-review-900">
+                Nothing has triaged this request
+              </p>
+              <p className="m-0 mt-1 text-[12.5px] leading-relaxed text-review-900">
+                {item.serviceName} has no published rules, so no safety checks ran on these
+                answers. Read them yourself before deciding.
+              </p>
+            </div>
+          ) : null}
+
           {/* Derived values — what the engine actually decided on */}
           <Section title="What the engine used">
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-3">
@@ -326,7 +539,15 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
             </dl>
           </Section>
 
-          {/* The trace */}
+          {/*
+            The trace, only where there was one. With no evaluation these
+            sections read "Rules that fired (0) — no rule matched, this fell
+            through to the default outcome", which is not merely empty: it
+            describes a ruleset running and finding nothing, when in fact
+            nothing ran.
+          */}
+          {item.outcome !== null ? (
+          <>
           <Section title={`Rules that fired (${fired.length})`}>
             {fired.length === 0 ? (
               <p className="text-[13.5px] text-ink-faint">
@@ -391,6 +612,29 @@ function ReviewDrawer({ item, onClose }: { item: QueueItem; onClose: () => void 
               {considered.map((t) => t.label).join(' · ') || 'None.'}
             </p>
           </Section>
+          </>
+          ) : null}
+
+          {/*
+            What the patient actually said.
+            ────────────────────────────────
+            The drawer showed the derived numbers and the rule trace but never
+            the answers, so a pharmacist could not sanity-check "no side
+            effects" without leaving the screen to find the form. On an
+            untriaged request it is worse than an omission: with no rules
+            behind it, reading the answers IS the review.
+
+            Read-only. Correcting an answer is an amendment with a reason
+            against it, and that belongs on the consultation record where it is
+            audited — not next to an approve button.
+          */}
+          {schema ? (
+            <AnswersSection
+              schema={schema}
+              answers={item.answers as Answers}
+              defaultOpen={item.outcome === null}
+            />
+          ) : null}
 
           {item.advice.length > 0 ? (
             <Section title="Advice for the patient">

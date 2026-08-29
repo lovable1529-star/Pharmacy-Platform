@@ -8,7 +8,7 @@
 import { redirect } from 'next/navigation';
 import { getActorOrNull } from '@/lib/auth/actor';
 import { can } from '@/lib/tenancy/scope';
-import { getReviewQueue, getUrgentTasks } from '@/lib/queries/reviews';
+import { getReviewQueue, getUrgentTasks, getQueueSchemas } from '@/lib/queries/reviews';
 import { ReviewQueue } from './queue-client';
 
 export const dynamic = 'force-dynamic';
@@ -35,5 +35,15 @@ export default async function RepeatCarePage() {
     getUrgentTasks(actor.organisationId),
   ]);
 
-  return <ReviewQueue items={items} urgent={urgent} />;
+  /*
+   * The questionnaires behind the queue, so the drawer can label the answers.
+   * One read for every distinct form version — usually one or two — rather than
+   * a schema carried on every row.
+   */
+  const schemas = await getQueueSchemas(
+    actor.organisationId,
+    items.map((i) => i.formVersionId),
+  );
+
+  return <ReviewQueue items={items} urgent={urgent} schemas={schemas} />;
 }
