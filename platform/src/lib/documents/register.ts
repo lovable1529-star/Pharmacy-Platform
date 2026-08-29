@@ -20,21 +20,9 @@ import { and, count, desc, eq } from 'drizzle-orm';
 import type { Tx } from '@/lib/actions';
 import { db } from '@/lib/db/client';
 import { document, patient } from '@/lib/db/schema';
+import type { DocumentCategory } from './categories';
 
-export type DocumentCategory =
-  | 'CONSULTATION_RECORD' | 'PRESCRIPTION' | 'APPROVAL_RECORD'
-  | 'REJECTION_RECORD' | 'PATIENT_EVIDENCE' | 'TREATMENT_REVIEW'
-  | 'VACCINATION_RECORD';
-
-export const CATEGORY_LABELS: Record<DocumentCategory, string> = {
-  CONSULTATION_RECORD: 'Consultation record',
-  PRESCRIPTION: 'Prescription',
-  APPROVAL_RECORD: 'Approval record',
-  REJECTION_RECORD: 'Rejection record',
-  PATIENT_EVIDENCE: 'Patient evidence',
-  TREATMENT_REVIEW: 'Treatment review',
-  VACCINATION_RECORD: 'Vaccination record',
-};
+export type { DocumentCategory } from './categories';
 
 export interface RegisterInput {
   organisationId: string;

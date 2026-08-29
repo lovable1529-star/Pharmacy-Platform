@@ -8,15 +8,13 @@
  */
 
 import { getStaffContext } from '@/lib/auth/context';
-import { listDocuments, documentCounts, type DocumentCategory } from '@/lib/documents/register';
+import { listDocuments, documentCounts } from '@/lib/documents/register';
+import { DOCUMENT_CATEGORIES, type DocumentCategory } from '@/lib/documents/categories';
 import { DocumentsView } from './documents-view';
 
 export const dynamic = 'force-dynamic';
 
-const CATEGORIES = new Set<DocumentCategory>([
-  'CONSULTATION_RECORD', 'PRESCRIPTION', 'APPROVAL_RECORD',
-  'REJECTION_RECORD', 'PATIENT_EVIDENCE', 'TREATMENT_REVIEW', 'VACCINATION_RECORD',
-]);
+const CATEGORIES = new Set<DocumentCategory>(DOCUMENT_CATEGORIES);
 
 export default async function DocumentsPage({
   searchParams,

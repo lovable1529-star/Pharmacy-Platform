@@ -16,7 +16,7 @@ import { FileText, Search, ExternalLink } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { EmptyState, PageHeader, Panel, Tag } from '@/components/ui/primitives';
 import { formatDate, formatDateTime } from '@/lib/units';
-import { CATEGORY_LABELS, type DocumentCategory } from '@/lib/documents/register';
+import { CATEGORY_LABELS, DOCUMENT_CATEGORIES, type DocumentCategory } from '@/lib/documents/categories';
 
 interface Row {
   id: string;
@@ -97,7 +97,7 @@ export function DocumentsView({
         >
           {total} all
         </button>
-        {(Object.keys(CATEGORY_LABELS) as DocumentCategory[])
+        {DOCUMENT_CATEGORIES
           .filter((key) => (counts[key] ?? 0) > 0)
           .map((key) => (
             <button
