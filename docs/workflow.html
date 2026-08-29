@@ -1,0 +1,561 @@
+<title>Karsons Platform Workflow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Schibsted+Grotesk:wght@500;600;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+
+<style>
+  /* ── Tokens ──────────────────────────────────────────────────────
+     Cool neutrals with the product's own purple. The triage colours
+     keep their clinical meaning and are used for nothing else. */
+  :root {
+    --ink:       #16181C;
+    --ink-soft:  #3E434D;
+    --ink-faint: #6E7581;
+    --paper:     #F6F7F8;
+    --surface:   #FFFFFF;
+    --sunk:      #ECEEF1;
+    --line:      #E0E3E8;
+    --line-soft: #EDEFF2;
+    --brand:     #6B4FBB;
+    --brand-dim: #F0ECFA;
+    --go:        #2E7D52;
+    --go-dim:    #E6F2EA;
+    --warn:      #A96A08;
+    --warn-dim:  #FAF0DC;
+    --stop:      #B3261E;
+    --stop-dim:  #FBE9E7;
+    --code-bg:   #14161B;
+    --code-ink:  #DDE2EA;
+    --sh-sm:     0 1px 2px rgba(22,24,28,.05);
+    --sh:        0 1px 2px rgba(22,24,28,.05), 0 12px 28px -16px rgba(22,24,28,.26);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ink:       #E9ECF1;
+      --ink-soft:  #AEB5C0;
+      --ink-faint: #7E8593;
+      --paper:     #0C0E12;
+      --surface:   #15181E;
+      --sunk:      #1E222A;
+      --line:      #2A2F38;
+      --line-soft: #222730;
+      --brand:     #B79EF2;
+      --brand-dim: #241E38;
+      --go:        #74D3A0;
+      --go-dim:    #14261C;
+      --warn:      #E8B063;
+      --warn-dim:  #2B2013;
+      --stop:      #F29A92;
+      --stop-dim:  #2E1817;
+      --code-bg:   #1E222A;
+      --code-ink:  #DDE2EA;
+      --sh-sm:     0 1px 2px rgba(0,0,0,.5);
+      --sh:        0 1px 2px rgba(0,0,0,.5), 0 12px 28px -16px rgba(0,0,0,.75);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ink:       #E9ECF1;
+    --ink-soft:  #AEB5C0;
+    --ink-faint: #7E8593;
+    --paper:     #0C0E12;
+    --surface:   #15181E;
+    --sunk:      #1E222A;
+    --line:      #2A2F38;
+    --line-soft: #222730;
+    --brand:     #B79EF2;
+    --brand-dim: #241E38;
+    --go:        #74D3A0;
+    --go-dim:    #14261C;
+    --warn:      #E8B063;
+    --warn-dim:  #2B2013;
+    --stop:      #F29A92;
+    --stop-dim:  #2E1817;
+    --code-bg:   #1E222A;
+    --code-ink:  #DDE2EA;
+    --sh-sm:     0 1px 2px rgba(0,0,0,.5);
+    --sh:        0 1px 2px rgba(0,0,0,.5), 0 12px 28px -16px rgba(0,0,0,.75);
+  }
+
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Source Serif 4", ui-serif, Georgia, serif;
+    font-size: 17px; line-height: 1.68;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page { max-width: 1000px; margin: 0 auto; padding: 0 30px 96px; }
+  .col { max-width: 66ch; }
+
+  header.mast { padding: 68px 0 34px; border-bottom: 1px solid var(--line); margin-bottom: 10px; }
+  .kick {
+    font-family: "IBM Plex Mono", monospace; font-size: 11px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--brand); margin: 0 0 16px;
+  }
+  h1 {
+    font-family: "Schibsted Grotesk", ui-sans-serif, sans-serif; font-weight: 700;
+    font-size: clamp(34px, 5.4vw, 56px); line-height: 1.04;
+    letter-spacing: -.03em; text-wrap: balance; margin: 0 0 18px;
+  }
+  .stand { font-size: 19px; color: var(--ink-soft); max-width: 58ch; margin: 0; }
+
+  section { padding: 46px 0; border-top: 1px solid var(--line); }
+  section:first-of-type { border-top: 0; }
+  .secn {
+    font-family: "IBM Plex Mono", monospace; font-size: 10.5px; font-weight: 600;
+    letter-spacing: .14em; text-transform: uppercase; color: var(--ink-faint); margin: 0 0 12px;
+  }
+  h2 {
+    font-family: "Schibsted Grotesk", sans-serif; font-weight: 600;
+    font-size: clamp(25px, 3.4vw, 34px); line-height: 1.14;
+    letter-spacing: -.022em; text-wrap: balance; margin: 0 0 18px;
+  }
+  h3 {
+    font-family: "Schibsted Grotesk", sans-serif; font-weight: 600;
+    font-size: 17.5px; letter-spacing: -.01em; margin: 32px 0 10px;
+  }
+  p { margin: 0 0 16px; }
+  .col ul, .col ol { margin: 0 0 16px; padding-left: 22px; }
+  li { margin-bottom: 7px; }
+
+  code {
+    font-family: "IBM Plex Mono", monospace; font-size: .82em;
+    background: var(--sunk); border: 1px solid var(--line-soft);
+    border-radius: 4px; padding: 1px 5px;
+  }
+  pre {
+    background: var(--code-bg); color: var(--code-ink); border-radius: 9px;
+    padding: 15px 17px; overflow-x: auto; margin: 0 0 18px;
+    font-family: "IBM Plex Mono", monospace; font-size: 12.5px; line-height: 1.62;
+    box-shadow: var(--sh);
+  }
+  pre .c { color: #858D9C; }
+
+  .note {
+    border: 1px solid var(--line); border-left: 3px solid var(--brand);
+    background: var(--surface); border-radius: 9px; padding: 15px 18px;
+    margin: 0 0 20px; max-width: 68ch;
+  }
+  .note p:last-child { margin-bottom: 0; }
+  .note .tag {
+    display: block; font-family: "IBM Plex Mono", monospace; font-size: 10px;
+    font-weight: 600; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--brand); margin-bottom: 6px;
+  }
+  .note.stop { border-left-color: var(--stop); background: var(--stop-dim); }
+  .note.stop .tag { color: var(--stop); }
+  .note.warn { border-left-color: var(--warn); background: var(--warn-dim); }
+  .note.warn .tag { color: var(--warn); }
+  .note.go   { border-left-color: var(--go); background: var(--go-dim); }
+  .note.go .tag { color: var(--go); }
+
+  /* ── Journey steps ─────────────────────────────────────────────── */
+  .journey { counter-reset: st; list-style: none; margin: 26px 0 0; padding: 0; display: grid; gap: 10px; }
+  .journey > li {
+    counter-increment: st; margin: 0;
+    display: grid; grid-template-columns: 34px minmax(0, 1fr);
+    column-gap: 14px; row-gap: 4px;
+    background: var(--surface); border: 1px solid var(--line);
+    border-radius: 10px; padding: 15px 18px; box-shadow: var(--sh-sm);
+  }
+  .journey > li::before {
+    content: counter(st, decimal-leading-zero);
+    grid-column: 1; grid-row: 1;
+    font-family: "IBM Plex Mono", monospace; font-size: 12px;
+    font-weight: 600; color: var(--brand); padding-top: 4px;
+  }
+  .journey b {
+    grid-column: 2; grid-row: 1;
+    font-family: "Schibsted Grotesk", sans-serif;
+    font-weight: 600; font-size: 16px;
+  }
+  .journey span {
+    grid-column: 2; grid-row: 2;
+    font-size: 15.5px; color: var(--ink-soft); line-height: 1.55;
+  }
+  .journey .where {
+    grid-column: 2; grid-row: 3;
+    font-family: "IBM Plex Mono", monospace; font-size: 11.5px;
+    color: var(--ink-faint); margin-top: 4px;
+  }
+  .who {
+    display: inline-block; font-family: "IBM Plex Mono", monospace;
+    font-size: 9.5px; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; padding: 2px 7px; border-radius: 999px;
+    margin-left: 8px; vertical-align: 2px;
+  }
+  .who.patient { background: var(--sunk); color: var(--ink-faint); }
+  .who.staff   { background: var(--brand-dim); color: var(--brand); }
+  .who.system  { background: var(--go-dim); color: var(--go); }
+
+  .tw {
+    overflow-x: auto; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--surface); margin: 22px 0 26px; box-shadow: var(--sh-sm);
+  }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; font-weight: 600;
+    letter-spacing: .09em; text-transform: uppercase; color: var(--ink-faint);
+    background: var(--sunk); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: 0; }
+  td code { white-space: nowrap; }
+
+  figure {
+    margin: 26px 0 30px; padding: 22px 18px 15px; background: var(--surface);
+    border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--sh);
+  }
+  .fs { overflow-x: auto; }
+  figure svg { display: block; width: 100%; height: auto; }
+  figcaption {
+    margin-top: 13px; padding-top: 11px; border-top: 1px solid var(--line-soft);
+    font-size: 13.5px; color: var(--ink-faint); line-height: 1.5;
+  }
+  .st { font-family: "Schibsted Grotesk", sans-serif; font-size: 12.5px; font-weight: 600; fill: var(--ink); }
+  .ss { font-family: "Schibsted Grotesk", sans-serif; font-size: 11px; fill: var(--ink-faint); }
+  .sm { font-family: "IBM Plex Mono", monospace; font-size: 9.5px; font-weight: 500; fill: var(--ink-faint); letter-spacing: .06em; }
+
+  footer { border-top: 1px solid var(--line); padding-top: 22px; margin-top: 40px; font-size: 14px; color: var(--ink-faint); }
+
+  @media (max-width: 640px) { .page { padding: 0 18px 72px; } header.mast { padding-top: 44px; } }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="page">
+
+  <header class="mast">
+    <p class="kick">Karsons Pharmacy Platform · Operating workflow</p>
+    <h1>How the system works now</h1>
+    <p class="stand">
+      The two clinical journeys end to end, what happens at each step and where,
+      and the six scripts to run before any of it is live.
+    </p>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section>
+    <p class="secn">The idea</p>
+    <h2>One patient lifecycle, two clinical routes</h2>
+
+    <div class="col">
+      <p>The rebuild turns on a single principle from the specification: one
+      connected patient lifecycle rather than a collection of independent forms.
+      Everything hangs off that spine, and the two services differ only in the
+      middle of it.</p>
+    </div>
+
+    <figure>
+      <div class="fs">
+        <svg viewBox="0 0 940 236" role="img" aria-label="The shared spine: patient, appointment, assessment, review, decision, record — with status history, audit and notifications running across every stage.">
+          <defs>
+            <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto">
+              <path d="M0,0 L10,5 L0,10 z" fill="var(--ink-faint)"></path>
+            </marker>
+          </defs>
+
+          <text class="sm" x="8" y="18">SHARED BY BOTH SERVICES</text>
+
+          <g>
+            <rect x="8"   y="30" width="128" height="52" rx="9" fill="var(--brand-dim)" stroke="var(--brand)" stroke-width="1.5"></rect>
+            <text class="st" x="72"  y="52" text-anchor="middle">Patient</text>
+            <text class="ss" x="72"  y="69" text-anchor="middle">one record, always</text>
+
+            <rect x="152" y="30" width="128" height="52" rx="9" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="st" x="216" y="52" text-anchor="middle">Questionnaire</text>
+            <text class="ss" x="216" y="69" text-anchor="middle">versioned, per service</text>
+
+            <rect x="296" y="30" width="128" height="52" rx="9" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="st" x="360" y="52" text-anchor="middle">Pharmacist</text>
+            <text class="ss" x="360" y="69" text-anchor="middle">reviews and decides</text>
+
+            <rect x="440" y="30" width="128" height="52" rx="9" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="st" x="504" y="52" text-anchor="middle">Supply</text>
+            <text class="ss" x="504" y="69" text-anchor="middle">medicine or vaccine</text>
+
+            <rect x="584" y="30" width="128" height="52" rx="9" fill="var(--surface)" stroke="var(--line)" stroke-width="1.5"></rect>
+            <text class="st" x="648" y="52" text-anchor="middle">Record</text>
+            <text class="ss" x="648" y="69" text-anchor="middle">locked, registered</text>
+
+            <rect x="728" y="30" width="204" height="52" rx="9" fill="var(--go-dim)" stroke="var(--go)" stroke-width="1.5"></rect>
+            <text class="st" x="830" y="52" text-anchor="middle" fill="var(--go)">GP told, stock adjusted</text>
+            <text class="ss" x="830" y="69" text-anchor="middle" fill="var(--go)">every time, automatically</text>
+          </g>
+
+          <g stroke="var(--ink-faint)" stroke-width="1.4" fill="none" marker-end="url(#a)">
+            <path d="M140 56 H146"></path>
+            <path d="M284 56 H290"></path>
+            <path d="M428 56 H434"></path>
+            <path d="M572 56 H578"></path>
+            <path d="M716 56 H722"></path>
+          </g>
+
+          <g>
+            <rect x="8" y="104" width="924" height="28" rx="7" fill="var(--sunk)"></rect>
+            <text class="sm" x="24" y="122">STATUS HISTORY</text>
+            <text class="ss" x="150" y="122">every move, who made it, why — never overwritten</text>
+
+            <rect x="8" y="138" width="924" height="28" rx="7" fill="var(--sunk)"></rect>
+            <text class="sm" x="24" y="156">AUDIT LOG</text>
+            <text class="ss" x="150" y="156">hash-chained, append-only, verified nightly</text>
+
+            <rect x="8" y="172" width="924" height="28" rx="7" fill="var(--sunk)"></rect>
+            <text class="sm" x="24" y="190">DOCUMENTS</text>
+            <text class="ss" x="150" y="190">every record produced, filed against the patient</text>
+          </g>
+
+          <text class="ss" x="8" y="224">Only the middle two boxes differ between weight management and vaccination.</text>
+        </svg>
+      </div>
+      <figcaption>
+        The three bands are not features added at the end — they span every
+        stage, which is why they were built before any screen was.
+      </figcaption>
+    </figure>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section>
+    <p class="secn">Journey one</p>
+    <h2>GLP-1 repeat care</h2>
+
+    <div class="col">
+      <p>From a pharmacist authorising somebody onto repeat care, to the
+      medicine leaving the counter.</p>
+    </div>
+
+    <ol class="journey">
+      <li>
+        <b>Authorise the patient<span class="who staff">Staff</span></b>
+        <span>After an initial consultation and a first follow-up, a pharmacist enrols them. Patients cannot enrol themselves — the gate exists so a repeat request is never the first time anyone has looked at someone.</span>
+        <span class="where">/patients/[id]</span>
+      </li>
+      <li>
+        <b>Patient starts a request<span class="who patient">Patient</span></b>
+        <span>Repeat Care ID and the email we hold. Both must match an active enrolment. No account, no password. Every failure gives the same message and a booking link — telling somebody which half they got right would turn the gate into a tool for finding valid IDs.</span>
+        <span class="where">/repeat/weight-management-repeat</span>
+      </li>
+      <li>
+        <b>The questionnaire, tailored to them<span class="who patient">Patient</span></b>
+        <span>The dose dropdown offers their current strength or one step either way — nothing else is selectable. A read-only recommendation appears before they choose, so they are deciding against advice rather than in a vacuum. Answers save as they type.</span>
+        <span class="where">/f/weight-management-repeat</span>
+      </li>
+      <li>
+        <b>Triage, the moment they submit<span class="who system">System</span></b>
+        <span>Every rule is evaluated against their answers and their previous supply. Consent is snapshotted with the exact wording shown. A missing answer never quietly satisfies a safety rule.</span>
+        <span class="where">GREEN → approved · AMBER → queue · RED → urgent</span>
+      </li>
+      <li>
+        <b>Pharmacist decides<span class="who staff">Staff</span></b>
+        <span>Separate queues for red, amber, green and “asked a question”. Reds also raise an urgent task in its own list, because “look at this today” and “ring this patient now” are different jobs. <em>Why?</em> shows every rule considered and the answer it read.</span>
+        <span class="where">/repeat-care</span>
+      </li>
+      <li>
+        <b>Approval raises a prescription<span class="who system">System</span></b>
+        <span>Raised, not issued: no number and no document until the payment condition is met. Allocating a number for a request never paid for would leave a gap in the sequence that reads later like a missing prescription.</span>
+        <span class="where">status: awaiting payment</span>
+      </li>
+      <li>
+        <b>Payment<span class="who patient">Patient</span></b>
+        <span>Online, or on collection. Settling issues the prescription, allocates its per-branch number, and queues a “ready to collect” message in wording the pharmacy controls.</span>
+        <span class="where">/pay/[token]</span>
+      </li>
+      <li>
+        <b>Dispense<span class="who staff">Staff</span></b>
+        <span>The dispensing pharmacist signs off. If the patient asked a question, it is shown on the row <em>and</em> again in the dialog, and sign-off is blocked until they confirm they raised it.</span>
+        <span class="where">/prescriptions</span>
+      </li>
+      <li>
+        <b>Collection<span class="who staff">Staff</span></b>
+        <span>Whoever collects prints their name and it is recorded — noting whether that was the patient or somebody else. Collection cannot be recorded before dispensing.</span>
+        <span class="where">/prescriptions</span>
+      </li>
+    </ol>
+
+    <div class="note">
+      <span class="tag">If they come in instead</span>
+      <p>A repeat care patient who sees the pharmacist before supply is handled
+      at <code>/repeat-care/new</code>. It opens the patient’s own
+      questionnaire, so the triage rules, dose limits and consent wording are
+      identical — and the repeat care history gets its supply entry either way.
+      Without that, the next request would measure weight loss against a supply
+      that was never recorded.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section>
+    <p class="secn">Journey two</p>
+    <h2>Vaccination</h2>
+
+    <div class="col">
+      <p>Built as a general vaccination engine rather than a flu one — COVID,
+      shingles, hepatitis and the rest run through the same machinery. Adding
+      one is configuration, not development.</p>
+    </div>
+
+    <ol class="journey">
+      <li>
+        <b>Book, or walk in<span class="who patient">Patient</span></b>
+        <span>Online, by QR code, or at the counter. Slots respect opening hours, lunch breaks and closed days, so nobody can book a time the pharmacy is shut.</span>
+        <span class="where">/book · /appointments/new</span>
+      </li>
+      <li>
+        <b>Fill in the questionnaire<span class="who patient">Patient</span></b>
+        <span>Before arriving, or on a tablet in the shop. Pregnancy and breastfeeding appear only where they apply. Fever in the last 24 hours is deliberately not asked in advance — it is a question about the day itself.</span>
+        <span class="where">/f/flu-vaccination</span>
+      </li>
+      <li>
+        <b>Find them<span class="who staff">Staff</span></b>
+        <span>The pharmacist starts by searching a name or date of birth, not by navigating a table. Already-vaccinated patients stay in the results, because “did she have hers?” is a question this screen has to answer.</span>
+        <span class="where">/vaccinations</span>
+      </li>
+      <li>
+        <b>Read the answers back<span class="who staff">Staff</span></b>
+        <span>Anything worth a second look is marked. Consent is checked from the record rather than assumed.</span>
+        <span class="where">/vaccinations/[id]</span>
+      </li>
+      <li>
+        <b>Record what was given<span class="who staff">Staff</span></b>
+        <span>Branch, pharmacist, vaccine and batch, site and route. Choosing a pharmacist fills in their registration number; choosing a batch fills in its expiry. Only in-date, un-recalled, in-stock batches are offered. Oral, nasal and topical routes hide the injection type entirely.</span>
+        <span class="where">/vaccinations/[id]</span>
+      </li>
+      <li>
+        <b>Confirm the declarations<span class="who staff">Staff</span></b>
+        <span>Four statements, each stored as its own timestamped confirmation with the wording as it stood. “Confirmed four things” and “ticked a box” are different claims.</span>
+        <span class="where">/vaccinations/[id]</span>
+      </li>
+      <li>
+        <b>Complete<span class="who system">System</span></b>
+        <span>One transaction: the record with its snapshots, the declarations, the stock coming out of that branch, the GP notification queued, the document filed, the questionnaire locked as clinical history. None of those is true without the others.</span>
+        <span class="where">stock decremented · GP queued</span>
+      </li>
+    </ol>
+
+    <div class="note go">
+      <span class="tag">Every evening</span>
+      <p>At 9pm each GP surgery receives one email listing that day’s patients
+      together, rather than twenty separate messages. Anything that cannot be
+      routed — a patient with no surgery recorded — is set aside and shown to
+      you rather than dropped.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section>
+    <p class="secn">Everything else</p>
+    <h2>The rest of the day</h2>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>Where</th><th>What it is for</th></tr></thead>
+        <tbody>
+          <tr><td><code>/</code></td><td>Today — who is booked, who has arrived, what is waiting.</td></tr>
+          <tr><td><code>/appointments/calendar</code></td><td>Month, week and day. Status shown by a coloured bar, not colour alone.</td></tr>
+          <tr><td><code>/patients</code></td><td>The record: details, allergies, history, every consultation as it stood on the day.</td></tr>
+          <tr><td><code>/prescriptions</code></td><td>Grouped by what is waiting on you — payment, dispensing, collection.</td></tr>
+          <tr><td><code>/documents</code></td><td>Everything the system has produced, by category and by patient.</td></tr>
+          <tr><td><code>/inventory</code></td><td>Stock in, out, adjustments, returns, expiries and damage. The count is always explained by a movement.</td></tr>
+          <tr><td><code>/reports</code></td><td>Ten reports, counted by the database over any date range.</td></tr>
+          <tr><td><code>/services</code></td><td>Your questionnaires. Editing publishes a new version and leaves answered forms untouched.</td></tr>
+          <tr><td><code>/compliance</code></td><td>Who did what, when. Append-only, checked nightly.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section>
+    <p class="secn">Before it is live</p>
+    <h2>The six scripts, in order</h2>
+
+    <div class="col">
+      <p>Run them in the Supabase SQL editor, or with <code>psql</code>. Order
+      matters — 18 and 19 reference tables that 17 creates. Each ends with a
+      verification query that should come back with counts rather than zeros.</p>
+    </div>
+
+    <pre><span class="c">-- 1. The corrected flu questionnaire. RUN ONCE ONLY.</span>
+platform/supabase/15_flu_form_v4.sql
+
+<span class="c">-- 2. Status history and the two states the state machine needed</span>
+platform/supabase/16_status_history.sql
+
+<span class="c">-- 3. Medicine master, GP master, breaks and closures</span>
+platform/supabase/17_masters.sql
+
+<span class="c">-- 4. Vaccination records and pharmacist declarations</span>
+platform/supabase/18_vaccination.sql
+
+<span class="c">-- 5. Prescriptions, sign-offs, documents, consent, GP log</span>
+platform/supabase/19_prescription_documents.sql
+
+<span class="c">-- 6. Inventory transaction types and message templates</span>
+platform/supabase/20_inventory_notifications.sql</pre>
+
+    <div class="note stop">
+      <span class="tag">One of them is not repeatable</span>
+      <p><code>15_flu_form_v4.sql</code> publishes a new version of the flu
+      questionnaire. Running it twice publishes two. The other five are safe to
+      re-run.</p>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">Then, before anyone uses it</span>
+      <p>Push, and set <code>NEXT_PUBLIC_APP_URL</code> in Vercel if it is still
+      unset — <strong>and redeploy</strong>, because Next inlines it at build
+      time. Without it every booking, payment and invitation link points at
+      localhost, and nothing errors to tell you.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <section>
+    <p class="secn">Deliberately off</p>
+    <h2>What is not switched on</h2>
+
+    <div class="tw">
+      <table>
+        <thead><tr><th>Thing</th><th>State, and why</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Real payments</td>
+            <td>The workflow, conditions and statuses are built and work. No money moves and no card details are handled — the gateway waits on the NMS and GPhC position.</td>
+          </tr>
+          <tr>
+            <td>The four nightly jobs</td>
+            <td>Scheduled in <code>vercel.json</code> and guarded by <code>CRON_SECRET</code>, which fails closed. With no secret set they return 401 and do nothing — correct, since those endpoints are reachable from the public internet.</td>
+          </tr>
+          <tr>
+            <td>Email and SMS delivery</td>
+            <td>Queued and logged rather than sent. Email needs SPF, DKIM and DMARC aligned before <code>@gov.im</code> addresses will accept anything.</td>
+          </tr>
+          <tr>
+            <td>Patient accounts</td>
+            <td>Not built, by your decision. Forms stay anonymous, gated by token or ID and email.</td>
+          </tr>
+          <tr>
+            <td>Automatic flu eligibility rules</td>
+            <td>None invented. The specification is explicit that no eligibility logic should exist beyond what the pharmacy approves, so a pharmacist judges suitability against the PGD.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note warn">
+      <span class="tag">Still worth an hour</span>
+      <p>The database is in Seoul. Every page makes about seven round trips to
+      it, which is most of what a page costs. Moving the project to a London
+      region takes a typical screen from roughly two seconds to about three
+      hundred milliseconds, and is the right home for Isle of Man patient data
+      regardless.</p>
+    </div>
+  </section>
+
+  <footer>
+    Karsons Pharmacy Platform · operating workflow · 30 August 2026 ·
+    Built against the clinical platform specification. Final eligibility rules,
+    PGDs and mandatory-field decisions need confirming by the pharmacy’s
+    clinical lead before production use.
+  </footer>
+
+</div>
