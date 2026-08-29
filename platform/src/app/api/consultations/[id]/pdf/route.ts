@@ -36,13 +36,44 @@ export async function GET(
   }
 
   const { id } = await params;
-  const data = await buildPrescriptionData(actor.organisationId, id);
+
+  /*
+   * Two stages, reported separately.
+   *
+   * Without this the route threw straight into the platform and the browser got
+   * a bare 500 with nothing on it. Diagnosing the last one meant pulling Vercel
+   * runtime logs to find a MODULE_NOT_FOUND for a pdfkit font that file tracing
+   * had never included — a one-line cause that took a log dive to see.
+   *
+   * The stage matters because the two fail for completely different reasons:
+   * `build` is data, `render` is the PDF engine and what it can reach on disk.
+   * Knowing which one it was is most of the diagnosis.
+   */
+  let data;
+  try {
+    data = await buildPrescriptionData(actor.organisationId, id);
+  } catch (error) {
+    console.error(`consultation pdf: building data failed for ${id}`, error);
+    return NextResponse.json(
+      { error: 'Could not assemble this consultation.', stage: 'build' },
+      { status: 500 },
+    );
+  }
 
   if (!data) {
     return NextResponse.json({ error: 'Consultation not found.' }, { status: 404 });
   }
 
-  const buffer = await renderToBuffer(PrescriptionDocument({ data }));
+  let buffer;
+  try {
+    buffer = await renderToBuffer(PrescriptionDocument({ data }));
+  } catch (error) {
+    console.error(`consultation pdf: rendering failed for ${id}`, error);
+    return NextResponse.json(
+      { error: 'Could not produce the PDF.', stage: 'render' },
+      { status: 500 },
+    );
+  }
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

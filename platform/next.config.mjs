@@ -13,15 +13,33 @@ const nextConfig = {
   serverExternalPackages: ['postgres', '@react-pdf/renderer'],
 
   /*
-   * Ship pdfkit's font metrics with the PDF route.
+   * Ship pdfkit's fonts with the PDF route.
    *
    * Marking the package external is not enough on its own: tracing follows
-   * `require` calls, and pdfkit builds these paths at runtime, so the tracer
-   * never sees them and the deployed function has no fonts to render with.
+   * `require` calls, and pdfkit resolves these at runtime, so the tracer never
+   * sees them and the deployed function has no fonts to render with.
    *
-   * The pattern is pinned to `pdfkit@*` rather than using `**`, and that
-   * matters. pnpm gives every dependent its own `node_modules/pdfkit`, and
-   * those are SYMLINKS back to the one real copy:
+   * ── Both directories, and the second one is the one that matters ────────
+   *
+   * pdfkit 0.20 carries its standard fonts twice:
+   *
+   *   js/data/*.afm            15 files, the legacy Adobe metrics
+   *   js/standard-fonts/*.cjs  29 files, real modules it require()s
+   *
+   * Only the first was listed here, so the deployed function had the metrics
+   * and not the fonts, and every render died on:
+   *
+   *   Cannot find module '…/pdfkit/js/standard-fonts/Helvetica.cjs'
+   *   MODULE_NOT_FOUND
+   *
+   * It passed locally because node_modules is still on disk there — the same
+   * reason the original .afm bug looked fixed. Both patterns are kept: the
+   * .afm files are what an embedded font falls back to.
+   *
+   * ── Why `pdfkit@*` and not `**` ─────────────────────────────────────────
+   *
+   * pnpm gives every dependent its own `node_modules/pdfkit`, and those are
+   * SYMLINKS back to the one real copy:
    *
    *   .pnpm/@react-pdf+font@4.1.1/node_modules/pdfkit          -> symlink
    *   .pnpm/@react-pdf+renderer@4.8.1_.../node_modules/pdfkit  -> symlink
@@ -34,6 +52,7 @@ const nextConfig = {
    */
   outputFileTracingIncludes: {
     '/api/consultations/[id]/pdf': [
+      './node_modules/.pnpm/pdfkit@*/node_modules/pdfkit/js/standard-fonts/*',
       './node_modules/.pnpm/pdfkit@*/node_modules/pdfkit/js/data/*.afm',
     ],
   },
