@@ -53,7 +53,7 @@
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  Search, LayoutDashboard, Users, Stethoscope, CalendarDays, RefreshCw, Syringe, Pill,
+  Search, LayoutDashboard, Users, Stethoscope, CalendarDays, RefreshCw, Syringe, Pill, FileText,
   Package, Sparkles, Send, BarChart3, ShieldCheck, Settings, ChevronsUpDown, UserCog,
   Check, Building2, Banknote, Bell, ChevronLeft, ChevronRight,
 } from 'lucide-react';
@@ -114,6 +114,7 @@ const NAV: NavGroup[] = [
       { href: '/services', label: 'Services', permission: 'services:view', icon: Sparkles },
       { href: '/prescriptions', label: 'Prescriptions', permission: 'consultations:view', icon: Pill },
       { href: '/payments', label: 'Payments', permission: 'reports:view', icon: Banknote },
+      { href: '/documents', label: 'Documents', permission: 'consultations:view', icon: FileText },
       { href: '/communications', label: 'Communications', permission: 'communications:view', icon: Send },
       { href: '/reports', label: 'Reports', permission: 'reports:view', icon: BarChart3 },
     ],

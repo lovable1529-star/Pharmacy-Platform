@@ -27,6 +27,7 @@ import {
 } from '@/lib/vaccination/administration';
 import { checkMovement } from '@/lib/inventory/movements';
 import { changeSubmissionStatus } from '@/lib/workflow/history';
+import { registerDocument } from '@/lib/documents/register';
 
 export interface RecordVaccinationInput {
   submissionId: string;
@@ -223,6 +224,26 @@ const record = action<RecordVaccinationInput>('consultations:add')
         status: 'QUEUED',
       });
     }
+
+    /*
+     * §10 — register it.
+     *
+     * The path is a route that regenerates the record from data that cannot
+     * change, not a stored file. Nothing is written to the bucket at this
+     * moment, and storing a snapshot now would just be a second copy to keep
+     * in step with the first.
+     */
+    await registerDocument(tx, {
+      organisationId: actor.organisationId,
+      category: 'VACCINATION_RECORD',
+      title: `${chosen.productName} — ${row.patientFirstName} ${row.patientLastName}`,
+      storagePath: `/vaccinations/${input.submissionId}`,
+      patientId: row.patientId,
+      submissionId: input.submissionId,
+      consultationId: row.consultationId ?? null,
+      mimeType: 'application/pdf',
+      createdBy: actor.userId,
+    });
 
     // ── The questionnaire is now clinical history ──────────
     await changeSubmissionStatus(tx, {

@@ -21,6 +21,7 @@ import { db } from '@/lib/db/client';
 import { requestPayment } from '@/lib/payments/lifecycle';
 import { changeSubmissionStatus } from '@/lib/workflow/history';
 import { raisePrescription } from '@/lib/prescriptions/issue';
+import { registerDocument } from '@/lib/documents/register';
 import { IllegalTransitionError } from '@/lib/workflow/status';
 
 export type ReviewAction = 'APPROVED' | 'REJECTED' | 'INFO_REQUESTED';
@@ -66,6 +67,42 @@ const decide = action<DecideInput>('repeat_care:edit')
       reason: input.note,
       branchId: input.branchId ?? null,
     });
+
+    /*
+     * §10 — an approval and a rejection are both records worth keeping.
+     *
+     * A rejection especially: the reason a supply was refused is the part
+     * somebody comes back to months later, and until now it existed only as a
+     * note on a review event nobody browses.
+     */
+    if (input.decision === 'APPROVED' || input.decision === 'REJECTED') {
+      const [subject] = await tx
+        .select({
+          patientId: submission.patientId,
+          firstName: patient.firstName,
+          lastName: patient.lastName,
+          serviceName: service.name,
+        })
+        .from(submission)
+        .innerJoin(service, eq(submission.serviceId, service.id))
+        .leftJoin(patient, eq(submission.patientId, patient.id))
+        .where(eq(submission.id, input.submissionId))
+        .limit(1);
+
+      const who = subject?.firstName && subject.lastName
+        ? `${subject.firstName} ${subject.lastName}`
+        : 'Unmatched patient';
+
+      await registerDocument(tx, {
+        organisationId: actor.organisationId,
+        category: input.decision === 'APPROVED' ? 'APPROVAL_RECORD' : 'REJECTION_RECORD',
+        title: `${subject?.serviceName ?? 'Repeat request'} — ${who}`,
+        storagePath: `/consultations/${input.submissionId}`,
+        patientId: subject?.patientId ?? null,
+        submissionId: input.submissionId,
+        createdBy: actor.userId,
+      });
+    }
 
     /*
      * Approval raises the prescription — §8.7.
