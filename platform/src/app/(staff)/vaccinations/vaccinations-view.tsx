@@ -15,7 +15,9 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Search, Syringe, CheckCircle2, UserPlus } from 'lucide-react';
+import {
+  Search, Syringe, CheckCircle2, UserPlus, UserCheck, PencilLine, CalendarClock, Ban,
+} from 'lucide-react';
 import { EmptyState, PageHeader, Panel, Tag } from '@/components/ui/primitives';
 import { formatDate } from '@/lib/units';
 import type { VaccinationCandidate } from '@/lib/queries/vaccinations';
@@ -39,6 +41,49 @@ function matches(row: VaccinationCandidate, query: string): boolean {
   return false;
 }
 
+/**
+ * What each stage looks like, and how it sorts.
+ *
+ * `order` puts the people a pharmacist can act on at the top. The screen is
+ * meant to answer "who is ready?", and it was answering it with everything
+ * mixed together in date order.
+ *
+ * Only `ready` is amber. The rest are states of a booking rather than anything
+ * clinical, and amber in this product means somebody must look at it.
+ */
+const STAGES = {
+  ready: {
+    order: 0,
+    tone: 'review' as const,
+    label: 'ready to give',
+    icon: Syringe,
+  },
+  started: {
+    order: 1,
+    tone: 'neutral' as const,
+    label: 'form part done',
+    icon: PencilLine,
+  },
+  'not-started': {
+    order: 2,
+    tone: 'neutral' as const,
+    label: 'form not started',
+    icon: CalendarClock,
+  },
+  given: {
+    order: 3,
+    tone: 'safe' as const,
+    label: 'given',
+    icon: CheckCircle2,
+  },
+  cancelled: {
+    order: 4,
+    tone: 'neutral' as const,
+    label: 'appointment cancelled',
+    icon: Ban,
+  },
+};
+
 export function VaccinationsView({
   rows,
   canRecord,
@@ -49,12 +94,29 @@ export function VaccinationsView({
   const [query, setQuery] = useState('');
   const searching = query.trim().length >= MIN_QUERY;
 
-  const results = useMemo(
-    () => (searching ? rows.filter((r) => matches(r, query)) : rows.slice(0, 25)),
-    [rows, query, searching],
+  /*
+   * Ready first, then part done, then not started, then the finished and the
+   * cancelled. Within a stage the existing newest-first order is kept.
+   */
+  const ordered = useMemo(
+    () => [...rows].sort((a, b) => STAGES[a.stage].order - STAGES[b.stage].order),
+    [rows],
   );
 
-  const waiting = rows.filter((r) => !r.alreadyRecorded).length;
+  const results = useMemo(
+    () => (searching ? ordered.filter((r) => matches(r, query)) : ordered.slice(0, 25)),
+    [ordered, query, searching],
+  );
+
+  /*
+   * "Waiting" means somebody has submitted a form and needs seeing.
+   *
+   * It used to count everything not yet administered, which included every
+   * booking whose form had never been opened — so a quiet morning with seven
+   * bookings read as "9 waiting" and the number meant nothing.
+   */
+  const waiting = rows.filter((r) => r.stage === 'ready').length;
+  const notReady = rows.filter((r) => r.stage === 'started' || r.stage === 'not-started').length;
 
   return (
     <div className="page-shell mx-auto max-w-[calc(1080px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
@@ -85,10 +147,12 @@ export function VaccinationsView({
             aria-label="Search by name or date of birth"
             className="min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-faint"
           />
-          <span className="tabular shrink-0 font-mono text-[11.5px] text-ink-faint">
+          <span className="tabular shrink-0 whitespace-nowrap font-mono text-[11.5px] text-ink-faint">
             {searching
               ? `${results.length} found`
-              : `${waiting} waiting`}
+              : notReady > 0
+                ? `${waiting} waiting · ${notReady} not filled in`
+                : `${waiting} waiting`}
           </span>
         </div>
       </Panel>
@@ -100,7 +164,7 @@ export function VaccinationsView({
             body={
               searching
                 ? 'Try a surname, or the date of birth. If they have never filled a form in, add them as a new patient.'
-                : 'Vaccination forms appear here as patients complete them.'
+                : 'Bookings appear here as soon as they are made, and move to “ready to give” once the patient submits their form.'
             }
           />
         </Panel>
@@ -119,6 +183,29 @@ export function VaccinationsView({
                     <span className="tabular font-mono text-[11.5px] text-ink-faint">
                       {row.dateOfBirth ? formatDate(row.dateOfBirth) : 'No date of birth'}
                     </span>
+
+                    {/*
+                      Whether there is a patient RECORD, which is a different
+                      question from whether we know their name.
+
+                      Not clinical, so not amber: a booking without a record is
+                      the normal state of every appointment until somebody
+                      completes the form. It is shown because it tells a
+                      pharmacist what they are about to open — a history, or a
+                      name on a list — and because a record has to exist before
+                      a vaccination can be filed against it.
+                    */}
+                    {row.patientLinked ? (
+                      <Tag tone="neutral">
+                        <UserCheck size={10} strokeWidth={2.4} /> patient record
+                      </Tag>
+                    ) : (
+                      <Tag tone="brand">
+                        <UserPlus size={10} strokeWidth={2.4} />
+                        {row.nameFromBooking ? 'from booking · no record yet' : 'no record yet'}
+                      </Tag>
+                    )}
+
                     <Tag tone="neutral">{row.serviceName}</Tag>
                     {row.submittedAt ? (
                       <span className="tabular font-mono text-[11.5px] text-ink-faint">
@@ -129,15 +216,15 @@ export function VaccinationsView({
                 </div>
 
                 <div className="shrink-0">
-                  {row.alreadyRecorded ? (
-                    <Tag tone="safe">
-                      <CheckCircle2 size={10} strokeWidth={2.4} /> given
-                    </Tag>
-                  ) : (
-                    <Tag tone="brand">
-                      <Syringe size={10} strokeWidth={2.4} /> ready to give
-                    </Tag>
-                  )}
+                  {(() => {
+                    const stage = STAGES[row.stage];
+                    const Icon = stage.icon;
+                    return (
+                      <Tag tone={stage.tone}>
+                        <Icon size={10} strokeWidth={2.4} /> {stage.label}
+                      </Tag>
+                    );
+                  })()}
                 </div>
               </div>
             </Link>

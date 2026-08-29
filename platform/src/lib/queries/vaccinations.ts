@@ -10,8 +10,29 @@ import { and, desc, eq, isNull, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   submission, patient, service, formVersion, branch, clinician,
-  batch, product, stockLevel, vaccineAdministration, consentRecord,
+  batch, product, stockLevel, vaccineAdministration, consentRecord, appointment,
 } from '@/lib/db/schema';
+
+/**
+ * How far a questionnaire has got.
+ *
+ * The screen used to show one badge — "ready to give" — on everything not yet
+ * administered, and count all of them as waiting. But a draft is created the
+ * moment an appointment is booked, so most of that list was bookings nobody had
+ * opened. A pharmacist reading "9 waiting" had no way to tell the two people
+ * genuinely ready from the seven who had not started.
+ */
+export type VaccinationStage =
+  /** Recorded. Nothing left to do. */
+  | 'given'
+  /** Submitted and waiting for a pharmacist. The only stage that is "waiting". */
+  | 'ready'
+  /** Opened and part-filled, not submitted. */
+  | 'started'
+  /** A booking whose form has never been opened. */
+  | 'not-started'
+  /** The appointment behind it was cancelled. */
+  | 'cancelled';
 
 export interface VaccinationCandidate {
   submissionId: string;
@@ -20,6 +41,18 @@ export interface VaccinationCandidate {
   patientId: string | null;
   patientName: string;
   dateOfBirth: string | null;
+  /**
+   * Whether a patient RECORD exists, as opposed to a name we happen to know.
+   *
+   * These are different facts and the screen has to keep them apart. A booking
+   * carries whatever was typed into it; a patient record is the thing history,
+   * allergies and previous vaccinations hang off. Somebody can be perfectly
+   * well named and still have neither.
+   */
+  patientLinked: boolean;
+  /** True when the name came from the booking rather than a patient record. */
+  nameFromBooking: boolean;
+  stage: VaccinationStage;
   serviceName: string;
   serviceSlug: string;
   alreadyRecorded: boolean;
@@ -46,7 +79,65 @@ export async function getVaccinationCandidates(
       firstName: patient.firstName,
       lastName: patient.lastName,
       dateOfBirth: patient.dateOfBirth,
-      bookedName: sql<string | null>`null`,
+      /*
+       * The name typed at booking.
+       *
+       * This column was selected as a literal `null` — stubbed, and the join
+       * never written — so every questionnaire without a patient record read as
+       * "Unnamed patient" while the name sat on the appointment row all along.
+       *
+       * A patient record is only created where a full identity exists: a name
+       * AND a valid date of birth, either at booking or when the form is
+       * submitted. Book somebody by name and phone alone and there is nothing
+       * to create a record from, but there is certainly something to show.
+       */
+      /*
+       * A scalar subquery, not a join.
+       *
+       * `appointment.submission_id` carries a foreign key and an index but no
+       * UNIQUE constraint, so nothing at the database level stops two
+       * appointments pointing at one questionnaire. A left join would then
+       * silently list that patient twice, and a duplicated row on a "who is
+       * waiting" screen is the kind of thing that gets someone vaccinated
+       * twice or skipped.
+       *
+       * Newest first, so a rebooking's name wins over the original.
+       */
+      bookedName: sql<string | null>`(
+        select a.booked_name
+        from ${appointment} a
+        where a.submission_id = ${submission.id}
+        order by a.starts_at desc
+        limit 1
+      )`,
+      /*
+       * Has anybody actually typed into this form?
+       *
+       * A draft starts as `{}`, so an empty object means the link was never
+       * opened. `_metadata` is written by the submit path rather than by the
+       * patient, so it does not count as an answer.
+       *
+       * Guarded on `jsonb_typeof`, because `jsonb_object_keys` raises on a
+       * value that is not an object and one bad row would fail the whole
+       * screen rather than one line of it.
+       */
+      answerCount: sql<number>`(
+        case when jsonb_typeof(${submission.answers}) = 'object'
+          then (
+            select count(*) from jsonb_object_keys(${submission.answers}) as k
+            where k <> '_metadata'
+          )
+          else 0
+        end
+      )`,
+      /* Newest appointment, matching the booked name above. */
+      appointmentStatus: sql<string | null>`(
+        select a.status
+        from ${appointment} a
+        where a.submission_id = ${submission.id}
+        order by a.starts_at desc
+        limit 1
+      )`,
       serviceName: service.name,
       serviceSlug: service.slug,
       administrationId: vaccineAdministration.id,
@@ -65,18 +156,41 @@ export async function getVaccinationCandidates(
     .orderBy(desc(submission.submittedAt))
     .limit(limit);
 
-  return rows.map((r) => ({
-    submissionId: r.submissionId,
-    status: r.status,
-    submittedAt: r.submittedAt,
-    patientId: r.patientId,
-    patientName:
-      r.firstName && r.lastName ? `${r.firstName} ${r.lastName}` : 'Unnamed patient',
-    dateOfBirth: r.dateOfBirth,
-    serviceName: r.serviceName,
-    serviceSlug: r.serviceSlug,
-    alreadyRecorded: r.administrationId !== null,
-  }));
+  return rows.map((r) => {
+    const linked = Boolean(r.firstName && r.lastName);
+    const booked = r.bookedName?.trim() || null;
+
+    /*
+     * Cancelled appointments are shown, not hidden — the same reasoning that
+     * keeps completed ones in the list. A pharmacist asking "was she booked in
+     * for one?" needs to find the answer, and a screen that silently omits
+     * records lies by omission. They are simply not counted as waiting.
+     */
+    const stage: VaccinationStage =
+      r.administrationId !== null ? 'given'
+        : r.appointmentStatus === 'CANCELLED' ? 'cancelled'
+          : r.status !== 'DRAFT' ? 'ready'
+            : Number(r.answerCount) > 0 ? 'started'
+              : 'not-started';
+
+    return {
+      stage,
+      submissionId: r.submissionId,
+      status: r.status,
+      submittedAt: r.submittedAt,
+      patientId: r.patientId,
+      // The record first, then the booking, and only then an admission that we
+      // do not know. "Unnamed" should mean nobody told us, not that we did not
+      // look.
+      patientName: linked ? `${r.firstName} ${r.lastName}` : booked ?? 'Unnamed patient',
+      dateOfBirth: r.dateOfBirth,
+      patientLinked: linked,
+      nameFromBooking: !linked && booked !== null,
+      serviceName: r.serviceName,
+      serviceSlug: r.serviceSlug,
+      alreadyRecorded: r.administrationId !== null,
+    };
+  });
 }
 
 export interface VaccinationConsultation {
