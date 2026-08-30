@@ -5,7 +5,7 @@ import { Check, CloudOff, Loader2 } from 'lucide-react';
 import { FormWizard } from '@/components/form/wizard';
 import { UploadTargetProvider } from '@/components/fields/upload-context';
 import type { Answers, FormSchema } from '@/types/form-schema';
-import { saveFormDraft, submitPublicForm, type SubmitResult } from './actions';
+import { saveFormDraft, startFormDraft, submitPublicForm, type SubmitResult } from './actions';
 
 /** Long enough that typing a sentence is one save, short enough to feel safe. */
 const AUTOSAVE_DELAY_MS = 1200;
@@ -26,10 +26,42 @@ export function PublicForm({
   const [error, setError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
 
+  /*
+   * The token is what autosave writes against and what authorises an upload.
+   *
+   * A patient reaching a booked questionnaire arrives holding one. A patient
+   * arriving cold at the public form — which is now the front door of the
+   * entire new-patient service — did not, so nothing they typed was saved and
+   * every upload was refused with "this form cannot take attachments, please
+   * bring the document with you". Three of those uploads are required, which
+   * made the form impossible to submit.
+   *
+   * One is now opened on their first interaction. Not on page load: a draft
+   * per visitor leaves a row for every bot and everybody who opened the page
+   * and thought better of it, whereas a draft on the first keystroke belongs
+   * to somebody who has actually started.
+   */
+  const [liveToken, setLiveToken] = useState<string | null>(token);
+
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pending = useRef<Answers | null>(null);
   // Once submitted, a late-firing autosave must not write over the submission.
   const stopped = useRef(false);
+  // Guards against two quick keystrokes each opening their own draft.
+  const starting = useRef<Promise<string | null> | null>(null);
+
+  const ensureToken = useCallback(async (): Promise<string | null> => {
+    if (liveToken) return liveToken;
+    if (starting.current) return starting.current;
+
+    starting.current = startFormDraft(slug).then((result) => {
+      const issued = result.ok && result.token ? result.token : null;
+      if (issued) setLiveToken(issued);
+      return issued;
+    });
+
+    return starting.current;
+  }, [liveToken, slug]);
 
   useEffect(
     () => () => {
@@ -40,7 +72,7 @@ export function PublicForm({
 
   const handleChange = useCallback(
     (answers: Answers) => {
-      if (!token || stopped.current) return;
+      if (stopped.current) return;
 
       pending.current = answers;
       setSaveState('saving');
@@ -50,17 +82,25 @@ export function PublicForm({
         const snapshot = pending.current;
         if (!snapshot || stopped.current) return;
 
+        // Opened here rather than on load, so the row belongs to somebody who
+        // has actually typed something.
+        const active = await ensureToken();
+        if (!active || stopped.current) {
+          setSaveState('failed');
+          return;
+        }
+
         // Files cannot cross the wire as JSON; they are uploaded separately.
         const payload = Object.fromEntries(
           Object.entries(snapshot).filter(([, v]) => !(v instanceof File)),
         ) as Answers;
 
-        const result = await saveFormDraft(token, payload);
+        const result = await saveFormDraft(active, payload);
         if (stopped.current) return;
         setSaveState(result.ok ? 'saved' : 'failed');
       }, AUTOSAVE_DELAY_MS);
     },
-    [token],
+    [ensureToken],
   );
 
   async function handleSubmit(answers: Answers) {
@@ -94,7 +134,7 @@ export function PublicForm({
         </div>
       ) : null}
 
-      {token ? (
+      {liveToken ? (
         <div className="mx-auto max-w-[1000px] px-5 pt-4">
           <div className="flex items-center gap-1.5 text-[12.5px] text-ink-faint">
             {saveState === 'saving' ? (
@@ -119,7 +159,7 @@ export function PublicForm({
         </div>
       ) : null}
 
-      <UploadTargetProvider value={{ token }}>
+      <UploadTargetProvider value={{ token: liveToken, onNeedToken: ensureToken }}>
         <FormWizard
           schema={schema}
           initialAnswers={savedAnswers ?? {}}

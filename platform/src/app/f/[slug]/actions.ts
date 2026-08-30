@@ -24,7 +24,7 @@ import {
 } from '@/lib/db/schema';
 import { sealAuditEntry } from '@/lib/audit';
 import { pruneHiddenAnswers, collectMetadata } from '@/lib/forms/runtime';
-import { isExpired } from '@/lib/forms/draft';
+import { isExpired, generateResumeToken, resumeExpiry } from '@/lib/forms/draft';
 import { matchOrCreatePatient, readIdentity } from '@/lib/patients/identify';
 import { evaluateRuleset, type RulesetDefinition } from '@/lib/rules/engine';
 import { alertPharmacist } from '@/lib/notifications/alerts';
@@ -57,6 +57,59 @@ export interface SubmitResult {
  * It also refuses to touch anything that is no longer a draft, so a stale tab
  * left open cannot overwrite answers a pharmacist has since acted on.
  */
+/**
+ * Open a draft for somebody who arrived without one.
+ *
+ * A patient reaching a booked questionnaire carries a resume token, and that
+ * token is what autosave writes against and what an upload is authorised by.
+ * A patient arriving cold at the public form — which is now the front door of
+ * the whole new-patient service — has neither, so their answers were not saved
+ * and their uploads were refused with "this form cannot take attachments,
+ * please bring the document with you". Three of those uploads are required, so
+ * the form could not be submitted at all.
+ *
+ * Created on first interaction rather than on page load. A draft per visitor
+ * would leave a row for every bot and every person who opened the page and
+ * thought better of it; a draft on the first keystroke belongs to somebody who
+ * has actually started.
+ */
+export async function startFormDraft(
+  slug: string,
+): Promise<{ ok: boolean; token?: string; error?: string }> {
+  try {
+    const [svc] = await db
+      .select({
+        id: service.id,
+        organisationId: service.organisationId,
+        publishedFormVersionId: service.publishedFormVersionId,
+      })
+      .from(service)
+      .where(eq(service.slug, slug))
+      .limit(1);
+
+    if (!svc?.publishedFormVersionId) {
+      return { ok: false, error: 'This form is not currently available.' };
+    }
+
+    const token = generateResumeToken();
+
+    await db.insert(submission).values({
+      organisationId: svc.organisationId,
+      serviceId: svc.id,
+      formVersionId: svc.publishedFormVersionId,
+      status: 'DRAFT',
+      answers: {},
+      resumeToken: token,
+      resumeExpiresAt: resumeExpiry(),
+    });
+
+    return { ok: true, token };
+  } catch (error) {
+    console.error('startFormDraft failed', error);
+    return { ok: false, error: 'Could not start the form.' };
+  }
+}
+
 export async function saveFormDraft(
   token: string,
   rawAnswers: Answers,
