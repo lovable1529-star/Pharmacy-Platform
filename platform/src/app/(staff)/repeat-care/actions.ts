@@ -16,13 +16,18 @@
 import { and, eq } from 'drizzle-orm';
 import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
-import { submission, reviewEvent, service, patient, clinician } from '@/lib/db/schema';
+import {
+  submission, reviewEvent, service, patient, clinician, clinicalContactEvent,
+} from '@/lib/db/schema';
 import { db } from '@/lib/db/client';
 import { requestPayment } from '@/lib/payments/lifecycle';
 import { changeSubmissionStatus } from '@/lib/workflow/history';
 import { raisePrescription } from '@/lib/prescriptions/issue';
 import { registerDocument } from '@/lib/documents/register';
 import { approvalBlocker } from '@/lib/prescriptions/approval';
+import {
+  newPatientApprovalBlockers, type VerificationCall,
+} from '@/lib/clinical/new-patient-gate';
 import { IllegalTransitionError } from '@/lib/workflow/status';
 
 export type ReviewAction = 'APPROVED' | 'REJECTED' | 'INFO_REQUESTED';
@@ -56,6 +61,17 @@ interface DecideInput {
   submissionId: string;
   decision: ReviewAction;
   note: string;
+  /**
+   * What the prescriber is authorising, which is not necessarily what the
+   * patient asked for. Supplying `answers.requestedMedicine` regardless meant
+   * a dose changed during the call was silently ignored.
+   */
+  authorised?: {
+    medicine: string | null;
+    strength: string | null;
+    quantity: string | null;
+    directions: string | null;
+  } | null;
   /** Carried so the audit entry records where the decision was made. */
   branchId?: string | null;
   companyId?: string | null;
@@ -74,8 +90,10 @@ const decide = action<DecideInput>('repeat_care:edit')
           patientId: submission.patientId,
           branchId: submission.branchId,
           answers: submission.answers,
+          serviceKind: service.kind,
         })
         .from(submission)
+        .innerJoin(service, eq(submission.serviceId, service.id))
         .where(
           and(
             eq(submission.id, input.submissionId),
@@ -86,13 +104,50 @@ const decide = action<DecideInput>('repeat_care:edit')
 
       if (!subject) throw new CannotApproveError('That request no longer exists.');
 
-      const blocker = approvalBlocker({
-        patientId: subject.patientId,
-        branchId: subject.branchId,
-        answers: (subject.answers ?? {}) as Record<string, unknown>,
-      });
+      const answers = (subject.answers ?? {}) as Record<string, unknown>;
 
-      if (blocker) throw new CannotApproveError(blocker);
+      /*
+       * A remote NEW patient carries extra requirements: the pharmacist must
+       * have spoken to them and confirmed who they are, and must record what
+       * they are actually authorising. A repeat request does not - the client
+       * is explicit that a routine GREEN should not need a telephone call.
+       *
+       * Keyed on service kind rather than slug, because the pharmacy renames
+       * its own services and a rename must not switch off a safety gate.
+       */
+      if (subject.serviceKind === 'CONSULTATION') {
+        const calls = await tx
+          .select({
+            outcome: clinicalContactEvent.outcome,
+            identityVerified: clinicalContactEvent.identityVerified,
+            completedAt: clinicalContactEvent.completedAt,
+          })
+          .from(clinicalContactEvent)
+          .where(
+            and(
+              eq(clinicalContactEvent.submissionId, input.submissionId),
+              eq(clinicalContactEvent.organisationId, actor.organisationId),
+            ),
+          );
+
+        const blockers = newPatientApprovalBlockers({
+          patientId: subject.patientId,
+          branchId: subject.branchId,
+          answers,
+          calls: calls as VerificationCall[],
+          authorised: input.authorised ?? null,
+        });
+
+        if (blockers.length > 0) throw new CannotApproveError(blockers.join(' '));
+      } else {
+        const blocker = approvalBlocker({
+          patientId: subject.patientId,
+          branchId: subject.branchId,
+          answers,
+        });
+
+        if (blocker) throw new CannotApproveError(blocker);
+      }
     }
 
     await tx.insert(reviewEvent).values({
@@ -191,6 +246,20 @@ const decide = action<DecideInput>('repeat_care:edit')
           )
           .limit(1);
 
+        /*
+         * The prescriber's decision wins over the patient's request.
+         *
+         * This read `answers.requestedMedicine` and the patient's own supply
+         * quantity, so a pharmacist who reduced the dose on the telephone
+         * still supplied the strength originally asked for. Where an
+         * authorisation was recorded it is used; where it was not - a repeat,
+         * which does not require one - the request stands as before.
+         */
+        const authorised = input.authorised ?? null;
+        const authorisedValue = authorised?.medicine && authorised.strength
+          ? `${authorised.medicine.trim().toLowerCase()}_${authorised.strength.trim()}`
+          : null;
+
         await raisePrescription(tx, {
           organisationId: actor.organisationId,
           submissionId: input.submissionId,
@@ -198,9 +267,11 @@ const decide = action<DecideInput>('repeat_care:edit')
           branchId: context.branchId,
           clinicianId: signer?.id ?? null,
           requestedMedicineValue:
-            typeof answers.requestedMedicine === 'string' ? answers.requestedMedicine : null,
-          quantity: typeof answers.supplyQuantity === 'string'
-            ? `${answers.supplyQuantity} month(s)` : null,
+            authorisedValue
+            ?? (typeof answers.requestedMedicine === 'string' ? answers.requestedMedicine : null),
+          quantity: authorised?.quantity?.trim()
+            || (typeof answers.supplyQuantity === 'string'
+              ? `${answers.supplyQuantity} month(s)` : null),
           paidOnline: answers.paymentPreference === 'online',
         });
       }

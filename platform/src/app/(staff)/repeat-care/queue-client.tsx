@@ -42,6 +42,7 @@ import type { Answers, FormSchema } from '@/types/form-schema';
 import { EmptyState, PageHeader, Panel } from '@/components/ui/primitives';
 import type { QueueItem, UrgentItem } from '@/lib/queries/reviews';
 import { reviewSubmission, type ReviewAction } from './actions';
+import { CallPanel } from './call-panel';
 
 const OUTCOME_STYLES = {
   RED: 'bg-stop-100 text-stop-700',
@@ -79,6 +80,34 @@ export function ReviewQueue({
   const open = items.find((i) => i.submissionId === openId) ?? null;
 
   /*
+   * New patients and repeat requests are different jobs.
+   *
+   * A new patient needs reading, telephoning and a prescriber's decision; a
+   * routine repeat needs authorising and nothing more - the client is explicit
+   * that a GREEN should not require a call. Mixing them into one list ordered
+   * by severity buries the calls owed among requests that need no contact at
+   * all, and the RAG bands mean nothing on a service with no ruleset.
+   *
+   * Split on service KIND rather than name, because the pharmacy renames its
+   * own services and a rename must not reshuffle the work.
+   */
+  const newPatients = useMemo(
+    () => items.filter((i) => i.serviceKind === 'CONSULTATION'),
+    [items],
+  );
+  const repeats = useMemo(
+    () => items.filter((i) => i.serviceKind !== 'CONSULTATION'),
+    [items],
+  );
+
+  /* Opens on whichever lane has work, new patients first - they age worst. */
+  const [lane, setLane] = useState<'new' | 'repeat'>(
+    newPatients.length > 0 ? 'new' : 'repeat',
+  );
+
+  const laneItems = lane === 'new' ? newPatients : repeats;
+
+  /*
    * "Asked a question" needs the questionnaire to answer it honestly.
    *
    * `anythingElse` is a yes/no field on the current GLP-1 form, and the old
@@ -102,12 +131,15 @@ export function ReviewQueue({
   const hasQuestion = (item: QueueItem) => asked.has(item.submissionId);
 
   const counts = {
-    RED: items.filter((i) => i.outcome === 'RED').length,
-    AMBER: items.filter((i) => i.outcome === 'AMBER').length,
-    GREEN: items.filter((i) => i.outcome === 'GREEN').length,
-    QUESTION: items.filter(hasQuestion).length,
-    NONE: items.filter((i) => i.outcome === null).length,
+    RED: laneItems.filter((i) => i.outcome === 'RED').length,
+    AMBER: laneItems.filter((i) => i.outcome === 'AMBER').length,
+    GREEN: laneItems.filter((i) => i.outcome === 'GREEN').length,
+    QUESTION: laneItems.filter(hasQuestion).length,
+    NONE: laneItems.filter((i) => i.outcome === null).length,
   };
+
+  /* How many new patients are owed a call right now. */
+  const callsOwed = newPatients.filter((i) => i.verifiedCallAt === null).length;
 
   /*
    * §6.1 asks for the queues to be clearly SEPARATE, not merely counted. A
@@ -115,21 +147,27 @@ export function ReviewQueue({
    * worst of a set" rather than "the ones that cannot wait".
    */
   const shown =
-    queue === 'ALL' ? items
-      : queue === 'QUESTION' ? items.filter(hasQuestion)
-        : queue === 'NONE' ? items.filter((i) => i.outcome === null)
+    queue === 'ALL' ? laneItems
+      : queue === 'QUESTION' ? laneItems.filter(hasQuestion)
+        : queue === 'NONE' ? laneItems.filter((i) => i.outcome === null)
           /*
            * Exact, not `?? 'AMBER'`. Defaulting a missing outcome to amber made
            * the AMBER button list every untriaged request while its own count
            * said none — the button read "0 amber" and produced three rows.
            */
-          : items.filter((i) => i.outcome === queue);
+          : laneItems.filter((i) => i.outcome === queue);
 
   return (
     <div className="page-shell mx-auto max-w-[calc(1080px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
       <PageHeader
-        title="Repeat care"
-        subtitle={`${items.length} request${items.length === 1 ? '' : 's'} awaiting a decision, worst first.`}
+        title="Weight Management"
+        subtitle={
+          lane === 'new'
+            ? `${newPatients.length} new patient${newPatients.length === 1 ? '' : 's'} awaiting `
+              + `review${callsOwed > 0 ? `, ${callsOwed} still to call` : ''}.`
+            : `${repeats.length} repeat request${repeats.length === 1 ? '' : 's'} awaiting a `
+              + 'decision, worst first.'
+        }
         actions={
           <div className="flex flex-wrap gap-2">
             <Link
@@ -150,9 +188,14 @@ export function ReviewQueue({
                   : 'border-line text-ink-soft hover:border-brand-300',
               )}
             >
-              {items.length} all
+              {laneItems.length} all
             </button>
-            {(['RED', 'AMBER', 'GREEN'] as const).map((o) => (
+            {/*
+              RAG belongs to the repeat service, which is the only one with a
+              published ruleset. Showing three zeroes beside a list of new
+              patients invites the reading that they were all triaged green.
+            */}
+            {lane === 'repeat' ? (['RED', 'AMBER', 'GREEN'] as const).map((o) => (
               <button
                 key={o}
                 type="button"
@@ -166,7 +209,7 @@ export function ReviewQueue({
               >
                 {counts[o]} {o.toLowerCase()}
               </button>
-            ))}
+            )) : null}
             {counts.NONE > 0 ? (
               <button
                 type="button"
@@ -201,6 +244,48 @@ export function ReviewQueue({
           </div>
         }
       />
+
+      {/*
+        Two lanes, always both shown even when one is empty — a tab that
+        disappears when there is no work also hides the fact that there is
+        none, and "is anything waiting?" is the question this screen answers.
+      */}
+      <div className="mb-4 flex gap-1 border-b border-line" role="tablist">
+        {([
+          ['new', 'New patients', newPatients.length, callsOwed],
+          ['repeat', 'Repeat requests', repeats.length, 0],
+        ] as const).map(([key, label, count, owed]) => (
+          <button
+            key={key}
+            type="button"
+            role="tab"
+            aria-selected={lane === key}
+            onClick={() => { setLane(key); setQueue('ALL'); }}
+            className={cn(
+              'relative flex items-center gap-2 px-3.5 py-2.5 text-[13.5px] font-medium transition-colors',
+              lane === key ? 'text-ink' : 'text-ink-faint hover:text-ink-soft',
+            )}
+          >
+            {label}
+            <span
+              className={cn(
+                'tabular rounded-[5px] px-1.5 py-0.5 font-mono text-[10.5px]',
+                lane === key ? 'bg-ink text-white' : 'bg-sunk text-ink-faint',
+              )}
+            >
+              {count}
+            </span>
+            {owed > 0 ? (
+              <span className="tabular rounded-[5px] bg-review-100 px-1.5 py-0.5 font-mono text-[10.5px] text-review-700">
+                {owed} to call
+              </span>
+            ) : null}
+            {lane === key ? (
+              <span className="absolute inset-x-0 -bottom-px h-0.5 rounded-t bg-brand-600" />
+            ) : null}
+          </button>
+        ))}
+      </div>
 
       {urgent.length > 0 ? (
         <div className="mb-4 overflow-hidden rounded-panel border border-stop-200 bg-stop-50 shadow-panel">
@@ -246,9 +331,13 @@ export function ReviewQueue({
           <EmptyState
             title={queue === 'ALL' ? 'Nothing waiting' : 'Nothing in this queue'}
             body={
-              queue === 'ALL'
-                ? 'Every repeat request has been dealt with.'
-                : 'Nothing matches that filter right now.'
+              queue !== 'ALL'
+                ? 'Nothing matches that filter right now.'
+                : lane === 'new'
+                  ? 'No new patient requests are waiting. They appear here as soon as somebody '
+                    + 'completes the online form.'
+                  : 'No repeat requests are waiting. They appear here when an enrolled patient '
+                    + 'submits their questionnaire.'
             }
             className="pt-3"
           />
@@ -444,6 +533,18 @@ function ReviewDrawer({
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
 
+  /*
+   * A new patient needs a call and an explicit authorisation; a repeat needs
+   * neither. `callVersion` is bumped when a call is saved so the drawer stops
+   * showing a stale blocker after the pharmacist has just cleared it.
+   */
+  const isNewPatient = item.serviceKind === 'CONSULTATION';
+  const [callVersion, setCallVersion] = useState(0);
+  const [medicine, setMedicine] = useState('');
+  const [strength, setStrength] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [directions, setDirections] = useState('');
+
   const fired = item.trace.filter((t) => t.matched);
   const skipped = item.trace.filter((t) => t.skippedReason);
   const considered = item.trace.filter((t) => !t.matched && !t.skippedReason);
@@ -456,6 +557,11 @@ function ReviewDrawer({
       decision,
       note,
       outcome: item.outcome,
+      // Only sent on an approval, and only where one is required. A rejection
+      // authorises nothing.
+      authorised: isNewPatient && decision === 'APPROVED'
+        ? { medicine, strength, quantity, directions }
+        : null,
     });
     setBusy(null);
     if (!result.ok) setError(result.error);
@@ -505,6 +611,14 @@ function ReviewDrawer({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
+          {isNewPatient ? (
+            <CallPanel
+              key={callVersion}
+              submissionId={item.submissionId}
+              onRecorded={() => setCallVersion((v) => v + 1)}
+            />
+          ) : null}
+
           {/*
             No evaluation at all. Distinct from "the rules ran and found
             nothing": this service has no published ruleset, so the pharmacist
@@ -658,6 +772,50 @@ function ReviewDrawer({
             </p>
           ) : (
             <>
+              {/*
+                What is being supplied, decided here rather than copied from
+                the request. The approval path used to raise a prescription
+                straight from `answers.requestedMedicine`, so a dose reduced
+                during the call was silently ignored.
+              */}
+              {isNewPatient ? (
+                <div className="mb-3 rounded-control border border-line bg-sunk px-3 py-2.5">
+                  <p className="m-0 mb-2 font-mono text-[10px] uppercase tracking-[0.08em] text-ink-faint">
+                    What you are authorising
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      value={medicine}
+                      onChange={(e) => setMedicine(e.target.value)}
+                      placeholder="Medicine"
+                      aria-label="Medicine"
+                      className="w-full rounded-control border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-brand-400"
+                    />
+                    <input
+                      value={strength}
+                      onChange={(e) => setStrength(e.target.value)}
+                      placeholder="Strength"
+                      aria-label="Strength"
+                      className="w-full rounded-control border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-brand-400"
+                    />
+                    <input
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      placeholder="Quantity"
+                      aria-label="Quantity"
+                      className="w-full rounded-control border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-brand-400"
+                    />
+                    <input
+                      value={directions}
+                      onChange={(e) => setDirections(e.target.value)}
+                      placeholder="Directions"
+                      aria-label="Directions"
+                      className="w-full rounded-control border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink outline-none focus:border-brand-400"
+                    />
+                  </div>
+                </div>
+              ) : null}
+
               <textarea
                 rows={2}
                 value={note}

@@ -11,7 +11,7 @@ import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   submission, ruleEvaluation, service, patient, reviewEvent, appUser, branch,
-  urgentTask, repeatEnrolment, formVersion,
+  urgentTask, repeatEnrolment, formVersion, clinicalContactEvent,
 } from '@/lib/db/schema';
 import type { RuleTraceEntry, Outcome } from '@/lib/rules/engine';
 
@@ -45,6 +45,19 @@ export interface QueueItem {
   previousStrength: string | null;
   /** Which questionnaire version this was answered against. */
   formVersionId: string;
+  /**
+   * VACCINATION / CONSULTATION / REPEAT_SUPPLY.
+   *
+   * A new-patient request and a repeat request need different work from a
+   * pharmacist - one needs a telephone call, the other does not - so the
+   * workspace splits on this rather than on the service name, which the
+   * pharmacy is free to reword.
+   */
+  serviceKind: string;
+  /** When a completed, identity-verified call was recorded. Null if never. */
+  verifiedCallAt: Date | null;
+  /** How many times anybody has tried, including no-answers. */
+  callAttempts: number;
 }
 
 /**
@@ -85,6 +98,27 @@ export async function getReviewQueue(organisationId: string): Promise<QueueItem[
       previousMedicine: repeatEnrolment.medicine,
       previousStrength: repeatEnrolment.strength,
       formVersionId: submission.formVersionId,
+      serviceKind: service.kind,
+      /*
+       * Call state as two scalar subqueries rather than a join.
+       *
+       * A request can carry several contacts - rang twice, reached on the
+       * third - and joining them would multiply every queue row by its call
+       * history. What the queue needs is one fact each: has a call that
+       * COUNTS happened, and has anybody tried.
+       */
+      verifiedCallAt: sql<Date | null>`(
+        select max(c.completed_at)
+        from ${clinicalContactEvent} c
+        where c.submission_id = ${submission.id}
+          and c.outcome = 'COMPLETED'
+          and c.identity_verified = true
+      )`,
+      callAttempts: sql<number>`(
+        select count(*)::int
+        from ${clinicalContactEvent} c
+        where c.submission_id = ${submission.id}
+      )`,
     })
     .from(submission)
     .innerJoin(service, eq(submission.serviceId, service.id))
@@ -152,6 +186,9 @@ export async function getReviewQueue(organisationId: string): Promise<QueueItem[
       previousMedicine: r.previousMedicine,
       previousStrength: r.previousStrength,
       formVersionId: r.formVersionId,
+      serviceKind: r.serviceKind,
+      verifiedCallAt: r.verifiedCallAt ? new Date(r.verifiedCallAt) : null,
+      callAttempts: Number(r.callAttempts ?? 0),
     }));
 
   // No client-side re-sort: the database already returned them worst-first, and

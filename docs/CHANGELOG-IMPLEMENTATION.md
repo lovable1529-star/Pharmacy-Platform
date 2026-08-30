@@ -21,6 +21,58 @@ Always name important files/migrations and describe behavioural impact, not just
 
 ---
 
+## 31 August 2026 - Stage 04, new patient workspace and the verification call
+
+### Added
+
+- **Two lanes on the Weight Management screen.** New patients and repeat
+  requests are different jobs - one needs reading, telephoning and a
+  prescriber's decision, the other needs authorising and nothing more. Split on
+  `service.kind`, not on name, because the pharmacy renames its own services
+  and a rename must not reshuffle the work. The tab shows how many are still
+  owed a call.
+- **RAG filters appear only on the repeat lane.** Three zeroes beside a list of
+  new patients invites the reading that they were all triaged green; the
+  new-patient service has no ruleset at all.
+- **`clinical_contact_event` recording.** Every attempt is its own row - rang
+  twice and reached them on the third is three records. Identity is forced
+  false on any outcome other than COMPLETED, so a voicemail cannot unlock the
+  gate, and a completed call with no notes is refused.
+- **`src/lib/clinical/new-patient-gate.ts`** - the approval rules, pure and
+  tested, returning every blocker at once rather than one at a time. Enforced
+  server-side in `reviewSubmission` for `CONSULTATION` services only: the
+  client is explicit that a routine repeat needs no call.
+- **The prescriber's authorisation.** Medicine, strength, quantity and
+  directions are recorded on approval and used to raise the prescription.
+
+### Fixed
+
+- **The prescription was raised from the patient's request.** `raisePrescription`
+  read `answers.requestedMedicine` and the patient's own supply quantity, so a
+  dose reduced during the call was silently ignored and the patient got what
+  they originally asked for. Where an authorisation is recorded it now wins.
+- **Constants exported from a `'use server'` module.** Only async functions may
+  be exported from one. It passed typecheck and every test and failed the
+  production build - the vocabulary now lives in `src/lib/clinical/contact.ts`.
+
+### Tests
+
+- `tests/new-patient-gate.test.ts` - 14 tests, including the case that matters
+  most: a completed call where identity was NOT confirmed must not unlock an
+  approval.
+
+630 passing, typecheck clean, production build clean.
+
+### Deferred
+
+- Defer / Decline / Escalate as distinct actions. `INFO_REQUESTED` and
+  `REJECTED` already exist and carry reasons; a separate escalation path needs
+  the urgent-task wiring from Stage 07.
+- Assignment and SLA display. The columns exist from migration 21 and nothing
+  writes them yet.
+
+---
+
 ## 31 August 2026 - Stage 03, the remote new-patient form
 
 ### Changed
