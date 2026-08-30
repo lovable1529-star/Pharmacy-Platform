@@ -1,15 +1,15 @@
 /**
  * The Drizzle schema must describe what migrations 21 and 22 actually create.
  *
- * Those scripts are deliberately not applied yet — the client is running every
- * SQL script in one pass once the code is finished. That means the code is
- * being written weeks ahead of the database it targets, with nothing to catch
- * a mismatch: no query fails, no type complains, and the first symptom is a
- * runtime error on a live system.
+ * Both are applied to the live database as of 31 August 2026, run by hand in
+ * the Supabase SQL editor. The guard stays because the drift it catches runs
+ * the other way now: an ALTER in one of these files that never reaches
+ * schema.ts is silent — no query fails, no type complains, and the first
+ * symptom is a runtime error.
  *
- * So the SQL is the source of truth and this compares the schema against it.
- * It is a source-level guard, like the tenant-isolation test, because proving
- * it behaviourally needs the database we have not migrated yet.
+ * The SQL is the source of truth and this compares the schema against it. A
+ * source-level guard, like the tenant-isolation test, because proving it
+ * behaviourally would need a second database to migrate.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -48,11 +48,13 @@ function camel(name: string): string {
 }
 
 describe('the two pending migrations are readable', () => {
-  it('finds both scripts', () => {
-    const files = readdirSync(PENDING).filter((f) => f.endsWith('.sql'));
-    expect(files).toHaveLength(2);
-    expect(files.join(' ')).toMatch(/21_/);
-    expect(files.join(' ')).toMatch(/22_/);
+  it('finds the two schema scripts', () => {
+    // Named rather than counted. The folder also holds form-publishing scripts,
+    // which are generated as they are needed, and a hard count would fail every
+    // time one was added - a guard that cries wolf gets deleted.
+    const files = readdirSync(PENDING).filter((f) => f.endsWith('.sql')).join(' ');
+    expect(files).toMatch(/21_/);
+    expect(files).toMatch(/22_/);
   });
 
   /*
