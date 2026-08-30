@@ -26,7 +26,16 @@ import 'server-only';
 
 import { randomBytes } from 'node:crypto';
 
-export type PaymentProvider = 'DEMO' | 'STRIPE' | 'IN_PERSON';
+/**
+ * How a payment was settled.
+ *
+ * MANUAL is deliberately distinct from IN_PERSON. IN_PERSON is money handed
+ * over at the counter; MANUAL is a member of staff asserting the money arrived
+ * by some route the system does not see, which is the whole of this phase.
+ * Collapsing them would make a later reconciliation unable to tell which was
+ * which.
+ */
+export type PaymentProvider = 'DEMO' | 'STRIPE' | 'IN_PERSON' | 'MANUAL';
 
 /** How long a payment link stays live before the patient must ask again. */
 export const PAYMENT_WINDOW_DAYS = 14;

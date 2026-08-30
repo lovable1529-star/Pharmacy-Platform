@@ -21,6 +21,62 @@ Always name important files/migrations and describe behavioural impact, not just
 
 ---
 
+## 31 August 2026 - Stage 05, payment as a tick box
+
+### Changed
+
+- **Approval no longer sends a payment link.** `requestPayment` gained
+  `notifyPatient`, defaulting to FALSE, and the approval path passes false
+  explicitly. No provider is integrated, so a link leads to a page that cannot
+  take money - sending one is worse than sending nothing. The token, the
+  `/pay/[token]` page and the provider abstraction all remain; this is switched
+  off, not deleted.
+- `requestPaymentForSubmission` is now `raisePendingPayment`, and returns the
+  payment id rather than a URL.
+- The "Link" button on the payments screen appears only in demo mode.
+- "Paid at till" is replaced by **"Payment received"**, which opens a tick and
+  an optional note rather than settling on one click. Confirming allocates a
+  prescription number, so it should not sit a stray click from a row somebody
+  was scrolling past.
+
+### Added
+
+- `confirmManualPayment` - settles through the same `settlePayment()` a
+  provider webhook will call, with provider `MANUAL` and `confirmed_by`
+  recording who asserted the money arrived. `paid_at` is the event; the person
+  is the accountability.
+- `MANUAL` as a payment provider, deliberately distinct from `IN_PERSON`:
+  one is cash at the counter, the other is staff asserting money arrived by a
+  route the system cannot see. Collapsing them would leave a later
+  reconciliation unable to tell which was which.
+- `prescription.payment_id` is now written at settlement, so there is a trail
+  from money to medicine. The database keeps it unique, so one payment can
+  never sit behind two prescriptions.
+- `src/lib/payments/confirm.ts` - `canConfirmPayment`, pure and tested.
+
+### Fixed
+
+- **The approval email told every patient "you can pay when you collect".**
+  That branch renders whenever no payment link is passed, which is now always,
+  and it is untrue for anybody having their medicine posted.
+
+### Known debt
+
+- `confirmManualPayment` is guarded by `reports:edit`, matching the existing
+  `takeAtTill` beside it. There is no `payments` resource in the permission
+  matrix; adding one means touching the matrix and every role, so it is
+  recorded here rather than done quietly.
+
+### Tests
+
+- `tests/payment-confirm.test.ts` - 9 tests, including that confirming twice
+  succeeds and reports no change rather than showing a failure for something
+  that worked, and that money cannot be taken against a rejected request.
+
+639 passing, typecheck clean, production build clean.
+
+---
+
 ## 31 August 2026 - Stage 04, new patient workspace and the verification call
 
 ### Added

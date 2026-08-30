@@ -295,8 +295,16 @@ const decide = action<DecideInput>('repeat_care:edit')
  * Priced from the service, because that is where the pharmacy maintains it. A
  * service with no price is not an error — plenty are NHS-funded — it simply
  * means nothing to collect and the supply proceeds straight away.
+ *
+ * NO LINK IS SENT. Approval raises the charge and moves the request to
+ * awaiting payment; a member of staff then confirms the money arrived. There
+ * is no payment provider integrated in this phase, so emailing a patient a
+ * link to a page that cannot take a payment would be worse than sending
+ * nothing at all. The token, the page and the provider abstraction all remain
+ * — this is switched off, not deleted — and when a provider is live the same
+ * `settlePayment` releases the prescription either way.
  */
-async function requestPaymentForSubmission(submissionId: string): Promise<string | null> {
+async function raisePendingPayment(submissionId: string): Promise<string | null> {
   try {
     const [row] = await db
       .select({
@@ -323,11 +331,14 @@ async function requestPaymentForSubmission(submissionId: string): Promise<string
       amountMinor: row.priceMinor,
       description: row.serviceName,
       email: row.email,
+      // Deliberate and explicit. The default is already false; saying so here
+      // means a future reader sees a decision rather than an omission.
+      notifyPatient: false,
     });
 
-    return requested?.url ?? null;
+    return requested?.id ?? null;
   } catch (error) {
-    console.error('requestPaymentForSubmission failed', error);
+    console.error('raisePendingPayment failed', error);
     return null;
   }
 }
@@ -352,18 +363,24 @@ export async function reviewSubmission(input: DecideInput & { outcome?: string |
   try {
     const result = await decide(input);
 
-    // Approval is what triggers the payment request. His flow: "GREEN/approved
-    // AMBER -> secure payment link sent. Rx generated after payment." Best
-    // effort — a decision that saved must never be reported as failed because
-    // an email was slow.
-    let paymentUrl: string | null = null;
+    /*
+     * Approval raises the charge; it does not collect it and does not tell the
+     * patient how to pay. His original flow had a link sent here, and that
+     * returns when a provider is integrated — for now the request moves to
+     * awaiting payment and a member of staff confirms receipt on the payments
+     * screen, which is what releases the prescription.
+     *
+     * Best effort: a clinical decision that saved must never be reported as
+     * failed because raising a charge did not.
+     */
+    let paymentId: string | null = null;
 
     if (input.decision === 'APPROVED') {
-      paymentUrl = await requestPaymentForSubmission(input.submissionId);
+      paymentId = await raisePendingPayment(input.submissionId);
     }
 
     revalidateStaffViews();
-    return { ok: true as const, ...result, paymentUrl };
+    return { ok: true as const, ...result, paymentId };
   } catch (error) {
     console.error('reviewSubmission failed', error);
     return {

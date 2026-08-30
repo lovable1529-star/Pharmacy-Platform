@@ -17,8 +17,9 @@ import {
 import { cn } from '@/lib/cn';
 import { PHARMACY_TIMEZONE } from '@/lib/scheduling/slots';
 import {
-  getPayments, recordInPersonPayment, cancelPayment, type PaymentRow,
+  getPayments, cancelPayment, type PaymentRow,
 } from './actions';
+import { confirmManualPayment } from './confirm-actions';
 
 function money(minor: number, currency: string): string {
   return new Intl.NumberFormat('en-GB', { style: 'currency', currency }).format(
@@ -46,6 +47,10 @@ export function PaymentsClient({ demo, appUrl }: { demo: boolean; appUrl: string
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [confirmNote, setConfirmNote] = useState('');
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -195,26 +200,30 @@ export function PaymentsClient({ demo, appUrl }: { demo: boolean; appUrl: string
 
               {r.status === 'PENDING' ? (
                 <div className="flex gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => copyLink(r)}
-                    className="flex items-center gap-1 rounded-[6px] border border-line px-2 py-1 text-[12px] text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
-                  >
-                    <Link2 size={11} />
-                    {copied === r.id ? 'Copied' : 'Link'}
-                  </button>
+                  {/*
+                    The payment link only means something in demo mode, where a
+                    provider is simulated. With none integrated it leads to a
+                    page that cannot take money, so offering it invites a
+                    pharmacist to send a patient somewhere useless.
+                  */}
+                  {demo ? (
+                    <button
+                      type="button"
+                      onClick={() => copyLink(r)}
+                      className="flex items-center gap-1 rounded-[6px] border border-line px-2 py-1 text-[12px] text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+                    >
+                      <Link2 size={11} />
+                      {copied === r.id ? 'Copied' : 'Link'}
+                    </button>
+                  ) : null}
                   <button
                     type="button"
                     disabled={busy === r.id}
-                    onClick={() => run(r.id, () => recordInPersonPayment(r.id))}
-                    className="flex items-center gap-1 rounded-[6px] border border-line px-2 py-1 text-[12px] text-ink-soft transition-colors hover:border-safe-200 hover:text-safe-700"
+                    onClick={() => setConfirming(r.id)}
+                    className="flex items-center gap-1 rounded-[6px] border border-line px-2 py-1 text-[12px] font-medium text-ink-soft transition-colors hover:border-safe-200 hover:text-safe-700"
                   >
-                    {busy === r.id ? (
-                      <Loader2 size={11} className="animate-spin" />
-                    ) : (
-                      <Check size={11} strokeWidth={2.6} />
-                    )}
-                    Paid at till
+                    <Check size={11} strokeWidth={2.6} />
+                    Payment received
                   </button>
                   <button
                     type="button"
@@ -229,6 +238,75 @@ export function PaymentsClient({ demo, appUrl }: { demo: boolean; appUrl: string
                   >
                     <XCircle size={12} />
                   </button>
+                </div>
+              ) : null}
+
+              {/*
+                A deliberate tick rather than a one-click button.
+                Confirming payment is what releases the prescription and
+                allocates its number, and that should not sit one stray click
+                away from a row somebody was only scrolling past.
+              */}
+              {confirming === r.id ? (
+                <div className="mt-2 w-full rounded-control border border-brand-200 bg-brand-50 px-3 py-2.5">
+                  <p className="m-0 mb-2 text-[12.5px] leading-relaxed text-ink">
+                    Confirming releases the prescription and allocates its number.
+                    {r.amountMinor ? ` Expected: ${money(r.amountMinor, r.currency)}.` : ''}
+                  </p>
+                  <label className="mb-2 flex cursor-pointer items-start gap-2">
+                    <input
+                      type="checkbox"
+                      checked={acknowledged}
+                      onChange={(e) => setAcknowledged(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-brand-600"
+                    />
+                    <span className="text-[12.5px] leading-snug text-ink">
+                      I confirm this payment has been received.
+                    </span>
+                  </label>
+                  <input
+                    value={confirmNote}
+                    onChange={(e) => setConfirmNote(e.target.value)}
+                    placeholder="How it was paid — optional"
+                    className="mb-2 w-full rounded-control border border-line bg-surface px-2.5 py-1.5 text-[12.5px] text-ink outline-none focus:border-brand-400"
+                  />
+                  {confirmError ? (
+                    <p role="alert" className="mb-2 text-[12px] text-stop-700">{confirmError}</p>
+                  ) : null}
+                  <div className="flex gap-1.5">
+                    <button
+                      type="button"
+                      disabled={!acknowledged || busy === r.id}
+                      onClick={async () => {
+                        setConfirmError(null);
+                        setBusy(r.id);
+                        const result = await confirmManualPayment({
+                          paymentId: r.id,
+                          acknowledged,
+                          note: confirmNote,
+                        });
+                        setBusy(null);
+                        if (!result.ok) { setConfirmError(result.error); return; }
+                        setConfirming(null);
+                        setAcknowledged(false);
+                        setConfirmNote('');
+                        router.refresh();
+                      }}
+                      className="flex items-center gap-1 rounded-[6px] bg-brand-600 px-2.5 py-1 text-[12px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-50"
+                    >
+                      {busy === r.id
+                        ? <Loader2 size={11} className="animate-spin" />
+                        : <Check size={11} strokeWidth={2.6} />}
+                      Confirm and issue
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setConfirming(null); setAcknowledged(false); setConfirmError(null); }}
+                      className="rounded-[6px] border border-line px-2.5 py-1 text-[12px] text-ink-soft hover:text-ink"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               ) : null}
             </div>

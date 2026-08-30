@@ -196,7 +196,13 @@ export function repeatApproved(input: {
            ? `<p style="margin:0 0 4px;">The last step is payment. Once that clears, your
                 prescription is prepared and ready to collect.</p>
               ${button(input.paymentUrl, 'Pay for my prescription')}`
-           : `<p style="margin:0 0 8px;">You can pay when you collect.</p>`
+           /*
+            * No link is sent in this phase, and this branch is what every
+            * patient sees. It used to say "you can pay when you collect",
+            * which is untrue for anyone having their medicine posted.
+            */
+           : `<p style="margin:0 0 8px;">The pharmacy will be in touch about payment.
+                Your prescription is prepared once that is settled.</p>`
        }
        ${branchBlock(input.branch)}
        ${

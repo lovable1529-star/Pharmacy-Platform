@@ -38,8 +38,16 @@ export interface RequestPaymentInput {
   branchId: string | null;
   amountMinor: number;
   description: string;
-  /** Where to send the link. Nothing is sent without one. */
+  /** Where a link would be sent. Nothing is sent without one. */
   email: string | null;
+  /**
+   * Send the patient a payment link.
+   *
+   * Defaults to false. No provider is integrated in this phase, so the link
+   * leads to a page that cannot take money — emailing one would be worse than
+   * sending nothing. Set true only once a provider is live.
+   */
+  notifyPatient?: boolean;
 }
 
 export interface RequestedPayment {
@@ -56,6 +64,18 @@ export interface RequestedPayment {
  * Returns the existing request if one is already open, rather than creating a
  * second — two live links for one supply means a patient can pay twice, and the
  * refund is the pharmacy's problem rather than their mistake.
+ */
+/**
+ * Raise a payment that is owed.
+ *
+ * `notifyPatient` defaults to FALSE. The current phase has no payment provider
+ * integrated: a member of staff confirms the money arrived. Emailing a link to
+ * a page that cannot take a payment is worse than sending nothing, so sending
+ * one is now a deliberate act rather than a side effect of raising the charge.
+ *
+ * The token, the page and the provider abstraction all stay — this is a
+ * switched-off feature, not a deleted one, and the webhook path will settle
+ * through the same `settlePayment` the tick box does.
  */
 export async function requestPayment(
   input: RequestPaymentInput,
@@ -110,7 +130,7 @@ export async function requestPayment(
 
   const url = buildPaymentUrl(appUrl, token);
 
-  if (input.email) {
+  if (input.email && input.notifyPatient === true) {
     await queueNotification({
       organisationId: input.organisationId,
       channel: 'EMAIL',
@@ -157,10 +177,23 @@ export interface SettleResult {
  * the caller that actually moves the row out of PENDING does the follow-on
  * work, so a duplicate webhook cannot produce a second prescription.
  */
+/**
+ * Settle a payment, whatever told us it had been paid.
+ *
+ * One function for both the staff tick box now and a provider webhook later,
+ * because everything payment unlocks — approving the request, allocating the
+ * prescription number, issuing the document — has to happen identically
+ * regardless of how the money was confirmed. Two settlement paths would drift.
+ *
+ * `confirmedBy` is the accountability the manual phase has instead of a
+ * provider reference: `paidAt` is the event, this is who asserted it.
+ */
 export async function settlePayment(input: {
   paymentId: string;
   provider: PaymentProvider;
   providerRef?: string | null;
+  confirmedBy?: string | null;
+  confirmationNote?: string | null;
 }): Promise<SettleResult> {
   const [settled] = await db
     .update(payment)
@@ -169,6 +202,8 @@ export async function settlePayment(input: {
       paidAt: new Date(),
       provider: input.provider,
       providerRef: input.providerRef ?? null,
+      confirmedBy: input.confirmedBy ?? null,
+      confirmationNote: input.confirmationNote?.trim() || null,
       updatedAt: new Date(),
     })
     .where(and(eq(payment.id, input.paymentId), eq(payment.status, 'PENDING')))
@@ -252,7 +287,14 @@ export async function settlePayment(input: {
       if (raised) {
         await tx
           .update(prescription)
-          .set({ paidOnline: true, updatedAt: new Date() })
+          .set({
+            paidOnline: true,
+            // The settlement that released it. One payment can never sit
+            // behind two prescriptions — the database enforces that with a
+            // unique index — so this is the audit trail from money to medicine.
+            paymentId: settled.id,
+            updatedAt: new Date(),
+          })
           .where(eq(prescription.id, raised.id));
 
         await issuePrescription(tx, raised.id);
