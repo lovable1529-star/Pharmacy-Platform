@@ -21,6 +21,60 @@ Always name important files/migrations and describe behavioural impact, not just
 
 ---
 
+## 31 August 2026 - Stage 07, what the three bands actually mean
+
+### Changed - the model
+
+GREEN no longer auto-approves. The client's newest workflow is explicit that it
+may be fast-tracked but still requires the legally required prescriber
+authorisation. A rules engine can say a request looks routine; it cannot
+prescribe. The three bands now mean three amounts of human work rather than
+"none, some, and stop":
+
+- **GREEN** - a compact authorisation, no telephone call. The client is
+  explicit that a routine repeat should not need one.
+- **AMBER** - approval refused until the pharmacist records why they are
+  content. His specification says a pharmacist must document why an amber was
+  approved; it is now enforced rather than requested.
+- **RED** - cannot be authorised from the queue at all. A note does not clear
+  it; it goes through the urgent list or is declined with a reason.
+- **No evaluation** - not a quiet green. Nothing ran, so the pharmacist's own
+  reading is the only check and they must record what they checked.
+
+Enrolment is checked too: somebody never enrolled is sent to the new-patient
+pathway, and a PAUSED enrolment blocks even a GREEN. Pausing means "must be
+seen before the next supply", and if a paused patient could still be authorised
+then pausing would mean nothing.
+
+### Fixed - wording that described a service we no longer run
+
+- Ruleset: "reviewing in person", "Needs review in person" and "Book them in"
+  replaced with remote-service wording and a referral to the separate
+  face-to-face programme.
+- The repeat form offered "Visit the clinic" and promised "we will book you
+  in" - an appointment this service does not offer. It now says a pharmacist
+  will call, and will point them to the Karsons programme if they still want
+  to be seen.
+- The repeat access gate told a rejected caller to "book an appointment". It
+  now sends them to the new-patient form, which is the door they actually
+  need. Still one message for every cause of failure, so it cannot be used to
+  discover valid IDs.
+- README no longer says "GREEN auto-approves".
+
+### Marked as interim
+
+The three-month supply rule stays AMBER with a comment saying why: the client's
+workflow allows one, two or three months "where permitted" without saying when.
+Inventing a permission is as wrong as inventing a restriction.
+
+### Tests
+
+- `tests/repeat-gate.test.ts` - 16 tests.
+
+686 passing, typecheck clean, production build clean.
+
+---
+
 ## 31 August 2026 - Stage 06, fulfilment, and the join the plan was missing
 
 ### Fixed - the dead end

@@ -17,7 +17,9 @@ the pharmacy — new services do not require a code change.
   Michael are separate operating companies under one group.
 - **Form engine** — schema-driven, versioned, immutable once published, so a
   consultation always renders under the exact questions the patient answered.
-- **Decision engine** — pure GREEN / AMBER / RED triage. GREEN auto-approves.
+- **Decision engine** — pure GREEN / AMBER / RED triage. GREEN is fast-tracked but
+  still requires prescriber authorisation; AMBER needs documented reasoning; RED
+  cannot reach payment or a prescription.
 - **Audit** — hash-chained append-only log; tampering breaks the chain.
 - **Access control** — invite-only, password auth, DB-backed permission grid
   (11 modules × 6 actions) with branch and date-scoped role assignments.

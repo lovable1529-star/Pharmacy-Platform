@@ -33,9 +33,19 @@ export interface AccessAttempt {
 }
 
 /** What a patient is told, whatever actually went wrong. */
+/*
+ * One message for every failure, and it points at the right door.
+ *
+ * It used to say "book an appointment", which is now wrong twice over: this
+ * service is remote, and somebody without an active enrolment needs the
+ * new-patient pathway rather than a booking. Still deliberately identical for
+ * every cause of failure — telling an unrecognised caller which half they got
+ * right would turn the gate into a tool for finding valid IDs.
+ */
 export const ACCESS_DENIED_MESSAGE =
   'We could not match those details to an active repeat care record. ' +
-  'Please book an appointment and a pharmacist will help.';
+  'If you are new to us, or it has been a while, please start with the new patient form ' +
+  'and a pharmacist will be in touch.';
 
 /** Trim and case-fold, because neither is a meaningful difference here. */
 function normalise(value: string): string {

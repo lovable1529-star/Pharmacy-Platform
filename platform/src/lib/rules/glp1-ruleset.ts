@@ -89,7 +89,7 @@ export const GLP1_REPEAT_RULESET: RulesetDefinition = {
       priority: 950,
       outcome: 'RED',
       when: { field: 'derived.missedDoses', op: 'gte', value: 2 },
-      message: 'Two or more doses missed. Adherence and re-titration need reviewing in person.',
+      message: 'Two or more doses missed. Adherence and re-titration need a pharmacist to speak to them.',
     },
 
     // ── 2. Dose request rules ─────────────────────────────────
@@ -119,7 +119,7 @@ export const GLP1_REPEAT_RULESET: RulesetDefinition = {
           { field: 'answers.doseRequest', op: 'neq', value: 'decrease' },
         ],
       },
-      message: 'BMI is below 23 and the patient is not tapering. Needs review in person.',
+      message: 'BMI is below 23 and the patient is not tapering. A pharmacist must review before any supply.',
     },
     {
       id: 'bmi-low-tapering',
@@ -175,6 +175,12 @@ export const GLP1_REPEAT_RULESET: RulesetDefinition = {
       message: 'Eight weeks requested before six weeks stable on this dose.',
     },
     {
+      /*
+       * INTERIM. The client's newest workflow allows one, two or three months
+       * "where permitted" without saying when. Until he defines it, three
+       * months is reviewed rather than refused or waved through — inventing a
+       * permission is as wrong as inventing a restriction.
+       */
       id: 'supply-three-pens',
       label: 'More than two months of supply requested',
       priority: 675,
@@ -255,7 +261,14 @@ export const GLP1_REPEAT_RULESET: RulesetDefinition = {
       priority: 610,
       outcome: 'AMBER',
       when: { field: 'answers.consultType', op: 'eq', value: 'clinic' },
-      message: 'Patient chose to be seen rather than supplied online. Book them in.',
+      /*
+       * They are not booked into this service. Weight Management is remote at
+       * the client's explicit instruction, and somebody who wants to be seen
+       * is referred to the separate face-to-face programme rather than given
+       * an internal appointment.
+       */
+      message: 'Patient asked to be seen rather than supplied online. Refer them to the '
+        + 'face-to-face programme.',
     },
 
     // ── The GREEN path ────────────────────────────────────────

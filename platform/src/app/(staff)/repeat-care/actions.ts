@@ -13,11 +13,12 @@
  * rather than asked for in the interface, so it cannot be skipped.
  */
 
-import { and, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
 import {
   submission, reviewEvent, service, patient, clinician, clinicalContactEvent,
+  ruleEvaluation, repeatEnrolment,
 } from '@/lib/db/schema';
 import { db } from '@/lib/db/client';
 import { requestPayment } from '@/lib/payments/lifecycle';
@@ -28,6 +29,9 @@ import { approvalBlocker } from '@/lib/prescriptions/approval';
 import {
   newPatientApprovalBlockers, type VerificationCall,
 } from '@/lib/clinical/new-patient-gate';
+import {
+  repeatAuthorisationBlockers, type RepeatOutcome,
+} from '@/lib/clinical/repeat-gate';
 import { IllegalTransitionError } from '@/lib/workflow/status';
 
 export type ReviewAction = 'APPROVED' | 'REJECTED' | 'INFO_REQUESTED';
@@ -91,6 +95,7 @@ const decide = action<DecideInput>('repeat_care:edit')
           branchId: submission.branchId,
           answers: submission.answers,
           serviceKind: service.kind,
+          serviceId: submission.serviceId,
         })
         .from(submission)
         .innerJoin(service, eq(submission.serviceId, service.id))
@@ -147,6 +152,47 @@ const decide = action<DecideInput>('repeat_care:edit')
         });
 
         if (blocker) throw new CannotApproveError(blocker);
+
+        /*
+         * A repeat carries its own rules, and they are not the same as a new
+         * patient's. GREEN is a fast-track authorisation with no call; AMBER
+         * needs the pharmacist's reasoning written down; RED cannot be
+         * supplied from here at all.
+         *
+         * The outcome is read from the stored evaluation rather than from what
+         * the browser sent, because the browser is where an override would be
+         * attempted.
+         */
+        if (subject.serviceKind === 'REPEAT_SUPPLY') {
+          const [evaluation] = await tx
+            .select({ outcome: ruleEvaluation.outcome })
+            .from(ruleEvaluation)
+            .where(eq(ruleEvaluation.submissionId, input.submissionId))
+            .orderBy(desc(ruleEvaluation.evaluatedAt))
+            .limit(1);
+
+          const [enrolment] = subject.patientId
+            ? await tx
+              .select({ status: repeatEnrolment.status })
+              .from(repeatEnrolment)
+              .where(
+                and(
+                  eq(repeatEnrolment.patientId, subject.patientId),
+                  eq(repeatEnrolment.serviceId, subject.serviceId),
+                ),
+              )
+              .limit(1)
+            : [];
+
+          const blockers = repeatAuthorisationBlockers({
+            outcome: (evaluation?.outcome ?? null) as RepeatOutcome,
+            enrolmentStatus: enrolment?.status ?? null,
+            note: input.note,
+            calls: [],
+          });
+
+          if (blockers.length > 0) throw new CannotApproveError(blockers.join(' '));
+        }
       }
     }
 

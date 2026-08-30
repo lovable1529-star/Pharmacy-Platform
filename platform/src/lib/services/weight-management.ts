@@ -701,9 +701,15 @@ export function buildWeightManagementRepeatForm(
             presentation: 'segmented',
             options: [
               { value: 'online', label: 'Complete online' },
-              { value: 'clinic', label: 'Visit the clinic' },
+              { value: 'clinic', label: 'I would rather be seen in person' },
             ],
-            warnWhen: [{ value: 'clinic', severity: 'info', message: 'No problem — finish this form and we will book you in rather than supplying online.' }],
+            /*
+             * Not an internal booking. This service is remote at the client's
+             * explicit instruction, and being seen in person means the
+             * separate Karsons programme — the old wording promised to book
+             * them into an appointment this service does not offer.
+             */
+            warnWhen: [{ value: 'clinic', severity: 'info', message: 'Finish this form and a pharmacist will call you. If you would still rather be seen, they will point you to the Karsons face-to-face programme.' }],
           },
         ],
       },
