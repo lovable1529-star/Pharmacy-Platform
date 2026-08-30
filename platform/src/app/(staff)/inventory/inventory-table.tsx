@@ -11,11 +11,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { PackagePlus } from 'lucide-react';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { PageHeader } from '@/components/ui/primitives';
 import { formatDate } from '@/lib/units';
 import type { StockRow } from '@/lib/queries/clinical';
 import { RecallDialog } from './recall-dialog';
+import { ReceiveDialog } from './receive-dialog';
 import { MovementDialog } from './movement-dialog';
 
 function expiryTone(days: number): string {
@@ -26,18 +28,22 @@ function expiryTone(days: number): string {
 }
 
 export function InventoryTable({
-  rows, branchId, companyId, canRecall, canEdit, canExport,
+  rows, products, branchName, branchId, companyId, canRecall, canEdit, canExport,
 }: {
   rows: StockRow[];
   branchId: string | null;
   companyId: string | null;
   canRecall: boolean;
   canEdit: boolean;
+  /** The catalogue, for the receive dialog's product picker. */
+  products: { id: string; name: string }[];
+  branchName: string | null;
   canExport: boolean;
 }) {
   const router = useRouter();
   const [recalling, setRecalling] = useState<string | null>(null);
   const [moving, setMoving] = useState<StockRow | null>(null);
+  const [receiving, setReceiving] = useState(false);
 
   const total = rows.reduce((n, r) => n + r.quantity, 0);
   const expiring = rows.filter((r) => r.daysToExpiry <= 90 && r.quantity > 0).length;
@@ -136,6 +142,24 @@ export function InventoryTable({
       <PageHeader
         title="Inventory"
         subtitle={`${total} doses in stock across the group. Stock decrements automatically when a consultation is recorded.`}
+        actions={
+          /*
+           * Receiving a delivery is the day-to-day stock job, and it used to
+           * live in Settings — a menu away from the list it changes. It needs
+           * a branch to receive INTO, so it is offered only when one is
+           * active and the user can edit stock there.
+           */
+          canEdit && branchId && companyId && branchName ? (
+            <button
+              type="button"
+              onClick={() => setReceiving(true)}
+              className="flex items-center gap-1.5 rounded-control bg-brand-600 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700"
+            >
+              <PackagePlus size={13} strokeWidth={2.4} />
+              Receive stock
+            </button>
+          ) : null
+        }
       />
 
       {expiring > 0 ? (
@@ -151,7 +175,7 @@ export function InventoryTable({
         rowKey={(r) => `${r.batchId}-${r.branchId}`}
         searchPlaceholder="Filter by product or batch — showing all branches…"
         emptyTitle="No stock recorded"
-        emptyBody="Add products and batches in Settings, then record a receipt."
+        emptyBody="Add the product in Settings first, then receive a batch here."
         exportName="karsons-inventory"
         canExport={canExport}
       />
@@ -166,6 +190,19 @@ export function InventoryTable({
           currentQuantity={moving.quantity}
           recalled={moving.recalledAt !== null}
           onClose={() => setMoving(null)}
+        />
+      ) : null}
+
+      {receiving && branchId && companyId && branchName ? (
+        <ReceiveDialog
+          products={products}
+          branchId={branchId}
+          companyId={companyId}
+          branchName={branchName}
+          onClose={(received) => {
+            setReceiving(false);
+            if (received) router.refresh();
+          }}
         />
       ) : null}
 

@@ -1,7 +1,7 @@
 'use server';
 
 /**
- * Batch recall.
+ * Stock operations: receiving a delivery, and recalling a batch.
  *
  * The moment a batch is recalled, three questions matter and all of them are
  * about people rather than stock: who received it, how much is still on the
@@ -13,11 +13,98 @@
  * consultation screen refuses to administer from it.
  */
 
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { action, query } from '@/lib/actions';
-import { batch, stockLevel, stockMovement, consultation, patient, branch } from '@/lib/db/schema';
+import {
+  batch, stockLevel, stockMovement, consultation, patient, branch,
+  vaccineAdministration,
+} from '@/lib/db/schema';
 import { db } from '@/lib/db/client';
+import { receiptProblem, type BatchReceipt } from '@/lib/inventory/receipts';
+
+// ─────────────────────────────────────────────────────────────────────────
+// Receiving stock
+//
+// Moved here from Settings. The validation lives in lib/inventory/receipts.ts
+// so it can be tested without a database, and so the same answer is given
+// wherever a receipt is entered.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface ReceiveBatchInput extends BatchReceipt {
+  branchId: string;
+  companyId: string;
+}
+
+const receive = action<ReceiveBatchInput>('inventory:edit')
+  .scopedTo((input) => ({ branchId: input.branchId, companyId: input.companyId }))
+  .handler(async (input, { tx, actor }) => {
+    const [created] = await tx
+      .insert(batch)
+      .values({
+        organisationId: actor.organisationId,
+        productId: input.productId,
+        batchNumber: input.batchNumber.trim(),
+        expiryDate: input.expiryDate,
+      })
+      .returning();
+
+    if (!created) throw new Error('Could not create the batch.');
+
+    await tx.insert(stockLevel).values({
+      organisationId: actor.organisationId,
+      branchId: input.branchId,
+      batchId: created.id,
+      quantity: input.quantity,
+    });
+
+    // Opening stock is a movement like any other, so the cached level always
+    // reconciles against the ledger.
+    await tx.insert(stockMovement).values({
+      organisationId: actor.organisationId,
+      branchId: input.branchId,
+      batchId: created.id,
+      kind: 'RECEIPT',
+      quantity: input.quantity,
+      reason: 'Batch received',
+    });
+
+    return {
+      result: { batchId: created.id },
+      audit: {
+        action: 'inventory.receipt',
+        entityType: 'batch',
+        entityId: created.id,
+        after: {
+          batchNumber: created.batchNumber,
+          expiryDate: created.expiryDate,
+          quantity: input.quantity,
+          branchId: input.branchId,
+        },
+      },
+    };
+  });
+
+export async function receiveBatch(input: ReceiveBatchInput) {
+  const problem = receiptProblem(input);
+  if (problem) return { ok: false as const, error: problem };
+
+  try {
+    const result = await receive(input);
+    revalidatePath('/inventory');
+    revalidatePath('/settings');
+    return { ok: true as const, ...result };
+  } catch (error) {
+    console.error('receiveBatch failed', error);
+    return {
+      ok: false as const,
+      error:
+        error instanceof Error && error.name === 'AuthorisationError'
+          ? 'You do not have permission to change stock at this branch.'
+          : 'Could not receive that batch.',
+    };
+  }
+}
 
 export interface RecallImpact {
   batchNumber: string;
@@ -52,23 +139,101 @@ export async function getRecallImpact(batchId: string): Promise<RecallImpact | n
       const info = rows[0];
       if (!info) return null;
 
-      const recipients = await db
-        .select({
-          patientId: patient.id,
-          firstName: patient.firstName,
-          lastName: patient.lastName,
-          phone: patient.phone,
-          email: patient.email,
-          administeredAt: consultation.completedAt,
-        })
-        .from(consultation)
-        .innerJoin(patient, eq(consultation.patientId, patient.id))
-        .where(
-          and(
-            eq(consultation.batchId, input.batchId),
-            eq(consultation.organisationId, actor.organisationId),
+      /*
+       * Who received this batch — from BOTH records that can hold one.
+       *
+       * This asked `consultation.batch_id` alone. Vaccinations recorded through
+       * the administration path write their batch to `vaccine_administration`
+       * and leave the consultation's own column null, so a recall of a batch
+       * given that way reported ZERO patients affected while somebody had
+       * actually received it. On the live database that is already true of the
+       * only administered vaccination.
+       *
+       * Both are queried and the results merged on patient id. A patient who
+       * appears in both — an older record that populated the consultation
+       * column as well — is one person, not two, and the earliest known
+       * administration time is kept.
+       */
+      const [fromConsultations, fromAdministrations] = await Promise.all([
+        db
+          .select({
+            patientId: patient.id,
+            firstName: patient.firstName,
+            lastName: patient.lastName,
+            phone: patient.phone,
+            email: patient.email,
+            administeredAt: consultation.completedAt,
+          })
+          .from(consultation)
+          .innerJoin(patient, eq(consultation.patientId, patient.id))
+          .where(
+            and(
+              eq(consultation.batchId, input.batchId),
+              eq(consultation.organisationId, actor.organisationId),
+            ),
           ),
-        );
+        db
+          .select({
+            patientId: patient.id,
+            firstName: patient.firstName,
+            lastName: patient.lastName,
+            phone: patient.phone,
+            email: patient.email,
+            // A `date` column, so Drizzle hands back `YYYY-MM-DD`. Joined
+            // straight to the patient rather than through the submission,
+            // which is nullable on this table.
+            administeredOn: vaccineAdministration.administeredOn,
+          })
+          .from(vaccineAdministration)
+          .innerJoin(patient, eq(vaccineAdministration.patientId, patient.id))
+          .where(
+            and(
+              eq(vaccineAdministration.batchId, input.batchId),
+              eq(vaccineAdministration.organisationId, actor.organisationId),
+            ),
+          ),
+      ]);
+
+      type Recipient = {
+        patientId: string;
+        firstName: string;
+        lastName: string;
+        phone: string | null;
+        email: string | null;
+        administeredAt: Date | null;
+      };
+
+      const merged: Recipient[] = [
+        ...fromConsultations,
+        ...fromAdministrations.map((r) => ({
+          patientId: r.patientId,
+          firstName: r.firstName,
+          lastName: r.lastName,
+          phone: r.phone,
+          email: r.email,
+          administeredAt: r.administeredOn ? new Date(`${r.administeredOn}T00:00:00Z`) : null,
+        })),
+      ];
+
+      const byPatient = new Map<string, Recipient>();
+      for (const row of merged) {
+        const seen = byPatient.get(row.patientId);
+        if (!seen) {
+          byPatient.set(row.patientId, row);
+          continue;
+        }
+        // Same person, two records of the same event. Keep the earliest time we
+        // can evidence — a recall letter should say when they had it, and the
+        // earlier of two timestamps is the safer claim.
+        if (
+          row.administeredAt
+          && (!seen.administeredAt || row.administeredAt < seen.administeredAt)
+        ) {
+          byPatient.set(row.patientId, row);
+        }
+      }
+
+      const recipients = [...byPatient.values()];
 
       const remaining = await db
         .select({ branchName: branch.name, quantity: stockLevel.quantity })

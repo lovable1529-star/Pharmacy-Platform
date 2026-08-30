@@ -11,7 +11,7 @@ import {
   AddBranchForm, AddPharmacistForm, AddProductForm, PharmacistRowActions,
 } from './entity-forms';
 import { formatDate } from '@/lib/units';
-import { addBatch, addSurgery } from './actions';
+import { addSurgery } from './actions';
 
 interface Props {
   companies: { id: string; name: string; tradingName: string | null; gphcNumber: string | null }[];
@@ -161,7 +161,13 @@ export function SettingsView(props: Props) {
               />
             ))}
           </Card>
-          <AddBatchForm products={props.products} activeBranch={props.activeBranch} />
+          <p className="text-[13px] leading-relaxed text-ink-soft">
+            Taking in a delivery happens in{' '}
+            <Link href="/inventory" className="font-medium text-brand-600 hover:underline">
+              Inventory
+            </Link>
+            , alongside the stock it changes. This tab is for the product catalogue behind it.
+          </p>
         </>
       ) : null}
 
@@ -228,82 +234,6 @@ function Row({
 
 const input =
   'w-full rounded-control border border-line bg-surface px-3 py-2 text-[13.5px] text-ink transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none';
-
-function AddBatchForm({
-  products, activeBranch,
-}: {
-  products: { id: string; name: string }[];
-  activeBranch: { id: string; name: string; companyId: string } | null;
-}) {
-  const [productId, setProductId] = useState('');
-  const [batchNumber, setBatchNumber] = useState('');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [quantity, setQuantity] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
-
-  if (!activeBranch) return null;
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    setBusy(true);
-    setMessage(null);
-
-    const result = await addBatch({
-      productId,
-      batchNumber,
-      expiryDate,
-      branchId: activeBranch!.id,
-      companyId: activeBranch!.companyId,
-      quantity: Number(quantity),
-    });
-
-    setBusy(false);
-    if (result.ok) {
-      setMessage({ ok: true, text: `Batch added to ${activeBranch!.name}.` });
-      setBatchNumber(''); setExpiryDate(''); setQuantity('');
-    } else {
-      setMessage({ ok: false, text: result.error });
-    }
-  }
-
-  return (
-    <form onSubmit={submit} className="rounded-panel border border-line bg-surface px-[18px] py-[17px] shadow-panel">
-      <h3 className="mb-3 text-[14px] font-semibold text-ink">
-        Receive a new batch at {activeBranch.name}
-      </h3>
-
-      <div className="grid gap-3 sm:grid-cols-4">
-        <SearchSelect
-          value={productId}
-          onChange={setProductId}
-          placeholder="Product…"
-          aria-label="Product"
-          options={products.map((p) => ({ value: p.id, label: p.name }))}
-        />
-        <input value={batchNumber} onChange={(e) => setBatchNumber(e.target.value)}
-          placeholder="Batch number" required className={input} />
-        <input type="date" value={expiryDate} onChange={(e) => setExpiryDate(e.target.value)}
-          required aria-label="Expiry date" className={input} />
-        <input type="number" min="0" value={quantity} onChange={(e) => setQuantity(e.target.value)}
-          placeholder="Quantity" required className={input} />
-      </div>
-
-      {message ? (
-        <p className={cn('mt-3 flex items-start gap-1.5 text-[13px]', message.ok ? 'text-safe-700' : 'text-stop-700')}>
-          {message.ok ? null : <AlertTriangle size={14} strokeWidth={2.1} className="mt-0.5 shrink-0" />}
-          {message.text}
-        </p>
-      ) : null}
-
-      <button type="submit" disabled={busy}
-        className="mt-3 flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:opacity-60">
-        {busy ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} strokeWidth={2.2} />}
-        Add batch
-      </button>
-    </form>
-  );
-}
 
 function AddSurgeryForm() {
   const [name, setName] = useState('');

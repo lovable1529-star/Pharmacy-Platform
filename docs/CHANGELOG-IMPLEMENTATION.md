@@ -21,6 +21,57 @@ Always name important files/migrations and describe behavioural impact, not just
 
 ---
 
+## 31 August 2026 — Stage 02, flu inventory and administration
+
+### Changed
+
+- **Receiving a batch moved from Settings to Inventory.** It is now a
+  "Receive stock" action on the Inventory page itself, next to the list it
+  changes, rather than a permanent form inside Settings → Stock. The dialog
+  stays open after a successful receipt because a delivery is rarely one batch.
+- Settings → Stock keeps the product catalogue and a read-only batch list, and
+  points at Inventory for receipts.
+
+### Fixed — clinical safety
+
+- **A recall reported zero patients for any vaccination given through the
+  administration path.** `getRecallImpact()` queried `consultation.batch_id`
+  alone. Vaccinations recorded via `vaccine_administration` write their batch
+  there and leave the consultation column null — on the live database that is
+  already true of the only administered vaccination, so recalling its batch
+  would have said nobody received it. Both sources are now queried and merged
+  on patient id, keeping the earliest evidenced administration time.
+- **A batch expiring today was refused.** The old check compared the parsed
+  date (midnight UTC) against `new Date()`, so from shortly after midnight a
+  batch that had not yet expired was rejected. Comparison is now at day
+  resolution.
+- **A receipt of zero doses was accepted.** It is now refused and points at
+  adjustments, which carry a reason — recording zero as a delivery makes the
+  movement ledger assert stock arrived when none did.
+
+### Added
+
+- `src/lib/inventory/receipts.ts` — receipt validation as a pure function, used
+  by both the dialog and the server action so the answer is the same either way
+  and the pharmacist gets it without a round trip to Seoul.
+- `receiveBatch()` in the inventory domain, auditing as `inventory.receipt`.
+
+### Database
+
+None. Stage 02 touches no schema.
+
+### Tests
+
+- `tests/receipts.test.ts` — 14 tests. 556 passing overall, typecheck clean.
+
+### Verified
+
+- `/inventory`, `/settings` and `/vaccinations` compile and serve.
+- Visual confirmation of the Receive dialog is outstanding — it needs a
+  signed-in staff session.
+
+---
+
 ## 31 August 2026 — Stage 00, safety net
 
 Branch `feature/remote-weight-management` opened from `main` at `443e1d0`.
