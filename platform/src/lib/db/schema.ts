@@ -320,6 +320,23 @@ export const service = pgTable('service', {
   name: text('name').notNull(),
   slug: text('slug').notNull(),
   kind: serviceKindEnum('kind').notNull(),
+  /**
+   * Whether this service is booked, and how.
+   *
+   * REQUIRED - appointment-led.
+   * OPTIONAL - bookable, but a walk-in is equally valid. Flu.
+   * NONE     - no internal booking at all. Both Weight Management journeys.
+   *
+   * Deliberately separate from `kind`. Flu is a VACCINATION that takes
+   * appointments; Weight Management is a REPEAT_SUPPLY that must never create
+   * one. Modality is a setting, not a property of the service type - the
+   * moment both WM journeys became remote, inferring it from `kind` stopped
+   * working.
+   *
+   * Text with a database CHECK rather than a pgEnum: adding a modality later
+   * should not need an ALTER TYPE on a live database.
+   */
+  bookingMode: text('booking_mode').default('OPTIONAL').notNull(),
   description: text('description'),
   /** Integer pence. Never floats. */
   priceMinor: integer('price_minor'),
@@ -385,6 +402,13 @@ export const submission = pgTable('submission', {
   resumeToken: text('resume_token'),
   resumeExpiresAt: timestamp('resume_expires_at', { withTimezone: true }),
   submittedAt: timestamp('submitted_at', { withTimezone: true }),
+  /**
+   * Queue ownership and a due time — deliberately generic, not
+   * Weight-Management-specific, so flu or any later service uses the same
+   * model. A request nobody owns is a request nobody chases.
+   */
+  assignedTo: uuid('assigned_to').references(() => appUser.id),
+  reviewDueAt: timestamp('review_due_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
@@ -482,7 +506,13 @@ export const paymentStatusEnum = pgEnum('payment_status', [
  * boolean.
  */
 export const paymentProviderEnum = pgEnum('payment_provider', [
-  'DEMO', 'STRIPE', 'IN_PERSON',
+  /**
+   * MANUAL is not "cash at the till". It records that a member of staff
+   * asserted the money had arrived, during the phase where no payment
+   * provider is integrated at all. Keeping it distinct from IN_PERSON means a
+   * later reconciliation can tell the two apart.
+   */
+  'DEMO', 'STRIPE', 'IN_PERSON', 'MANUAL',
 ]);
 
 /**
@@ -513,6 +543,13 @@ export const payment = pgTable('payment', {
   accessToken: text('access_token').notNull(),
   expiresAt: timestamp('expires_at', { withTimezone: true }),
   paidAt: timestamp('paid_at', { withTimezone: true }),
+  /**
+   * `paidAt` stays the financial event. This says WHICH logged-in person
+   * asserted it, which is the only accountability there is while settlement is
+   * a tick box rather than a webhook.
+   */
+  confirmedBy: uuid('confirmed_by').references(() => appUser.id),
+  confirmationNote: text('confirmation_note'),
   cancelledAt: timestamp('cancelled_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
@@ -975,6 +1012,12 @@ export const prescription = pgTable('prescription', {
   clinicianId: uuid('clinician_id').references(() => clinician.id),
   medicineId: uuid('medicine_id').references(() => medicine.id),
 
+  /**
+   * The settlement that released this prescription. Unique where set, so one
+   * payment can never sit behind two prescriptions.
+   */
+  paymentId: uuid('payment_id').references(() => payment.id),
+
   /** Human reference. Allocated per branch per year — see migration 14. */
   number: text('number'),
   status: prescriptionStatusEnum('status').default('PENDING_PAYMENT').notNull(),
@@ -1104,6 +1147,12 @@ export const gpNotification = pgTable('gp_notification', {
   organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
   consultationId: uuid('consultation_id').references(() => consultation.id),
   administrationId: uuid('administration_id').references(() => vaccineAdministration.id),
+  /**
+   * A remote Weight Management supply has no consultation and no
+   * administration. Pointing straight at the prescription means it does not
+   * need a fabricated consultation row simply to be traceable.
+   */
+  prescriptionId: uuid('prescription_id').references(() => prescription.id),
   gpSurgeryId: uuid('gp_surgery_id').references(() => gpSurgery.id),
   /** Where it actually went, even if the surgery address changes later. */
   recipientSnapshot: text('recipient_snapshot').notNull(),
@@ -1159,4 +1208,208 @@ export const notificationTemplate = pgTable('notification_template', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 }, (t) => [
   uniqueIndex('notification_template_key_idx').on(t.organisationId, t.templateKey, t.channel),
+]);
+
+
+// =======================================================================
+// Remote Weight Management - migrations 21 and 22
+// =======================================================================
+
+/**
+ * A recorded contact with a patient about a specific request.
+ *
+ * The NEW Weight Management journey has no face-to-face step, so the phone
+ * call IS the identity check and the clinical conversation. A free-text note
+ * cannot answer "who called, did they confirm who they were, and what was
+ * decided", and those are exactly the questions asked afterwards.
+ *
+ * Generic rather than a `wm_call` table: repeat AMBER contacts and any later
+ * service should produce the same evidence in the same shape.
+ */
+export const clinicalContactEvent = pgTable('clinical_contact_event', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  submissionId: uuid('submission_id').references(() => submission.id),
+  patientId: uuid('patient_id').references(() => patient.id),
+  clinicianId: uuid('clinician_id').references(() => clinician.id),
+  createdBy: uuid('created_by').references(() => appUser.id),
+
+  /** PHONE / EMAIL / SMS / WHATSAPP / IN_PERSON */
+  channel: text('channel').default('PHONE').notNull(),
+  /** OUTBOUND / INBOUND */
+  direction: text('direction').default('OUTBOUND').notNull(),
+  /** Why the contact happened, e.g. NEW_PATIENT_VERIFICATION. */
+  purpose: text('purpose').notNull(),
+  /**
+   * COMPLETED / NO_ANSWER / VOICEMAIL / CALLBACK_REQUESTED / FAILED /
+   * INFO_REQUIRED / ESCALATED. Only COMPLETED satisfies the approval gate, and
+   * the database requires `completedAt` alongside it.
+   */
+  outcome: text('outcome').notNull(),
+
+  identityVerified: boolean('identity_verified').default(false).notNull(),
+  /** What was asked to confirm identity, kept as answered. */
+  verificationData: jsonb('verification_data')
+    .$type<Record<string, unknown>>().default({}).notNull(),
+  clinicalFindings: text('clinical_findings'),
+  adviceGiven: text('advice_given'),
+  notes: text('notes'),
+  followUpRequired: boolean('follow_up_required').default(false).notNull(),
+
+  startedAt: timestamp('started_at', { withTimezone: true }),
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  index('clinical_contact_submission_idx').on(t.submissionId, t.createdAt),
+  index('clinical_contact_patient_idx').on(t.patientId, t.createdAt),
+  index('clinical_contact_purpose_idx').on(t.organisationId, t.purpose, t.createdAt),
+]);
+
+/**
+ * The physical half of a supply: assembling it, and getting it to the patient.
+ *
+ * Kept apart from `prescription` on purpose. The prescription is the legal
+ * authorisation and should not grow a carrier and a tracking number; this is
+ * one record per prescription describing what actually happened to the box.
+ *
+ * The batch and expiry gate is enforced in the database by migration 21 - a
+ * row cannot reach READY, DISPATCHED, COLLECTED or SUPPLIED without both, and
+ * the expiry must be later than the supply date.
+ */
+export const prescriptionFulfilment = pgTable('prescription_fulfilment', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  prescriptionId: uuid('prescription_id').notNull().references(() => prescription.id),
+
+  /** COLLECTION / DELIVERY */
+  method: text('method').notNull(),
+  /**
+   * PENDING / ASSEMBLING / READY / DISPATCHED / COLLECTED / SUPPLIED /
+   * CANCELLED. A collection cannot be dispatched and a delivery cannot be
+   * collected; both are refused by a trigger rather than trusted to the UI.
+   */
+  status: text('status').default('PENDING').notNull(),
+
+  batchNumber: text('batch_number'),
+  expiryDate: date('expiry_date'),
+
+  /**
+   * Where it was actually sent, captured at dispatch. Reading the current
+   * address months later would misreport a historical delivery.
+   */
+  deliveryAddressSnapshot: text('delivery_address_snapshot'),
+  carrier: text('carrier'),
+  trackingNumber: text('tracking_number'),
+
+  preparedBy: uuid('prepared_by').references(() => appUser.id),
+  dispatchedBy: uuid('dispatched_by').references(() => appUser.id),
+  suppliedBy: uuid('supplied_by').references(() => appUser.id),
+
+  readyAt: timestamp('ready_at', { withTimezone: true }),
+  dispatchedAt: timestamp('dispatched_at', { withTimezone: true }),
+  suppliedAt: timestamp('supplied_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('prescription_fulfilment_prescription_idx').on(t.prescriptionId),
+  index('prescription_fulfilment_queue_idx').on(t.organisationId, t.status, t.updatedAt),
+]);
+
+/**
+ * How a service presents itself to patients.
+ *
+ * The client wants Weight Management marketed as a standalone clinic while
+ * Karsons remains the pharmacy that actually dispenses and posts. Those are
+ * two different identities on one journey, so `fulfilmentName` is a separate
+ * field rather than an absence.
+ */
+export const servicePublicProfile = pgTable('service_public_profile', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  serviceId: uuid('service_id').notNull().references(() => service.id),
+
+  publicBrandName: text('public_brand_name'),
+  logoStoragePath: text('logo_storage_path'),
+  primaryColour: text('primary_colour'),
+  secondaryColour: text('secondary_colour'),
+  supportEmail: text('support_email'),
+  supportPhone: text('support_phone'),
+
+  privacyUrl: text('privacy_url'),
+  termsUrl: text('terms_url'),
+  /** Where a patient who wants to be seen in person is sent instead. */
+  f2fReferralUrl: text('f2f_referral_url'),
+
+  /** Who actually dispenses. Karsons, and says so. */
+  fulfilmentName: text('fulfilment_name'),
+
+  active: boolean('active').default(true).notNull(),
+  updatedBy: uuid('updated_by').references(() => appUser.id),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('service_public_profile_service_idx').on(t.serviceId),
+]);
+
+/**
+ * Patient-facing information the pharmacy maintains itself.
+ *
+ * The client asked for treatment, risk and side-effect material to be shown as
+ * links the patient ticks to say they have read. Versioned, because "which
+ * leaflet did she agree to" has to survive the link being updated.
+ */
+export const patientResource = pgTable('patient_resource', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  serviceId: uuid('service_id').notNull().references(() => service.id),
+  /** Null means it applies whatever they are on. */
+  medicineId: uuid('medicine_id').references(() => medicine.id),
+
+  /** Stable across versions, so a reworded leaflet is the same resource. */
+  resourceKey: text('resource_key').notNull(),
+  version: integer('version').default(1).notNull(),
+  title: text('title').notNull(),
+  description: text('description'),
+  url: text('url').notNull(),
+
+  /** BEFORE_SUBMISSION / AFTER_RX / BOTH */
+  displayStage: text('display_stage').default('BOTH').notNull(),
+  requiresAcknowledgement: boolean('requires_acknowledgement').default(true).notNull(),
+  sortOrder: integer('sort_order').default(0).notNull(),
+  active: boolean('active').default(true).notNull(),
+
+  createdBy: uuid('created_by').references(() => appUser.id),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  archivedAt: timestamp('archived_at', { withTimezone: true }),
+}, (t) => [
+  uniqueIndex('patient_resource_key_version_idx').on(t.serviceId, t.resourceKey, t.version),
+  index('patient_resource_active_idx').on(t.serviceId, t.medicineId, t.sortOrder),
+]);
+
+/**
+ * Proof of what a patient was shown and agreed to read.
+ *
+ * Separate from `consentRecord` because these are educational materials rather
+ * than the legal consent text. Every field is a snapshot: the title, the URL
+ * and the version as they stood that day. A pointer to the current resource
+ * would quietly change what the record claims each time somebody edits a link.
+ */
+export const resourceAcknowledgement = pgTable('resource_acknowledgement', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  organisationId: uuid('organisation_id').notNull().references(() => organisation.id),
+  patientId: uuid('patient_id').references(() => patient.id),
+  submissionId: uuid('submission_id').notNull().references(() => submission.id),
+  resourceId: uuid('resource_id').references(() => patientResource.id),
+
+  resourceKeySnapshot: text('resource_key_snapshot').notNull(),
+  resourceVersionSnapshot: integer('resource_version_snapshot').notNull(),
+  titleSnapshot: text('title_snapshot').notNull(),
+  urlSnapshot: text('url_snapshot').notNull(),
+
+  acknowledged: boolean('acknowledged').default(true).notNull(),
+  acknowledgedAt: timestamp('acknowledged_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('resource_ack_submission_key_idx')
+    .on(t.submissionId, t.resourceKeySnapshot, t.resourceVersionSnapshot),
+  index('resource_ack_patient_idx').on(t.patientId, t.acknowledgedAt),
 ]);

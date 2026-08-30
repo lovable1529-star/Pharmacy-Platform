@@ -21,6 +21,48 @@ Always name important files/migrations and describe behavioural impact, not just
 
 ---
 
+## 31 August 2026 - Stage 01, Drizzle schema
+
+Migrations are NOT applied. The client is running every SQL script in one pass
+once the code is finished, so the schema is written ahead of the database.
+
+### Added - schema.ts
+
+From `21_remote_weight_management_workflow.sql`:
+
+- `submission.assignedTo`, `submission.reviewDueAt`
+- `payment.confirmedBy`, `payment.confirmationNote`
+- `paymentProviderEnum` value `MANUAL`
+- `prescription.paymentId`
+- `gpNotification.prescriptionId`
+- `clinicalContactEvent`
+- `prescriptionFulfilment`
+
+From `22_service_experience_resources.sql`:
+
+- `service.bookingMode`
+- `servicePublicProfile`
+- `patientResource`
+- `resourceAcknowledgement`
+
+### Tests
+
+- `tests/pending-schema.test.ts` - 18 tests parsing the pending SQL and
+  asserting every created table, added column and enum value is represented in
+  `schema.ts`, and that neither script has crept into `platform/supabase/`.
+  Written because deferring the migrations removes the usual safety net: the
+  code targets a database it cannot be checked against, nothing fails, no type
+  complains, and the first symptom would be a runtime error on a live system.
+
+574 passing, typecheck clean.
+
+### Deferred
+
+- Applying 21 and 22. Held in `docs/pending-migrations/` at the client's
+  request until all code changes are complete.
+
+---
+
 ## 31 August 2026 — Stage 02, flu inventory and administration
 
 ### Changed
