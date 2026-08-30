@@ -1,13 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { numberQuestions, visibleFields } from '@/lib/forms/runtime';
 import { buildFluVaccinationForm } from '@/lib/services/flu-vaccination';
-import { buildWeightManagementFirstForm } from '@/lib/services/weight-management';
+import { buildWeightManagementNewPatientForm } from '@/lib/services/weight-management';
 
 const FLU = buildFluVaccinationForm([
   { id: 'gp-1', name: 'Hailwood Medical centre', email: 'Hailwoodmeds@gov.im' },
 ]);
 
-const FIRST = buildWeightManagementFirstForm([{ id: 'br-1', name: 'Onchan' }]);
+const FIRST = buildWeightManagementNewPatientForm([{ id: 'br-1', name: 'Onchan' }]);
 
 /**
  * He asked for numbering so he could say "question 7" when giving feedback.

@@ -26,7 +26,7 @@ import {
 } from '../src/lib/seed/karsons';
 import { buildFluVaccinationForm } from '../src/lib/services/flu-vaccination';
 import {
-  buildWeightManagementFirstForm,
+  buildWeightManagementNewPatientForm,
   buildWeightManagementRepeatForm,
 } from '../src/lib/services/weight-management';
 import type { FormSchema } from '../src/types/form-schema';
@@ -268,12 +268,12 @@ async function main() {
   });
 
   await publishService({
-    name: 'Weight Management — First Consultation',
+    name: 'Weight Management — New Patient',
     slug: 'weight-management-first',
     kind: 'CONSULTATION',
     description: 'Full intake and clinical screening. Seen in person by a pharmacist.',
     priceMinor: null,
-    form: buildWeightManagementFirstForm(branchList),
+    form: buildWeightManagementNewPatientForm(branchList),
   });
 
   await publishService({

@@ -134,6 +134,13 @@ export function waitingFor(submittedAt: Date | null, now: Date = new Date()): st
 const QUESTION_FIELDS = [
   'questionsForPharmacist', 'questions', 'patientQuestion',
   'notesForPharmacist', 'anythingElse',
+  /*
+   * Where the prose actually is. `anythingElse` is a yes/no on both weight
+   * management forms and the text sits in the field it reveals - so checking
+   * only the yes/no both counted every "no" as a question AND missed every
+   * patient who had genuinely written something.
+   */
+  'anythingElseDetail', 'priorSideEffectsDetail',
 ];
 
 /**

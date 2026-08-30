@@ -233,3 +233,29 @@ describe('finding the free-text fields on a questionnaire', () => {
     expect(ids.has('allergyDetail')).toBe(true);
   });
 });
+
+describe('the box the prose is actually typed into', () => {
+  /*
+   * `anythingElse` is a yes/no on both weight management forms; what the
+   * patient writes goes into the field it reveals. Checking only the yes/no
+   * counted every "no" as a question and missed everyone who had written
+   * something — wrong in both directions at once.
+   */
+  it('counts what they wrote in the revealed box', () => {
+    expect(hasQuestionFor({
+      anythingElse: 'yes',
+      anythingElseDetail: 'I have been getting headaches in the afternoons',
+    })).toBe(true);
+  });
+
+  it('still ignores a plain no with nothing written', () => {
+    expect(hasQuestionFor({ anythingElse: 'no' })).toBe(false);
+  });
+
+  it('picks up side effects reported by a transferring patient', () => {
+    expect(hasQuestionFor({
+      priorSideEffects: 'yes',
+      priorSideEffectsDetail: 'Nausea for the first fortnight',
+    })).toBe(true);
+  });
+});

@@ -23,7 +23,7 @@ import {
 } from '../src/lib/seed/karsons';
 import { buildFluVaccinationForm } from '../src/lib/services/flu-vaccination';
 import {
-  buildWeightManagementFirstForm, buildWeightManagementRepeatForm,
+  buildWeightManagementNewPatientForm, buildWeightManagementRepeatForm,
 } from '../src/lib/services/weight-management';
 import { GLP1_REPEAT_RULESET } from '../src/lib/rules/glp1-ruleset';
 
@@ -236,11 +236,11 @@ const services = [
   },
   {
     slug: 'weight-management-first',
-    name: 'Weight Management — First Consultation',
+    name: 'Weight Management — New Patient',
     kind: 'CONSULTATION',
     description: 'Full intake and clinical screening. Seen in person by a pharmacist.',
     priceMinor: null,
-    form: buildWeightManagementFirstForm(branchList),
+    form: buildWeightManagementNewPatientForm(branchList),
     ruleset: null as unknown,
   },
   {

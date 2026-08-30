@@ -3,14 +3,18 @@
  *
  * Two forms, because they are two different clinical events:
  *
- *   FIRST CONSULTATION  full intake and contraindication screening. In person.
- *   REPEAT CARE         a short structured follow-up. Online, and the one the
- *                       decision engine triages.
+ *   NEW PATIENT   full intake, routing and contraindication screening.
+ *   REPEAT CARE   a short structured follow-up, triaged by the decision engine.
  *
- * New patients are NOT self-serve. His specification is explicit: a patient has
- * an initial consultation and a first follow-up in person, and only then does a
- * pharmacist enrol them into Repeat Care. The automated path is a privilege the
- * pharmacist grants.
+ * BOTH are remote. On 30 August 2026 the client was explicit: "We need one
+ * which is NEW patient service, then a REPEAT service. Both will be non-F2F."
+ * That replaces the earlier model, in which a new patient was seen in person
+ * twice before a pharmacist enrolled them into repeat care, and it is why the
+ * new-patient form opens by offering face-to-face care and then leaves the
+ * pathway entirely if it is chosen.
+ *
+ * Safety moves from the appointment to the questionnaire, the identity and
+ * evidence checks, and a mandatory pharmacist phone call before approval.
  *
  * Sources, in priority order:
  *   1. "GLP1_Repeat_Care_Scope_of_Work" — the clinical intent and the answer
@@ -87,7 +91,14 @@ export const GLP1_CONSENT_CLAUSES = [
   { id: 'risks', text: 'I have received information on the risks and benefits of the medicine, and I have had the opportunity to ask questions.' },
   { id: 'accurate', text: 'The medical information I have provided is true and accurate to the best of my knowledge, and I consent to the medicine being supplied.' },
   { id: 'reliance', text: 'I understand that the supply of this medicine is based on the information I have given, and that if it is inaccurate it could negatively affect my treatment.' },
-  { id: 'appointment', text: 'I understand that I can make an appointment to see a pharmacist in person at any time to discuss my treatment.' },
+  /*
+   * Was: "I can make an appointment to see a pharmacist in person at any time."
+   * That is no longer true of this service — it is a remote clinic, and being
+   * seen in person means being referred to a separate, higher-cost programme.
+   * A consent clause promising something the service does not offer is the
+   * kind of sentence that surfaces in a complaint.
+   */
+  { id: 'contact', text: 'I understand this is a remote service, that I can contact the pharmacy team at any time to discuss my treatment, and that I will be told if I need to be seen in person.' },
   { id: 'storage', text: 'I understand that my personal information — name, surname, email, telephone, date of birth, address and GP details — will be securely stored and processed in line with data protection regulations.' },
   { id: 'transmission', text: 'I authorise the collection, storage, and secure transmission of my information for the purposes mentioned above.' },
   { id: 'gp', text: 'I acknowledge that my GP will be notified of any prescription issued.' },
@@ -110,26 +121,132 @@ function branchOptions(branches: { id: string; name: string }[]): FieldOption[] 
 }
 
 // ─────────────────────────────────────────────────────────────
-// FORM 1 — First consultation
+// FORM 1 — New patient, remote
 // ─────────────────────────────────────────────────────────────
 
-export function buildWeightManagementFirstForm(
+/**
+ * Published as a NEW form version. The existing published version is not
+ * edited: two patients answered it, and the record has to keep saying what
+ * they were actually asked.
+ *
+ * The opening two steps are the client's, in his order — offer face-to-face
+ * first, then find out whether they are coming from another clinic, because
+ * that decides which questions apply and which evidence is needed.
+ */
+export function buildWeightManagementNewPatientForm(
   branches: { id: string; name: string }[],
 ): FormSchema {
+  /*
+   * Everything after the pathway choice is hidden once somebody asks to be
+   * seen in person. Repeated on each step rather than expressed once, because
+   * step visibility is per-step in the schema — and a missed step here would
+   * mean a patient we have just told to book elsewhere carrying on and
+   * submitting a request anyway.
+   */
+  const remoteOnly = [{ field: 'pathwayChoice', operator: 'eq' as const, value: 'remote' }];
+
   return {
+    // The FORMAT version of FormSchema, not this form's published version —
+    // that is form_version.version, allocated when it is published.
     schemaVersion: 1,
-    title: 'Weight Management — First Consultation',
+    title: 'Weight Management — New Patient',
     description:
-      'Please complete this before your appointment. A pharmacist will go through it with you in person.',
+      'A few questions about your health, so a pharmacist can decide whether this treatment '
+      + 'is right for you. It takes about ten minutes and you can stop and come back.',
     numberQuestions: true,
     estimatedMinutes: 10,
     consentClauses: GLP1_CONSENT_CLAUSES,
     clinicianDeclarations: GLP1_CLINICIAN_DECLARATIONS,
     steps: [
       {
+        id: 'pathway',
+        title: 'How would you like to be seen?',
+        fields: [
+          {
+            id: 'pathwayIntro',
+            type: 'infoBlock',
+            label:
+              'This is an online service. You will not normally see anyone in person — a '
+              + 'pharmacist reviews your answers, telephones you, and decides whether treatment '
+              + 'is suitable. If at any point they think you should be seen, they will tell you.',
+          },
+          {
+            id: 'pathwayChoice',
+            type: 'select',
+            label: 'Which would you prefer?',
+            required: true,
+            presentation: 'radioList',
+            options: [
+              { value: 'remote', label: 'Continue online' },
+              { value: 'in_person', label: 'I would rather see someone in person' },
+            ],
+            warnWhen: [{
+              value: 'in_person',
+              severity: 'stop',
+              /*
+               * A stop, not a redirect. The referral link is configured per
+               * service in `service_public_profile.f2f_referral_url` — it is
+               * a different programme at a different price, and hard-coding a
+               * URL here would make it a code change every time it moves.
+               */
+              message:
+                'This online service may not be the right fit. Karsons Pharmacy runs a '
+                + 'face-to-face weight management programme — please book with them instead. '
+                + 'You do not need to finish this form.',
+            }],
+          },
+        ],
+      },
+      {
+        id: 'about-you',
+        title: 'About you',
+        description: 'So we know whose record this is, and how to reach you.',
+        visibleWhen: remoteOnly,
+        fields: [
+          /*
+           * Identity. Version 1 asked forty-two questions and none of them was
+           * the patient's name, so every submission arrived unattached to a
+           * record: the review queue showed "Unmatched patient", and approving
+           * one raised no prescription because there was nobody to raise it
+           * for. These five fields are what `readIdentity` matches on.
+           */
+          { id: 'firstName', type: 'shortText', label: 'First name', required: true, halfWidth: true },
+          { id: 'lastName', type: 'shortText', label: 'Last name', required: true, halfWidth: true },
+          { id: 'dateOfBirth', type: 'dateOfBirth', label: 'Date of birth', required: true },
+          {
+            id: 'gender',
+            type: 'select',
+            label: 'Gender',
+            helpText: 'We ask only so we know which health questions apply to you.',
+            required: true,
+            presentation: 'segmented',
+            options: [
+              { value: 'female', label: 'Female' },
+              { value: 'male', label: 'Male' },
+              { value: 'other', label: 'Other' },
+            ],
+          },
+          { id: 'phone', type: 'phone', label: 'Phone number', required: true, halfWidth: true, helpText: 'A pharmacist will call you on this number.' },
+          { id: 'email', type: 'email', label: 'Email address', required: true, halfWidth: true },
+          { id: 'address', type: 'address', label: 'Home address', required: true },
+          { id: 'gpSurgery', type: 'shortText', label: 'Your GP surgery', helpText: 'We tell them what has been supplied.' },
+          {
+            id: 'otherClinic',
+            type: 'yesNo',
+            label:
+              'Are you currently receiving, or have you recently received, weight-management '
+              + 'treatment from another clinic?',
+            required: true,
+            presentation: 'pills',
+            helpText: 'This changes which questions we need to ask, and what evidence we need.',
+          },
+        ],
+      },
+      {
         id: 'measurements',
         title: 'Your measurements',
         description: 'Enter these in whichever units you know them in — we convert them.',
+        visibleWhen: remoteOnly,
         fields: [
           { id: 'height', type: 'measurement', label: 'Height', measurementKind: 'height', required: true },
           { id: 'weight', type: 'measurement', label: 'Current weight', measurementKind: 'weight', required: true },
@@ -144,9 +261,64 @@ export function buildWeightManagementFirstForm(
         ],
       },
       {
+        /*
+         * Only for patients moving from another clinic.
+         *
+         * The client has given the ROUTE and the evidence CATEGORIES, and the
+         * rule that a current BMI of 20 to under 25 may proceed only as a
+         * verified continuation. He has not yet given the individual questions
+         * or what counts as acceptable proof, so this collects the categories
+         * he named and stops there. Inventing clinical questions to fill the
+         * gap would be worse than an obviously unfinished step.
+         */
+        id: 'transfer',
+        title: 'Your current treatment',
+        description: 'Because you told us you are already being treated elsewhere.',
+        visibleWhen: [
+          { field: 'pathwayChoice', operator: 'eq', value: 'remote' },
+          { field: 'otherClinic', operator: 'eq', value: 'yes' },
+        ],
+        fields: [
+          { id: 'priorClinicName', type: 'shortText', label: 'Which clinic or pharmacy are you with?', required: true },
+          {
+            id: 'priorMedicine',
+            type: 'select',
+            label: 'Which medicine and strength are you currently on?',
+            required: true,
+            presentation: 'dropdown',
+            options: MEDICINE_STRENGTH_OPTIONS,
+          },
+          { id: 'priorStartedOn', type: 'date', label: 'When did you start this strength?', required: true, halfWidth: true },
+          { id: 'priorLastSupply', type: 'date', label: 'When was your last supply?', required: true, halfWidth: true },
+          {
+            id: 'priorStartingWeight',
+            type: 'measurement',
+            label: 'What did you weigh when you started treatment?',
+            measurementKind: 'weight',
+            required: true,
+            helpText: 'Your progress is measured from this, so an approximate figure is better than none.',
+          },
+          {
+            id: 'priorSideEffects',
+            type: 'yesNo',
+            label: 'Have you had any side effects on your current treatment?',
+            required: true,
+            presentation: 'pills',
+            reveals: [{ whenValue: 'yes', fields: [{ id: 'priorSideEffectsDetail', type: 'longText', label: 'Please describe them', required: true }] }],
+          },
+          {
+            id: 'priorClinicReason',
+            type: 'longText',
+            label: 'Why are you moving to us?',
+            helpText: 'Optional, but it helps the pharmacist understand your treatment so far.',
+          },
+        ],
+      },
+      {
         id: 'medical-history',
         title: 'Medical history',
         description: 'These questions decide whether this treatment is safe for you.',
+        visibleWhen: remoteOnly,
         fields: [
           {
             id: 'contraindications',
@@ -242,6 +414,7 @@ export function buildWeightManagementFirstForm(
         id: 'habits-safety',
         title: 'Habits and safety',
         description: 'Please answer honestly — nothing here is judged, and it changes what is safe to supply.',
+        visibleWhen: remoteOnly,
         fields: [
           { id: 'madeSick', type: 'yesNo', label: 'Have you ever made yourself sick to lose weight?', required: true, presentation: 'pills' },
           { id: 'laxatives', type: 'yesNo', label: 'Have you ever taken laxatives to lose weight?', required: true, presentation: 'pills' },
@@ -284,6 +457,7 @@ export function buildWeightManagementFirstForm(
       {
         id: 'request',
         title: 'What you are asking for',
+        visibleWhen: remoteOnly,
         fields: [
           {
             id: 'recentWeightLossMeds',
@@ -364,26 +538,50 @@ export function buildWeightManagementFirstForm(
               { value: '2', label: '2 pens (8 weeks)' },
             ],
           },
-          {
-            id: 'collectionBranch',
-            type: 'select',
-            label: 'Where would you like to collect?',
-            required: true,
-            presentation: 'segmented',
-            storeMetadataAs: 'collectionBranchDetail',
-            options: branchOptions(branches),
-          },
         ],
       },
       {
         id: 'evidence-safety',
         title: 'Evidence and safety',
+        visibleWhen: remoteOnly,
         fields: [
+          /*
+           * Identity and evidence carry the safety this pathway no longer gets
+           * from meeting the patient. The client listed ID, photographs, BMI
+           * evidence, and prior prescription evidence for transfers.
+           */
           {
+            id: 'photoId',
+            type: 'fileUpload',
+            label: 'Photo ID',
+            helpText: 'Passport, driving licence or another photographic ID. JPG, PNG or PDF.',
+            required: true,
+          },
+          {
+            id: 'patientPhoto',
+            type: 'photoCapture',
+            label: 'A photo of yourself',
+            helpText: 'Taken now, so we can check it against your ID.',
+            required: true,
+          },
+          {
+            id: 'measurementEvidence',
+            type: 'fileUpload',
+            label: 'Photo showing your current weight',
+            helpText: 'A picture of your scales reading, or a recent record from your GP.',
+            required: true,
+          },
+          {
+            /*
+             * Required only for transfers, where it evidences the treatment
+             * being continued rather than merely a previous dose.
+             */
             id: 'evidence',
             type: 'fileUpload',
-            label: 'Photo of a previous prescription or medicine box',
-            helpText: 'Only needed if you are not starting on the lowest dose. JPG, PNG or PDF.',
+            label: 'Photo of your current prescription or medicine box',
+            helpText: 'So we can confirm the medicine and strength you are already on.',
+            required: true,
+            visibleWhen: [{ field: 'otherClinic', operator: 'eq', value: 'yes' }],
           },
           {
             id: 'pregnancy',
@@ -422,8 +620,50 @@ export function buildWeightManagementFirstForm(
         ],
       },
       {
+        /*
+         * How the medicine reaches them. Deliberately NOT an appointment — the
+         * client is explicit that neither Weight Management journey creates
+         * one, and a collection is a counter handover, not a booking.
+         */
+        id: 'supply',
+        title: 'Getting your medicine',
+        visibleWhen: remoteOnly,
+        fields: [
+          {
+            id: 'fulfilmentMethod',
+            type: 'select',
+            label: 'How would you like to receive it?',
+            required: true,
+            presentation: 'radioList',
+            options: [
+              { value: 'delivery', label: 'Post it to me' },
+              { value: 'collection', label: 'I will collect it from the pharmacy' },
+            ],
+          },
+          {
+            id: 'collectionBranch',
+            type: 'select',
+            label: 'Which pharmacy will you collect from?',
+            required: true,
+            presentation: 'radioList',
+            options: branchOptions(branches),
+            // Same key the repeat form uses, so one reader serves both.
+            storeMetadataAs: 'collectionBranchDetail',
+            visibleWhen: [{ field: 'fulfilmentMethod', operator: 'eq', value: 'collection' }],
+          },
+          {
+            id: 'deliveryAddress',
+            type: 'address',
+            label: 'Delivery address',
+            helpText: 'Leave blank to use your home address above.',
+            visibleWhen: [{ field: 'fulfilmentMethod', operator: 'eq', value: 'delivery' }],
+          },
+        ],
+      },
+      {
         id: 'consent',
         title: 'Consent',
+        visibleWhen: remoteOnly,
         fields: [
           { id: 'consent', type: 'consentList', label: 'Consent to treatment', required: true },
           { id: 'signature', type: 'signature', label: 'Please sign below', required: true },

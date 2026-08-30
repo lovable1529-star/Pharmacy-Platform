@@ -21,6 +21,84 @@ Always name important files/migrations and describe behavioural impact, not just
 
 ---
 
+## 31 August 2026 - Stage 03, the remote new-patient form
+
+### Changed
+
+- `buildWeightManagementFirstForm` is now `buildWeightManagementNewPatientForm`.
+  The service keeps its slug and id; only the display name changes, to
+  "Weight Management - New Patient".
+- Module header no longer describes new patients as seen in person.
+- Consent clause `appointment` replaced by `contact`. The old wording promised
+  "an appointment to see a pharmacist in person at any time", which this
+  service does not offer - being seen in person means referral to a separate
+  programme.
+- Seed and SQL export renamed to match.
+
+### Added - form structure
+
+- **Pathway step.** Explains the remote service, offers face-to-face, and hard
+  stops with a referral if it is chosen. Every later step is gated on the
+  remote choice, so a patient told to book elsewhere cannot continue.
+- **About you.** firstName, lastName, dateOfBirth, gender, phone, email,
+  address, GP surgery, and the other-clinic route question. The previous form
+  asked none of the identity fields across forty-two questions, which is why
+  every submission arrived as "Unmatched patient" and approving one raised no
+  prescription.
+- **Transfer step**, shown only when they are coming from another clinic:
+  prior clinic, current medicine and strength, when that strength started, last
+  supply, starting weight, side effects. The client has not supplied the exact
+  question wording or acceptable proof, so this collects the categories he
+  named and stops there.
+- **Evidence:** photo ID, a photograph of the patient, and evidence of current
+  weight, for everyone. Evidence of the current prescription for transfers only.
+- **Supply step:** delivery or collection, with the branch asked only for
+  collection and an address only for delivery. Not an appointment.
+
+### Fixed
+
+- **The collection branch never reached the submission.** `collectMetadata` has
+  always written it into `_metadata` and nothing ever read it, so every
+  submission without a booking was stored with `branchId: null` even though the
+  patient had picked a pharmacy. A prescription number is allocated per branch,
+  so approving one of those raised no prescription and said nothing about why.
+  A booked appointment still wins; a draft without one now takes the choice.
+- **`collectionBranch` appeared twice** in the new-patient form once the supply
+  step was added - two fields sharing an id write the same answer key. The one
+  in the request step was removed; collection now lives with the supply choice.
+- **"Asked a question" missed the box the prose is in.** `anythingElse` is a
+  yes/no and the text sits in `anythingElseDetail`. Checking only the yes/no
+  counted every "no" as a question and missed everyone who had actually
+  written something. Both detail fields are now read.
+
+### Added - logic
+
+- `src/lib/clinical/wm-eligibility.ts` - routes a patient and judges them
+  against the client's criteria: BMI 30+, or 27+ with a weight-related
+  condition; transfers at BMI 20 to under 25 flagged as needing verified
+  continuation. It reports rather than blocks, because the client has not yet
+  said what happens to somebody outside the criteria. Nothing is silently
+  passed as eligible: "cannot be judged" is a distinct answer from "meets it".
+
+### Tests
+
+- `tests/wm-eligibility.test.ts` - 21 tests.
+- `tests/weight-management.test.ts` - 18 new, covering the gate, identity,
+  routing, evidence, supply and consent wording. Existing tests updated to
+  choose the remote pathway first, which is the new precondition.
+- `tests/repeat-summary.test.ts` - 3 new for the detail fields.
+
+616 passing, typecheck clean, production build clean.
+
+### Deferred
+
+- Resource links before consent. Needs `patient_resource`, which needs the
+  migrations, and the content is blocked on the client.
+- Whether an ineligible patient is stopped at the form or accepted for review.
+  Awaiting the client.
+
+---
+
 ## 31 August 2026 - Stage 01, Drizzle schema
 
 Migrations are NOT applied. The client is running every SQL script in one pass

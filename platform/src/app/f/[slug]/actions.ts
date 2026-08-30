@@ -126,6 +126,29 @@ export async function submitPublicForm(
     const answers = pruneHiddenAnswers(schema, rawAnswers);
     const metadata = collectMetadata(schema, answers);
 
+    /*
+     * The branch the patient chose to collect from.
+     *
+     * `collectMetadata` has always written this into `_metadata`, and nothing
+     * has ever read it — every submission that arrived without a booking was
+     * stored with `branchId: null` even though the patient had picked a
+     * pharmacy on the form. That is not cosmetic: a prescription number is
+     * allocated per branch, so approving one of those requests raised no
+     * prescription at all and said nothing about why.
+     *
+     * Taken from the option's metadata rather than from the answer value,
+     * because the value is only meaningful against the branch list the form
+     * was published with.
+     */
+    const chosenBranch = (() => {
+      const detail = metadata.collectionBranchDetail;
+      if (detail && typeof detail === 'object' && 'branchId' in detail) {
+        const id = (detail as { branchId: unknown }).branchId;
+        return typeof id === 'string' && id.length > 0 ? id : null;
+      }
+      return null;
+    })();
+
     const result = await db.transaction(async (tx) => {
       // ── Find the draft, or start fresh ────────────────────
       //
@@ -236,7 +259,10 @@ export async function submitPublicForm(
       if (existing) {
         [row] = await tx
           .update(submission)
-          .set(payload)
+          // A booked appointment already fixed the branch and must win — the
+          // patient is expected somewhere. A draft that never had one takes
+          // whatever they chose on the form.
+          .set({ ...payload, branchId: existing.branchId ?? chosenBranch })
           .where(eq(submission.id, existing.id))
           .returning({ id: submission.id });
       } else {
@@ -246,7 +272,7 @@ export async function submitPublicForm(
             organisationId: svc.organisationId,
             serviceId: svc.id,
             formVersionId: version.id,
-            branchId: null,
+            branchId: chosenBranch,
             ...payload,
           })
           .returning({ id: submission.id });

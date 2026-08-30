@@ -3,7 +3,7 @@ import {
   visibleFields, validateForm, pruneHiddenAnswers, activeWarnings, numberQuestions,
 } from '@/lib/forms/runtime';
 import {
-  buildWeightManagementFirstForm, buildWeightManagementRepeatForm,
+  buildWeightManagementNewPatientForm, buildWeightManagementRepeatForm,
   MEDICINE_STRENGTH_OPTIONS, CONTRAINDICATIONS, MOUNJARO_STRENGTHS, WEGOVY_STRENGTHS,
   GLP1_CLINICIAN_DECLARATIONS,
 } from '@/lib/services/weight-management';
@@ -13,11 +13,19 @@ const BRANCHES = [
   { id: 'br-kirk', name: 'Kirk Michael' },
 ];
 
-const FIRST = buildWeightManagementFirstForm(BRANCHES);
+const FIRST = buildWeightManagementNewPatientForm(BRANCHES);
 const REPEAT = buildWeightManagementRepeatForm(BRANCHES);
 
 const ids = (schema: Parameters<typeof visibleFields>[0], answers: Record<string, unknown>) =>
   visibleFields(schema, answers, { includeClinicianOnly: true }).map((f) => f.id);
+
+/**
+ * The new-patient form now opens by offering face-to-face care, and everything
+ * after that step is hidden until the patient chooses to continue online. Tests
+ * about the clinical questions have to get past that gate first, so they say so
+ * explicitly rather than relying on a default.
+ */
+const REMOTE = { pathwayChoice: 'remote' };
 
 describe('dose ladders feed the ±1 step rule', () => {
   it('carries Mounjaro strengths in clinical order', () => {
@@ -54,8 +62,8 @@ describe('contraindication screening', () => {
   });
 });
 
-describe('first consultation — gender-conditional safety questions', () => {
-  const base = { gender: 'female' };
+describe('new patient — gender-conditional safety questions', () => {
+  const base = { ...REMOTE, gender: 'female' };
 
   it('asks a female patient about pregnancy and contraception', () => {
     const shown = ids(FIRST, base);
@@ -65,49 +73,49 @@ describe('first consultation — gender-conditional safety questions', () => {
   });
 
   it('asks a male patient about bleeding disorders instead', () => {
-    const shown = ids(FIRST, { gender: 'male' });
+    const shown = ids(FIRST, { ...REMOTE, gender: 'male' });
     expect(shown).toContain('bleedingDisorder');
     expect(shown).not.toContain('pregnancy');
     expect(shown).not.toContain('oralContraception');
   });
 
   it('treats "other" as needing the female safety questions', () => {
-    const shown = ids(FIRST, { gender: 'other' });
+    const shown = ids(FIRST, { ...REMOTE, gender: 'other' });
     expect(shown).toContain('pregnancy');
     expect(shown).not.toContain('bleedingDisorder');
   });
 });
 
-describe('first consultation — nested reveals', () => {
+describe('new patient — nested reveals', () => {
   it('hides the gallbladder detail until Yes', () => {
-    expect(ids(FIRST, { gallbladder: 'no' })).not.toContain('gallbladderDetail');
-    expect(ids(FIRST, { gallbladder: 'yes' })).toContain('gallbladderDetail');
+    expect(ids(FIRST, { ...REMOTE, gallbladder: 'no' })).not.toContain('gallbladderDetail');
+    expect(ids(FIRST, { ...REMOTE, gallbladder: 'yes' })).toContain('gallbladderDetail');
   });
 
   it('hides the liver detail until Yes', () => {
-    expect(ids(FIRST, { liver: 'yes' })).toContain('liverDetail');
+    expect(ids(FIRST, { ...REMOTE, liver: 'yes' })).toContain('liverDetail');
   });
 
   it('asks which previous medicines only after Yes', () => {
-    expect(ids(FIRST, { everUsedWeightLossMeds: 'no' })).not.toContain('previousMeds');
-    expect(ids(FIRST, { everUsedWeightLossMeds: 'yes' })).toContain('previousMeds');
+    expect(ids(FIRST, { ...REMOTE, everUsedWeightLossMeds: 'no' })).not.toContain('previousMeds');
+    expect(ids(FIRST, { ...REMOTE, everUsedWeightLossMeds: 'yes' })).toContain('previousMeds');
   });
 
   it('discards gallbladder detail when the answer is changed back to No', () => {
-    const answered = { gallbladder: 'yes', gallbladderDetail: ['current'], gender: 'male' };
+    const answered = { ...REMOTE, gallbladder: 'yes', gallbladderDetail: ['current'], gender: 'male' };
     const pruned = pruneHiddenAnswers(FIRST, { ...answered, gallbladder: 'no' });
     expect(pruned.gallbladderDetail).toBeUndefined();
   });
 });
 
-describe('first consultation — hard stops', () => {
+describe('new patient — hard stops', () => {
   it('stops on pregnancy', () => {
-    const warnings = activeWarnings(FIRST, { gender: 'female', pregnancy: 'yes' });
+    const warnings = activeWarnings(FIRST, { ...REMOTE, gender: 'female', pregnancy: 'yes' });
     expect(warnings.some((w) => w.severity === 'stop')).toBe(true);
   });
 
   it('warns, but does not stop, on oral contraception', () => {
-    const warnings = activeWarnings(FIRST, { gender: 'female', oralContraception: 'yes' });
+    const warnings = activeWarnings(FIRST, { ...REMOTE, gender: 'female', oralContraception: 'yes' });
     expect(warnings.some((w) => w.severity === 'warn')).toBe(true);
     expect(warnings.some((w) => w.severity === 'stop')).toBe(false);
   });
@@ -208,5 +216,161 @@ describe('both forms are valid configurations', () => {
   it('every field carries a stable id', () => {
     const all = [...FIRST.steps, ...REPEAT.steps].flatMap((s) => s.fields);
     expect(all.every((f) => typeof f.id === 'string' && f.id.length > 0)).toBe(true);
+  });
+});
+
+describe('new patient — the remote pathway gate', () => {
+  /*
+   * The client's first step: offer face-to-face care, and if they take it,
+   * stop. Everything clinical hangs behind this choice, so a patient who has
+   * been told to book elsewhere cannot carry on and submit a request anyway.
+   */
+  it('asks nothing else until they choose', () => {
+    const shown = ids(FIRST, {});
+    expect(shown).toContain('pathwayChoice');
+    expect(shown).not.toContain('firstName');
+    expect(shown).not.toContain('height');
+    expect(shown).not.toContain('consent');
+  });
+
+  it('opens the form once they choose to continue online', () => {
+    const shown = ids(FIRST, REMOTE);
+    expect(shown).toContain('firstName');
+    expect(shown).toContain('height');
+    expect(shown).toContain('consent');
+  });
+
+  it('keeps the form shut when they ask to be seen in person', () => {
+    const shown = ids(FIRST, { pathwayChoice: 'in_person' });
+    expect(shown).not.toContain('firstName');
+    expect(shown).not.toContain('height');
+    expect(shown).not.toContain('signature');
+  });
+
+  it('shows a hard stop pointing at the face-to-face programme', () => {
+    const warnings = activeWarnings(FIRST, { pathwayChoice: 'in_person' });
+    const stop = warnings.find((w) => w.severity === 'stop');
+    expect(stop).toBeDefined();
+    expect(stop!.message).toMatch(/face-to-face/i);
+  });
+});
+
+describe('new patient — knowing who they are', () => {
+  /*
+   * The version this replaces asked forty-two questions and none of them was
+   * the patient's name, so every submission arrived unattached to a record.
+   * `readIdentity` matches on exactly these three.
+   */
+  it('asks the three fields a patient record is built from', () => {
+    const shown = ids(FIRST, REMOTE);
+    for (const field of ['firstName', 'lastName', 'dateOfBirth']) {
+      expect(shown).toContain(field);
+    }
+  });
+
+  it('asks how to reach them, since a pharmacist has to telephone', () => {
+    const shown = ids(FIRST, REMOTE);
+    expect(shown).toContain('phone');
+    expect(shown).toContain('email');
+  });
+
+  it('requires all of them', () => {
+    const flagged = validateForm(FIRST, REMOTE).issues.map((i) => i.fieldId);
+    for (const field of ['firstName', 'lastName', 'dateOfBirth', 'phone']) {
+      expect(flagged).toContain(field);
+    }
+  });
+});
+
+describe('new patient — routing to the right questions', () => {
+  const remoteNew = { ...REMOTE, otherClinic: 'no' };
+  const remoteTransfer = { ...REMOTE, otherClinic: 'yes' };
+
+  it('asks the transfer questions only of someone coming from another clinic', () => {
+    expect(ids(FIRST, remoteNew)).not.toContain('priorClinicName');
+    expect(ids(FIRST, remoteTransfer)).toContain('priorClinicName');
+  });
+
+  it('collects the evidence categories the client named for transfers', () => {
+    const shown = ids(FIRST, remoteTransfer);
+    for (const field of ['priorMedicine', 'priorStartedOn', 'priorStartingWeight']) {
+      expect(shown).toContain(field);
+    }
+  });
+
+  it('asks everyone for identity and measurement evidence', () => {
+    for (const answers of [remoteNew, remoteTransfer]) {
+      const shown = ids(FIRST, answers);
+      expect(shown).toContain('photoId');
+      expect(shown).toContain('patientPhoto');
+      expect(shown).toContain('measurementEvidence');
+    }
+  });
+
+  /* Proof of the CURRENT prescription only makes sense for a transfer. */
+  it('asks only transfers for their current prescription', () => {
+    expect(ids(FIRST, remoteNew)).not.toContain('evidence');
+    expect(ids(FIRST, remoteTransfer)).toContain('evidence');
+  });
+
+  it('discards the transfer answers if they change their mind', () => {
+    const answered = { ...remoteTransfer, priorClinicName: 'Another clinic' };
+    const pruned = pruneHiddenAnswers(FIRST, { ...answered, otherClinic: 'no' });
+    expect(pruned.priorClinicName).toBeUndefined();
+  });
+});
+
+describe('new patient — how the medicine reaches them', () => {
+  it('asks which branch only when they are collecting', () => {
+    expect(ids(FIRST, { ...REMOTE, fulfilmentMethod: 'delivery' }))
+      .not.toContain('collectionBranch');
+    expect(ids(FIRST, { ...REMOTE, fulfilmentMethod: 'collection' }))
+      .toContain('collectionBranch');
+  });
+
+  it('asks for an address only when they are having it posted', () => {
+    expect(ids(FIRST, { ...REMOTE, fulfilmentMethod: 'collection' }))
+      .not.toContain('deliveryAddress');
+    expect(ids(FIRST, { ...REMOTE, fulfilmentMethod: 'delivery' }))
+      .toContain('deliveryAddress');
+  });
+
+  /*
+   * The branch has to survive as metadata, because `submission.branchId` is
+   * set from it — and a prescription number is allocated per branch.
+   */
+  it('carries the branch id through as metadata', () => {
+    const field = FIRST.steps
+      .flatMap((s) => s.fields)
+      .find((f) => f.id === 'collectionBranch');
+    expect(field?.storeMetadataAs).toBe('collectionBranchDetail');
+    expect(field?.options?.[0]?.metadata).toEqual({ branchId: 'br-onchan' });
+  });
+});
+
+describe('new patient — consent matches the service on offer', () => {
+  /*
+   * The old wording promised "an appointment to see a pharmacist in person at
+   * any time". This service does not offer that; being seen in person means a
+   * referral to a separate programme.
+   */
+  it('no longer promises an in-person appointment on demand', () => {
+    const text = (FIRST.consentClauses ?? []).map((c) => c.text).join(' ');
+    expect(text).not.toMatch(/appointment to see a pharmacist in person/i);
+    expect(text).toMatch(/remote service/i);
+  });
+
+  it('still records the clauses that carry legal weight', () => {
+    const clauseIds = (FIRST.consentClauses ?? []).map((c) => c.id);
+    for (const id of ['risks', 'accurate', 'storage', 'gp']) {
+      expect(clauseIds).toContain(id);
+    }
+  });
+});
+
+describe('new patient — no appointment language survives', () => {
+  it('does not tell the patient to complete it before an appointment', () => {
+    expect(FIRST.description ?? '').not.toMatch(/appointment/i);
+    expect(FIRST.title).toBe('Weight Management — New Patient');
   });
 });
