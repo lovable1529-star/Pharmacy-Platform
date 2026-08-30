@@ -25,6 +25,7 @@ import { queueNotification, queueFromTemplate } from '@/lib/notifications/outbox
 import { resolveAppUrl } from '@/lib/app-url';
 import { changeSubmissionStatus } from '@/lib/workflow/history';
 import { issuePrescription } from '@/lib/prescriptions/issue';
+import { createFulfilmentForPrescription } from '@/lib/fulfilment/create';
 import { canTransition, type SubmissionStatus } from '@/lib/workflow/status';
 import {
   generatePaymentToken, paymentExpiry, activeProvider, formatMoney,
@@ -298,6 +299,20 @@ export async function settlePayment(input: {
           .where(eq(prescription.id, raised.id));
 
         await issuePrescription(tx, raised.id);
+
+        /*
+         * The physical half of the supply opens the moment the prescription
+         * exists, from the patient's own collection-or-delivery choice.
+         *
+         * Created here rather than on the dispensary screen because it is a
+         * consequence of issuing, and a consequence that only happens when
+         * somebody remembers to open the right page is not a consequence.
+         */
+        await createFulfilmentForPrescription(tx, {
+          organisationId,
+          prescriptionId: raised.id,
+          submissionId,
+        });
       }
     });
 

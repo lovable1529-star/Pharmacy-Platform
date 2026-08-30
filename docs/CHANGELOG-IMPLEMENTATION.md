@@ -21,6 +21,71 @@ Always name important files/migrations and describe behavioural impact, not just
 
 ---
 
+## 31 August 2026 - Stage 06, fulfilment, and the join the plan was missing
+
+### Fixed - the dead end
+
+Repeat access requires a `repeat_enrolment` row, and the only thing that created
+one was a button on the consultation record. A remote new patient never has a
+consultation, so a patient could complete the entire new-patient journey and
+then never be able to request a repeat. The supplied implementation plan does
+not close this anywhere.
+
+`enrolFromSupply` now runs when a supply actually completes - not at approval,
+following the client's own rule that history moves forward only after a real
+supply. Approval may be for medicine that never leaves the pharmacy.
+
+Three details that matter clinically:
+
+- The baseline records what was **supplied**, not what was requested. A dose
+  reduced during the verification call must not be recorded as the patient's
+  starting strength, or the dose-step rules read a change that never happened.
+- A transfer patient's starting weight is what they weighed when their
+  treatment began, not today. Otherwise their progress restarts from zero the
+  moment they move to us and months of loss stop counting.
+- The strength clock starts with **our** supply. `priorStartedOn` describes a
+  dose another clinic gave them; the three-week and six-week stability rules
+  count from what this pharmacy supplied.
+
+An existing enrolment is updated, never replaced: the starting figures are
+where the patient began and survive every later supply, while last supply, last
+weight and current strength move each time. Vaccinations are excluded - a flu
+jab is a supply too, and enrolling on one would open the repeat questionnaire
+to somebody nobody assessed for it.
+
+### Added
+
+- `src/lib/fulfilment/transitions.ts` - the supply state machine as pure,
+  tested logic. Batch and expiry are required before anything reaches READY,
+  DISPATCHED, COLLECTED or SUPPLIED; expiry must be strictly after the supply
+  date; a collection cannot be dispatched and a delivery cannot be collected;
+  a delivery needs an address on the record before it goes. Migration 21
+  enforces all of it in the database as well - the constraint is what makes the
+  rule true, this is what makes the refusal legible.
+- `prescription_fulfilment` is created when the prescription issues, from the
+  patient's own collection-or-delivery choice, with the delivery address
+  snapshotted at that moment rather than read later.
+- `recordPackDetails` and `advanceFulfilment` server actions, auditing as
+  `fulfilment.batch_recorded`, `fulfilment.ready`, `fulfilment.dispatched`,
+  `fulfilment.collected` and `fulfilment.supplied`.
+
+### Tests
+
+- `tests/fulfilment.test.ts` - 19 tests.
+- `tests/enrol-on-supply.test.ts` - 12 tests.
+
+670 passing, typecheck clean, production build clean.
+
+### Deferred
+
+- The fulfilment UI. The actions and rules are in and audited; the dispensary
+  screen still shows the older dispense and collect controls, and wiring the
+  new panel is a presentation task rather than a safety one.
+- Carrier and tracking are recorded when supplied but nothing populates them
+  automatically - the client has not said whether he wants an integration.
+
+---
+
 ## 31 August 2026 - Stage 05, payment as a tick box
 
 ### Changed
