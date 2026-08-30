@@ -21,6 +21,25 @@ Always name important files/migrations and describe behavioural impact, not just
 
 ---
 
+## 31 August 2026 - Fulfilment UI (closing the Stage 06 gap)
+
+### Added
+
+- A supply panel on each prescription row: pack details, destination, and only
+  the moves that apply to the method the patient chose.
+- The batch and expiry rule is evaluated in the browser as well as on the
+  server, using the same function, so the reason a step is unavailable appears
+  under the buttons rather than being found by pressing one.
+- When a supply completes and repeat care opens, the panel says so - and names
+  what the baseline is missing if the enrolment was seeded from an incomplete
+  record.
+- Prescriptions issued before fulfilment tracking existed say so, rather than
+  rendering an empty panel.
+
+686 passing, typecheck clean, production build clean.
+
+---
+
 ## 31 August 2026 - Stage 07, what the three bands actually mean
 
 ### Changed - the model

@@ -19,6 +19,7 @@ import { cn } from '@/lib/cn';
 import { EmptyState, PageHeader, Panel, Tag } from '@/components/ui/primitives';
 import { formatDateTime, formatMoney } from '@/lib/units';
 import { DispenseDialog } from './dispense-dialog';
+import { FulfilmentPanel } from './fulfilment-panel';
 
 export interface PrescriptionRow {
   id: string;
@@ -51,9 +52,14 @@ const GROUPS = [
 export function PrescriptionsView({
   rows,
   clinicians,
+  branchId,
+  companyId,
 }: {
   rows: PrescriptionRow[];
   clinicians: { id: string; fullName: string; gphcNumber: string }[];
+  /** The branch in the header — what a supply is recorded against. */
+  branchId: string | null;
+  companyId: string | null;
 }) {
   const [open, setOpen] = useState<PrescriptionRow | null>(null);
 
@@ -154,6 +160,21 @@ export function PrescriptionsView({
                             dispensed by {row.dispensedBy}
                             {row.dispensedAt ? ` · ${formatDateTime(row.dispensedAt)}` : ''}
                           </p>
+                        ) : null}
+
+                        {/*
+                          The physical supply, once the prescription exists.
+                          Nothing to show before payment: the fulfilment record
+                          is created when the prescription is issued.
+                        */}
+                        {row.status !== 'PENDING_PAYMENT' ? (
+                          <div className="mt-2.5">
+                            <FulfilmentPanel
+                              prescriptionId={row.id}
+                              branchId={branchId}
+                              companyId={companyId}
+                            />
+                          </div>
                         ) : null}
                       </div>
 

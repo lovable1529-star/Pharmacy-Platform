@@ -19,7 +19,7 @@ import { PrescriptionsView } from './prescriptions-view';
 export const dynamic = 'force-dynamic';
 
 export default async function PrescriptionsPage() {
-  const { actor } = await getStaffContext();
+  const { actor, activeBranch } = await getStaffContext();
 
   const clinicians = await getClinicians(actor.organisationId);
 
@@ -93,6 +93,8 @@ export default async function PrescriptionsPage() {
         };
       })}
       clinicians={clinicians}
+          branchId={activeBranch?.id ?? null}
+      companyId={activeBranch?.companyId ?? null}
     />
   );
 }
