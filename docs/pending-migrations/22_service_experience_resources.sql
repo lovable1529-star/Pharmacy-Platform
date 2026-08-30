@@ -37,24 +37,35 @@ end
 $$;
 
 -- Apply the latest client direction to the current configured services.
-update public.service
+--
+-- Scoped to the organisation that owns each service rather than matched on slug
+-- alone. `service_slug_idx` is unique on (organisation_id, slug), so a second
+-- tenant may hold its own 'flu-vaccination' — and an unscoped UPDATE would
+-- reconfigure theirs too. Harmless with one organisation today; the point is
+-- that every mutation in this codebase carries a tenant predicate, and a
+-- migration that quietly does not is the one that gets copied.
+update public.service s
    set booking_mode = 'OPTIONAL'
- where slug = 'flu-vaccination';
+  from public.organisation o
+ where o.id = s.organisation_id
+   and s.slug = 'flu-vaccination';
 
-update public.service
+update public.service s
    set booking_mode = 'NONE',
        name = case
-         when slug = 'weight-management-first' then 'Weight Management — New Patient'
-         else name
+         when s.slug = 'weight-management-first' then 'Weight Management — New Patient'
+         else s.name
        end,
        description = case
-         when slug = 'weight-management-first'
+         when s.slug = 'weight-management-first'
            then 'Remote new-patient onboarding and prescribing request. No routine face-to-face appointment.'
-         when slug = 'weight-management-repeat'
+         when s.slug = 'weight-management-repeat'
            then 'Remote repeat-prescription request for patients already onboarded with the clinic.'
-         else description
+         else s.description
        end
- where slug in ('weight-management-first', 'weight-management-repeat');
+  from public.organisation o
+ where o.id = s.organisation_id
+   and s.slug in ('weight-management-first', 'weight-management-repeat');
 
 create index if not exists service_booking_mode_idx
   on public.service (organisation_id, booking_mode)
