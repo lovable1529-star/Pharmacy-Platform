@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, CloudOff, Loader2 } from 'lucide-react';
-import { FormWizard } from '@/components/form/wizard';
+import { FormWizard, type WizardResource } from '@/components/form/wizard';
 import { UploadTargetProvider } from '@/components/fields/upload-context';
 import type { Answers, FormSchema } from '@/types/form-schema';
 import { saveFormDraft, startFormDraft, submitPublicForm, type SubmitResult } from './actions';
@@ -17,11 +17,14 @@ export function PublicForm({
   schema,
   token,
   savedAnswers,
+  resources = [],
 }: {
   slug: string;
   schema: FormSchema;
   token: string | null;
   savedAnswers: Answers | null;
+  /** Leaflets shown immediately before the signature. */
+  resources?: WizardResource[];
 }) {
   const [error, setError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -103,7 +106,7 @@ export function PublicForm({
     [ensureToken],
   );
 
-  async function handleSubmit(answers: Answers) {
+  async function handleSubmit(answers: Answers, acknowledgedResourceIds: string[]) {
     setError(null);
 
     // Cancel any in-flight autosave first. Otherwise a debounce timer that fires
@@ -115,7 +118,9 @@ export function PublicForm({
       Object.entries(answers).filter(([, v]) => !(v instanceof File)),
     );
 
-    const result: SubmitResult = await submitPublicForm(slug, payload, token);
+    const result: SubmitResult = await submitPublicForm(
+      slug, payload, token, acknowledgedResourceIds,
+    );
     if (!result.ok) {
       // Let them keep editing — the form is not lost because the send failed.
       stopped.current = false;
@@ -165,6 +170,7 @@ export function PublicForm({
           initialAnswers={savedAnswers ?? {}}
           onAnswersChange={handleChange}
           onSubmit={handleSubmit}
+          resources={resources}
           submitLabel="Submit my answers"
         />
       </UploadTargetProvider>

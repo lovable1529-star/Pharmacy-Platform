@@ -20,7 +20,9 @@ import { notFound } from 'next/navigation';
 import { db } from '@/lib/db/client';
 import {
   service, formVersion, organisation, submission, appointment, branch,
+  patientResource, medicine,
 } from '@/lib/db/schema';
+import { applicableResources, type DisplayStage } from '@/lib/resources/applicable';
 import { isExpired } from '@/lib/forms/draft';
 import { loadDoseLadders } from '@/lib/clinical/ladders';
 import { loadPreviousSupply } from '@/lib/clinical/previous-supply';
@@ -51,6 +53,7 @@ export default async function PublicFormPage({
 
   const rows = await db
     .select({
+      serviceId: service.id,
       serviceName: service.name,
       description: service.description,
       organisationName: organisation.name,
@@ -85,6 +88,15 @@ export default async function PublicFormPage({
   let alreadySubmitted = false;
   let tokenProblem: string | null = null;
   let appointmentInfo: { startsAt: Date; branchName: string; reference: string } | null = null;
+  /*
+   * Which medicine this patient is on, where we know.
+   *
+   * A repeat patient's enrolment says. A new patient has not been prescribed
+   * anything yet, so it stays null and they are shown only the resources that
+   * apply to everybody — handing somebody the injection guide for a medicine
+   * they were never given is not a neutral act.
+   */
+  let currentMedicineBrand: string | null = null;
 
   if (token) {
     const [draft] = await db
@@ -146,6 +158,12 @@ export default async function PublicFormPage({
         ladders,
       });
 
+      // `mounjaro_7.5mg` → `Mounjaro`, which is how the medicine table names it.
+      const brandKey = previous.previousMedicineValue?.split('_')[0];
+      currentMedicineBrand = brandKey
+        ? brandKey.charAt(0).toUpperCase() + brandKey.slice(1)
+        : null;
+
       schema = personaliseRepeatSchema({
         schema: published,
         currentMedicineValue: previous.previousMedicineValue,
@@ -163,6 +181,59 @@ export default async function PublicFormPage({
       });
     }
   }
+
+  /*
+   * The leaflets this patient must see before they sign.
+   *
+   * Read here rather than baked into the form version, because the client
+   * edits these without a deployment and a form republish would split the
+   * answer history of every unrelated question on the questionnaire.
+   *
+   * Only BEFORE_SUBMISSION and BOTH: a resource shown after the prescription
+   * has nothing to do with a form somebody is still filling in.
+   */
+  const resourceRows = await db
+    .select({
+      id: patientResource.id,
+      resourceKey: patientResource.resourceKey,
+      version: patientResource.version,
+      title: patientResource.title,
+      description: patientResource.description,
+      url: patientResource.url,
+      displayStage: patientResource.displayStage,
+      requiresAcknowledgement: patientResource.requiresAcknowledgement,
+      sortOrder: patientResource.sortOrder,
+      active: patientResource.active,
+      archivedAt: patientResource.archivedAt,
+      medicineId: patientResource.medicineId,
+      medicineBrand: medicine.brand,
+    })
+    .from(patientResource)
+    .leftJoin(medicine, eq(patientResource.medicineId, medicine.id))
+    .where(and(
+      eq(patientResource.serviceId, row.serviceId),
+      eq(patientResource.organisationId, row.organisationId),
+    ));
+
+  /*
+   * Matched on brand rather than on id. The enrolment records the medicine as
+   * a name, and resolving that to an id here would be a second query to learn
+   * something this row already carries.
+   */
+  const currentMedicineId = currentMedicineBrand
+    ? resourceRows.find((r) => r.medicineBrand === currentMedicineBrand)?.medicineId ?? null
+    : null;
+
+  const resources = applicableResources(
+    resourceRows.map((r) => ({ ...r, displayStage: r.displayStage as DisplayStage })),
+    { stage: 'BEFORE_SUBMISSION', medicineId: currentMedicineId },
+  ).map((r) => ({
+    id: r.id,
+    title: r.title,
+    description: r.description,
+    url: r.url,
+    requiresAcknowledgement: r.requiresAcknowledgement,
+  }));
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -223,6 +294,7 @@ export default async function PublicFormPage({
           schema={schema}
           token={token ?? null}
           savedAnswers={saved}
+          resources={resources}
         />
       )}
 

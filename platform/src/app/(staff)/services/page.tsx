@@ -17,7 +17,7 @@
 
 import Link from 'next/link';
 import { eq, and, isNull, desc } from 'drizzle-orm';
-import { PencilLine, Scale, Eye } from 'lucide-react';
+import { PencilLine, Scale, Eye, BookOpen } from 'lucide-react';
 import { NewServiceButton } from './new-service-button';
 import { ServiceActionsMenu } from './service-actions-menu';
 import { getStaffContext } from '@/lib/auth/context';
@@ -126,6 +126,16 @@ export default async function ServicesPage() {
                   >
                     <Eye size={13} strokeWidth={2} />
                     Preview
+                  </Link>
+                  {/* Resources are content, not form structure — a leaflet
+                      changes without republishing a questionnaire, so it gets
+                      its own way in rather than living inside the designer. */}
+                  <Link
+                    href={`/services/${row.slug}/resources`}
+                    className="flex items-center gap-1.5 rounded-control border border-line bg-surface px-3 py-[7px] text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+                  >
+                    <BookOpen size={13} strokeWidth={2} />
+                    Resources
                   </Link>
                   {editable ? (
                     <Link

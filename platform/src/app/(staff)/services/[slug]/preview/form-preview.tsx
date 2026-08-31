@@ -8,9 +8,15 @@
  * preview a preview lives in the wizard's `preview` mode.
  */
 
-import { FormWizard } from '@/components/form/wizard';
+import { FormWizard, type WizardResource } from '@/components/form/wizard';
 import type { FormSchema } from '@/types/form-schema';
 
-export function FormPreview({ schema }: { schema: FormSchema }) {
-  return <FormWizard schema={schema} preview />;
+export function FormPreview({
+  schema, resources = [],
+}: {
+  schema: FormSchema;
+  /** Shown here too, so checking a form shows what the patient actually sees. */
+  resources?: WizardResource[];
+}) {
+  return <FormWizard schema={schema} resources={resources} preview />;
 }

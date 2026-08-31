@@ -15,7 +15,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, Lock, Loader2 } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, ExternalLink, Lock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import {
   visibleSteps, visibleFieldsForStep, validateStep, validateForm,
@@ -84,12 +84,36 @@ export function Control(props: FieldProps & { schema: FormSchema }) {
   }
 }
 
+/**
+ * A leaflet or link the pharmacy wants this patient to read.
+ *
+ * Passed in rather than read from the schema, because resources live in the
+ * database and change without republishing a form. The wizard is told what to
+ * show; deciding which ones apply is not its job.
+ */
+export interface WizardResource {
+  id: string;
+  title: string;
+  description: string | null;
+  url: string;
+  requiresAcknowledgement: boolean;
+}
+
 export interface WizardProps {
   schema: FormSchema;
   /** Staff completing on a patient's behalf also see clinician-only questions. */
   clinicianMode?: boolean;
   initialAnswers?: Answers;
-  onSubmit?: (answers: Answers) => Promise<void> | void;
+  /**
+   * The second argument is the ids of the resources the patient ticked. Kept
+   * out of `answers` on purpose: answers belong to a versioned form and these
+   * do not, and folding them in would make a resource look like a question
+   * that form version never asked.
+   */
+  onSubmit?: (
+    answers: Answers,
+    acknowledgedResourceIds: string[],
+  ) => Promise<void> | void;
   /**
    * Called whenever an answer changes, for autosave.
    *
@@ -99,6 +123,13 @@ export interface WizardProps {
    */
   onAnswersChange?: (answers: Answers) => void;
   submitLabel?: string;
+  /**
+   * Shown immediately before the signature, which is where the client asked
+   * for them and the only place they make sense: the patient is about to
+   * declare the form true, so anything they are required to have read has to
+   * be in front of them at that moment, not four steps back.
+   */
+  resources?: WizardResource[];
   /**
    * Preview: explorable, but nothing is recorded.
    *
@@ -121,6 +152,7 @@ export function FormWizard({
   onSubmit,
   onAnswersChange,
   submitLabel = 'Submit',
+  resources = [],
   preview = false,
 }: WizardProps) {
   const schema = useMemo(
@@ -133,6 +165,8 @@ export function FormWizard({
   const [showErrors, setShowErrors] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState(false);
+  /** Resource ids the patient has ticked. */
+  const [acknowledged, setAcknowledged] = useState<string[]>([]);
 
   // Autosave notification lives in an effect, not in the state updater —
   // React may invoke an updater twice, and a double POST per keystroke is a
@@ -164,6 +198,44 @@ export function FormWizard({
     });
   }
 
+  /*
+   * The step holding the signature. Resources belong immediately above it.
+   *
+   * The fallback is deliberately narrow. A form that asks for no signature at
+   * all — a repeat request does not sign anything — puts them on the last
+   * step rather than dropping them. But a signature that merely is not visible
+   * YET, because it sits behind a branch the patient has not answered, is not
+   * the same thing: falling back there would open the new-patient form with
+   * "before you sign, please read" above the first question, four steps before
+   * anything is signed.
+   */
+  const resourceStepIndex = resources.length === 0
+    ? -1
+    : (() => {
+      const visibleSignature = steps.findIndex((st) =>
+        visibleFieldsForStep(st, answers, options).some((f) => f.type === 'signature'));
+      if (visibleSignature >= 0) return visibleSignature;
+
+      const signsAtAll = schema.steps.some((st) =>
+        st.fields.some((f) => f.type === 'signature'));
+      return signsAtAll ? -1 : steps.length - 1;
+    })();
+
+  const onResourceStep = resourceStepIndex >= 0 && stepIndex === resourceStepIndex;
+
+  /*
+   * Required resources gate the button on their own step. Not on submit:
+   * leaving the tick four steps behind and refusing at the end tells somebody
+   * they are wrong without telling them where.
+   *
+   * Nothing is required of somebody who is only looking at a preview.
+   */
+  const unreadResources = preview
+    ? []
+    : resources.filter((r) => r.requiresAcknowledgement && !acknowledged.includes(r.id));
+
+  const heldByResources = onResourceStep && unreadResources.length > 0;
+
   const stepValidation = step ? validateStep(step, answers, options) : { valid: true, issues: [] };
   // Nothing is required of somebody who is only looking.
   const errorFor = (fieldId: string) =>
@@ -173,6 +245,7 @@ export function FormWizard({
 
   function goNext() {
     if (!preview && !stepValidation.valid) { setShowErrors(true); return; }
+    if (heldByResources) { setShowErrors(true); return; }
     setShowErrors(false);
     setStepIndex((i) => Math.min(i + 1, steps.length - 1));
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -187,11 +260,23 @@ export function FormWizard({
   async function submit() {
     const validation = validateForm(schema, answers, options);
     if (!validation.valid) { setShowErrors(true); return; }
+    /*
+     * Checked again here as well as on the step. The resource step is not
+     * always the last one — the weight-management form asks about delivery
+     * after the signature — so a patient can reach submit without the button
+     * that guards the ticks ever having been the one they pressed.
+     */
+    if (!preview && unreadResources.length > 0 && resourceStepIndex >= 0) {
+      setStepIndex(resourceStepIndex);
+      setShowErrors(true);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
     if (!onSubmit) return;
 
     setSubmitting(true);
     try {
-      await onSubmit(pruneHiddenAnswers(schema, answers));
+      await onSubmit(pruneHiddenAnswers(schema, answers), acknowledged);
       setDone(true);
     } finally {
       setSubmitting(false);
@@ -287,6 +372,70 @@ export function FormWizard({
                     <p className="mt-1 text-[14px] text-ink-faint">{step.description}</p>
                   ) : null}
                 </div>
+
+                {/* ── Resources ───────────────────────────── */}
+                {onResourceStep ? (
+                  <div className="mb-7 rounded-panel border border-line bg-sunk px-5 py-4">
+                    <h3 className="text-[15px] font-semibold text-ink">
+                      Before you sign, please read
+                    </h3>
+                    <p className="mt-0.5 text-[13px] text-ink-faint">
+                      These open in a new tab. This page keeps your answers.
+                    </p>
+
+                    <div className="mt-3.5 flex flex-col gap-2.5">
+                      {resources.map((r) => {
+                        const ticked = acknowledged.includes(r.id);
+                        const missing = showErrors && r.requiresAcknowledgement && !ticked;
+
+                        return (
+                          <div
+                            key={r.id}
+                            className={cn(
+                              'rounded-control border bg-surface px-4 py-3',
+                              missing ? 'border-stop-300' : 'border-line',
+                            )}
+                          >
+                            <a
+                              href={r.url}
+                              target="_blank"
+                              rel="noreferrer noopener"
+                              className="inline-flex items-center gap-1.5 text-[14.5px] font-semibold text-brand-700 underline-offset-2 hover:underline"
+                            >
+                              {r.title}
+                              <ExternalLink size={13} strokeWidth={2.2} />
+                            </a>
+
+                            {r.description ? (
+                              <p className="mt-0.5 text-[13px] text-ink-soft">{r.description}</p>
+                            ) : null}
+
+                            {r.requiresAcknowledgement ? (
+                              <label className="mt-2.5 flex items-start gap-2.5 text-[13.5px] text-ink-soft">
+                                <input
+                                  type="checkbox"
+                                  className="mt-[3px] h-[16px] w-[16px] accent-[var(--brand-600)]"
+                                  checked={ticked}
+                                  onChange={(e) =>
+                                    setAcknowledged((prev) => (e.target.checked
+                                      ? [...prev, r.id]
+                                      : prev.filter((id) => id !== r.id)))}
+                                />
+                                <span>I have read this.</span>
+                              </label>
+                            ) : null}
+
+                            {missing ? (
+                              <p className="mt-1.5 text-[12.5px] text-stop-700">
+                                Please confirm you have read this.
+                              </p>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ) : null}
 
                 <div className="flex flex-col">
                   {visibleFieldsForStep(step, answers, options).map((field: FormField) => {

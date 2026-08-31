@@ -33,6 +33,7 @@ import { siValue } from '@/lib/forms/present';
 import { loadPreviousSupply } from '@/lib/clinical/previous-supply';
 import { loadDoseLadders } from '@/lib/clinical/ladders';
 import { captureConsent } from '@/lib/workflow/consent';
+import { captureResourceAcknowledgements } from '@/lib/workflow/resources';
 import { changeSubmissionStatus, recordInitialStatus } from '@/lib/workflow/history';
 import type { FormSchema, Answers } from '@/types/form-schema';
 
@@ -152,6 +153,8 @@ export async function submitPublicForm(
   slug: string,
   rawAnswers: Answers,
   token?: string | null,
+  /** Ids of the leaflets the patient confirmed they had read. */
+  acknowledgedResourceIds: string[] = [],
 ): Promise<SubmitResult> {
   try {
     const [svc] = await db
@@ -368,6 +371,18 @@ export async function submitPublicForm(
         answers,
         formVersion: version.version,
         capturedBy: 'Patient',
+      });
+
+      /*
+       * The leaflets they ticked, snapshotted alongside the consent for the
+       * same reason: a resource is a mutable row, and a record that only
+       * pointed at it would change meaning every time somebody edited a link.
+       */
+      await captureResourceAcknowledgements(tx, {
+        organisationId: svc.organisationId,
+        submissionId: row.id,
+        patientId,
+        acknowledgedResourceIds,
       });
 
       // Triage, if this service has published rules.
