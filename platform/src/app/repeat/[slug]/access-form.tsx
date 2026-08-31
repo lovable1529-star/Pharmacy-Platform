@@ -8,7 +8,7 @@
  * accepts whatever case and spacing is printed on their paperwork.
  *
  * The failure message deliberately does not say which field was wrong, and it
- * ends with the thing they can actually do about it — book an appointment.
+ * ends with the thing they can actually do about it — start as a new patient.
  * "Details not recognised" on its own leaves a patient stuck.
  */
 
@@ -79,7 +79,7 @@ export function RepeatAccessForm({
               autoComplete="off"
               autoCapitalize="characters"
               spellCheck={false}
-              placeholder="e.g. KP-10432"
+              placeholder="e.g. RC-4H7K-M2PQ"
               className="w-full rounded-control border border-line bg-canvas px-3.5 py-3 text-[15px] text-ink outline-none transition-[border-color,box-shadow] focus:border-brand-300 focus:shadow-[0_0_0_3px_var(--color-brand-50)]"
             />
           </div>
@@ -131,12 +131,21 @@ export function RepeatAccessForm({
           </button>
         </form>
 
+        {/*
+          Points at the door they actually need. This offered to book an
+          appointment, which is now wrong twice over: the service is remote,
+          and somebody without an enrolment needs the new-patient form rather
+          than a booking.
+        */}
         <p className="mt-5 border-t border-line-soft pt-4 text-[13px] text-ink-faint">
-          Not on repeat care yet? You will need a consultation first —{' '}
-          <a href="/book" className="font-medium text-brand-600 underline underline-offset-2">
-            book an appointment
-          </a>
-          .
+          Not on repeat care yet?{' '}
+          <a
+            href="/f/weight-management-first"
+            className="font-medium text-brand-600 underline underline-offset-2"
+          >
+            Start with the new patient form
+          </a>{' '}
+          and a pharmacist will be in touch.
         </p>
       </div>
     </main>
