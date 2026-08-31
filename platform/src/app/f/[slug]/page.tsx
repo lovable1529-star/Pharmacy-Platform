@@ -241,6 +241,7 @@ export default async function PublicFormPage({
     medicineId: currentMedicineId,
   })).map((r) => ({
     id: r.id,
+    resourceKey: r.resourceKey,
     title: r.title,
     description: r.description,
     url: r.url,

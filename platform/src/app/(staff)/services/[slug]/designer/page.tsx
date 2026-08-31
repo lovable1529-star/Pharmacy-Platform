@@ -6,10 +6,11 @@
  * by convention and by a database trigger.
  */
 
-import { eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import { notFound } from 'next/navigation';
 import { db } from '@/lib/db/client';
-import { service, formVersion } from '@/lib/db/schema';
+import { service, formVersion, patientResource } from '@/lib/db/schema';
+import { getStaffContext } from '@/lib/auth/context';
 import type { FormSchema } from '@/types/form-schema';
 import { DesignerClient } from './designer-client';
 
@@ -37,6 +38,36 @@ export default async function DesignerPage({
   const row = rows[0];
   if (!row) notFound();
 
+  const { actor } = await getStaffContext();
+
+  /*
+   * The leaflets a "Links and leaflets" block can choose between.
+   *
+   * Titles and keys only. The designer decides WHICH appear WHERE; the wording,
+   * the link and whether it must be ticked belong to the resource itself, which
+   * is what lets a leaflet change without republishing every form using it.
+   *
+   * Live ones only — offering a retired leaflet would let somebody build a
+   * block that renders nothing.
+   */
+  const resources = await db
+    .select({
+      id: patientResource.id,
+      resourceKey: patientResource.resourceKey,
+      title: patientResource.title,
+      description: patientResource.description,
+      url: patientResource.url,
+      requiresAcknowledgement: patientResource.requiresAcknowledgement,
+    })
+    .from(patientResource)
+    .where(and(
+      eq(patientResource.serviceId, row.serviceId),
+      eq(patientResource.organisationId, actor.organisationId),
+      eq(patientResource.active, true),
+      isNull(patientResource.archivedAt),
+    ))
+    .orderBy(asc(patientResource.sortOrder), asc(patientResource.title));
+
   return (
     <DesignerClient
       serviceId={row.serviceId}
@@ -44,6 +75,7 @@ export default async function DesignerPage({
       currentVersion={row.version}
       slug={slug}
       schema={row.schema as unknown as FormSchema}
+      resources={resources}
     />
   );
 }

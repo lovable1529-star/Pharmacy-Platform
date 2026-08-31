@@ -21,6 +21,7 @@ import {
   ExternalLink, ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { carriesNoAnswer } from '@/lib/forms/runtime';
 import { DateOfBirthField } from '@/components/ui/date-of-birth';
 import { SearchSelect } from '@/components/ui/search-select';
 import { canUpload, uploadFile, useUploadTarget } from './upload-context';
@@ -58,7 +59,7 @@ export function FieldShell({
   error?: string;
   children: React.ReactNode;
 }) {
-  if (field.type === 'infoBlock') return <>{children}</>;
+  if (carriesNoAnswer(field)) return <>{children}</>;
 
   return (
     <div className="border-t border-line-soft py-5 first:border-t-0 first:pt-0">

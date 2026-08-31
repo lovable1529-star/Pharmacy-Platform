@@ -103,6 +103,7 @@ export default async function ServicePreviewPage({
     stage: 'BEFORE_SUBMISSION',
   })).map((r) => ({
     id: r.id,
+    resourceKey: r.resourceKey,
     title: r.title,
     description: r.description,
     url: r.url,

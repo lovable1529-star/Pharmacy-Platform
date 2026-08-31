@@ -1,18 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { ServiceDesigner } from '@/components/designer/service-designer';
+import {
+  ServiceDesigner, type DesignerResource,
+} from '@/components/designer/service-designer';
 import type { FormSchema } from '@/types/form-schema';
 import { publishFormVersion } from './actions';
 
 export function DesignerClient({
-  serviceId, serviceName, currentVersion, slug, schema,
+  serviceId, serviceName, currentVersion, slug, schema, resources = [],
 }: {
   serviceId: string;
   serviceName: string;
   currentVersion: number;
   slug: string;
   schema: FormSchema;
+  /** What a "Links and leaflets" block can choose between. */
+  resources?: DesignerResource[];
 }) {
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +46,8 @@ export function DesignerClient({
         serviceName={serviceName}
         currentVersion={currentVersion}
         previewHref={`/services/${slug}/preview`}
+        resources={resources}
+        resourcesHref={`/services/${slug}/resources`}
         onPublish={handlePublish}
       />
     </>

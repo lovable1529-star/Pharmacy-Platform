@@ -209,6 +209,22 @@ function validateField(field: FormField, answers: Answers): ValidationIssue | nu
   return null;
 }
 
+/**
+ * Does this field ask the patient for nothing?
+ *
+ * An information block and a leaflet block are both positions on a page rather
+ * than questions. They take no answer, so they must never be validated, never
+ * be numbered, and never appear in a summary of what somebody answered.
+ *
+ * Named once rather than repeated as `type === 'infoBlock' || type === ...` in
+ * seven files, because that is exactly the list that rots: the eighth place
+ * gets missed and a block silently becomes a question that can never be
+ * answered — which, marked required, makes a form impossible to submit.
+ */
+export function carriesNoAnswer(field: Pick<FormField, 'type'>): boolean {
+  return field.type === 'infoBlock' || field.type === 'resourceList';
+}
+
 export function validateStep(
   step: FormStep,
   answers: Answers,
@@ -216,7 +232,7 @@ export function validateStep(
 ): ValidationResult {
   const issues: ValidationIssue[] = [];
   for (const field of visibleFieldsForStep(step, answers, options)) {
-    if (field.type === 'infoBlock' || field.type === 'derived') continue;
+    if (carriesNoAnswer(field) || field.type === 'derived') continue;
     const issue = validateField(field, answers);
     if (issue) issues.push(issue);
   }
@@ -267,7 +283,7 @@ export function numberQuestions(schema: FormSchema): FormSchema {
 
   const numberField = (field: FormField): FormField => {
     const numbered: FormField =
-      field.type === 'infoBlock' ? { ...field } : { ...field, number: ++counter };
+      carriesNoAnswer(field) ? { ...field } : { ...field, number: ++counter };
 
     if (field.reveals?.length) {
       numbered.reveals = field.reveals.map((reveal) => ({

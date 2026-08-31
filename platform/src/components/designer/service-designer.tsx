@@ -56,9 +56,10 @@ import {
   Plus, Trash2, ChevronUp, ChevronDown, Eye, CornerDownRight,
   Stethoscope, Check, Search, X,
   PanelLeftClose, PanelLeftOpen, GripVertical, ExternalLink,
-  ClipboardCheck, ArrowLeft,
+  ClipboardCheck, ArrowLeft, BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { carriesNoAnswer } from '@/lib/forms/runtime';
 import { FormWizard } from '@/components/form/wizard';
 import { RevealsEditor } from './reveals-editor';
 import type {
@@ -167,6 +168,12 @@ const PALETTE: { type: FieldType; label: string; hint: string; group: PaletteGro
   { type: 'signature', label: 'Signature', hint: 'Finger or mouse', group: 'Media & consent' },
   { type: 'consentList', label: 'Consent', hint: 'Statements to read, and one box to tick', group: 'Media & consent' },
   { type: 'infoBlock', label: 'Information', hint: 'Text, no answer', group: 'Layout' },
+  {
+    type: 'resourceList',
+    label: 'Links and leaflets',
+    hint: 'Shows the resources you manage for this service',
+    group: 'Layout',
+  },
 ];
 
 function newFieldId(label: string, existing: Set<string>): string {
@@ -225,7 +232,7 @@ function allQuestions(
   for (const step of schema.steps) {
     const walk = (fields: FormField[]) => {
       for (const f of fields) {
-        if (f.id !== exceptId && f.type !== 'infoBlock') {
+        if (f.id !== exceptId && !carriesNoAnswer(f)) {
           out.push({ id: f.id, label: f.label, step: step.title, field: f });
         }
         for (const r of f.reveals ?? []) walk(r.fields);
@@ -270,6 +277,22 @@ function answerLabel(parent: FormField, whenValue: unknown): string {
   return String(whenValue);
 }
 
+/**
+ * A leaflet, as the designer needs to know it.
+ *
+ * Carries enough to render as well as to pick, because the designer's own
+ * preview is the whole point of placing a block — somebody dropping "Links and
+ * leaflets" onto step 3 should see it land there, not publish and hope.
+ */
+export interface DesignerResource {
+  id: string;
+  resourceKey: string;
+  title: string;
+  description: string | null;
+  url: string;
+  requiresAcknowledgement: boolean;
+}
+
 export interface DesignerProps {
   initialSchema: FormSchema;
   serviceName: string;
@@ -277,6 +300,17 @@ export interface DesignerProps {
   currentVersion?: number;
   /** Where "Open as patient" goes. Omitted, the link is not rendered. */
   previewHref?: string;
+  /**
+   * The leaflets this service has, for a "Links and leaflets" block to choose
+   * between.
+   *
+   * Titles only. The designer picks WHICH resources appear WHERE; the wording,
+   * the link itself and whether it must be ticked all live on the resources
+   * screen, so changing a leaflet never means republishing a form.
+   */
+  resources?: DesignerResource[];
+  /** Where to go and edit those. Omitted, the link is not rendered. */
+  resourcesHref?: string;
   onPublish?: (schema: FormSchema) => Promise<void> | void;
 }
 
@@ -285,6 +319,8 @@ export function ServiceDesigner({
   serviceName,
   currentVersion,
   previewHref,
+  resources = [],
+  resourcesHref,
   onPublish,
 }: DesignerProps) {
   const [schema, setSchema] = useState<FormSchema>(initialSchema);
@@ -383,8 +419,12 @@ export function ServiceDesigner({
       const field: FormField = {
         id,
         type,
-        label: type === 'infoBlock' ? 'Something the patient should read.' : `New ${label.toLowerCase()} question`,
-        required: type !== 'infoBlock' && type !== 'derived',
+        label: type === 'infoBlock'
+          ? 'Something the patient should read.'
+          : type === 'resourceList'
+            ? 'Please read these'
+            : `New ${label.toLowerCase()} question`,
+        required: type !== 'infoBlock' && type !== 'derived' && type !== 'resourceList',
         ...(presentation ? { presentation: presentation as FormField['presentation'] } : {}),
         ...(type === 'select' || type === 'multiSelect' || type === 'checkboxGroup' || type === 'scale'
           ? { options: [{ value: 'option_1', label: 'First option' }, { value: 'option_2', label: 'Second option' }] }
@@ -629,6 +669,21 @@ export function ServiceDesigner({
             <span className="rounded-[5px] bg-sunk px-2 py-1 font-mono text-[10px] uppercase tracking-[0.05em] text-ink-faint">
               live: v{currentVersion}
             </span>
+          ) : null}
+
+          {/*
+            Somebody editing a form who wants to change a leaflet had no way of
+            knowing the resources screen existed. The two are edited together
+            often enough that the designer should say so.
+          */}
+          {resourcesHref ? (
+            <a
+              href={resourcesHref}
+              className="flex items-center gap-1.5 rounded-control border border-line bg-surface px-3 py-2 text-[13px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
+            >
+              <BookOpen size={13} strokeWidth={2} />
+              Links and leaflets
+            </a>
           ) : null}
 
           {previewHref ? (
@@ -1073,6 +1128,8 @@ export function ServiceDesigner({
                       removeSelected={removeSelected}
                       moveSelected={moveSelected}
                       updateConsentClauses={updateConsentClauses}
+                      resources={resources}
+                      resourcesHref={resourcesHref}
                     />
                   ))}
                 </div>
@@ -1106,7 +1163,7 @@ export function ServiceDesigner({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto">
-            <FormWizard schema={schema} preview />
+            <FormWizard schema={schema} resources={resources} preview />
           </div>
         </main>
       </div>
@@ -1162,6 +1219,8 @@ function QuestionNode({
   removeSelected,
   moveSelected,
   updateConsentClauses,
+  resources,
+  resourcesHref,
 }: {
   field: FormField;
   index?: number;
@@ -1175,6 +1234,8 @@ function QuestionNode({
   removeSelected: () => void;
   moveSelected: (direction: -1 | 1) => void;
   updateConsentClauses: (clauses: ConsentClause[]) => void;
+  resources: DesignerResource[];
+  resourcesHref?: string;
 }) {
   const isSelected = selectedId === field.id;
 
@@ -1233,6 +1294,8 @@ function QuestionNode({
             moveSelected={moveSelected}
             updateConsentClauses={updateConsentClauses}
             canReorder={depth === 0}
+            resources={resources}
+            resourcesHref={resourcesHref}
           />
         </div>
       ) : null}
@@ -1265,6 +1328,8 @@ function QuestionNode({
                 removeSelected={removeSelected}
                 moveSelected={moveSelected}
                 updateConsentClauses={updateConsentClauses}
+                resources={resources}
+                resourcesHref={resourcesHref}
               />
             </div>
           </div>
@@ -1291,6 +1356,8 @@ function QuestionEditor({
   moveSelected,
   updateConsentClauses,
   canReorder,
+  resources,
+  resourcesHref,
 }: {
   selected: FormField;
   selectedId: string | null;
@@ -1301,6 +1368,8 @@ function QuestionEditor({
   moveSelected: (direction: -1 | 1) => void;
   updateConsentClauses: (clauses: ConsentClause[]) => void;
   canReorder: boolean;
+  resources: DesignerResource[];
+  resourcesHref?: string;
 }) {
   return (
     <div className="flex flex-col gap-3.5">
@@ -1426,19 +1495,29 @@ function QuestionEditor({
         </Labelled>
       ) : null}
 
-      <Toggle
-        label="Required"
-        hint="The patient cannot continue without answering"
-        checked={selected.required ?? false}
-        onChange={(v) => updateSelected({ required: v })}
-      />
+      {/*
+        A block asks nothing, so "required" and "the pharmacist answers this"
+        are not choices to offer. Required in particular was a trap: the field
+        would validate like a question, never have a value, and quietly make
+        the form impossible to submit.
+      */}
+      {carriesNoAnswer(selected) ? null : (
+        <>
+          <Toggle
+            label="Required"
+            hint="The patient cannot continue without answering"
+            checked={selected.required ?? false}
+            onChange={(v) => updateSelected({ required: v })}
+          />
 
-      <Toggle
-        label="Pharmacist answers this"
-        hint="Hidden from the patient; asked at the appointment"
-        checked={selected.clinicianOnly ?? false}
-        onChange={(v) => updateSelected({ clinicianOnly: v })}
-      />
+          <Toggle
+            label="Pharmacist answers this"
+            hint="Hidden from the patient; asked at the appointment"
+            checked={selected.clinicianOnly ?? false}
+            onChange={(v) => updateSelected({ clinicianOnly: v })}
+          />
+        </>
+      )}
 
       <Toggle
         label="Half width"
@@ -1452,6 +1531,17 @@ function QuestionEditor({
           <OptionEditor
             options={selected.options}
             onChange={(options) => updateSelected({ options })}
+          />
+        </Labelled>
+      ) : null}
+
+      {selected.type === 'resourceList' ? (
+        <Labelled label="Which links appear here">
+          <ResourcePicker
+            available={resources}
+            chosen={selected.resourceKeys ?? []}
+            resourcesHref={resourcesHref}
+            onChange={(resourceKeys) => updateSelected({ resourceKeys })}
           />
         </Labelled>
       ) : null}
@@ -2439,6 +2529,90 @@ function OptionEditor({
       >
         <Plus size={12} strokeWidth={2.2} /> Add an option
       </button>
+    </div>
+  );
+}
+
+/**
+ * Choosing which leaflets a block shows.
+ *
+ * Ticking nothing is the common case and the useful default: the block shows
+ * every leaflet no other block on the form has claimed, so a client who adds a
+ * leaflet next month gets it in front of patients without touching the form
+ * again. That is stated on the screen rather than left to be discovered,
+ * because an empty list of tickboxes otherwise reads as "nothing will show".
+ *
+ * Only titles are edited here. The wording, the link and whether it must be
+ * ticked belong to the resource itself — that separation is what lets a
+ * leaflet change without republishing every form that points at it.
+ */
+function ResourcePicker({
+  available, chosen, resourcesHref, onChange,
+}: {
+  available: DesignerResource[];
+  chosen: string[];
+  resourcesHref?: string;
+  onChange: (resourceKeys: string[]) => void;
+}) {
+  if (available.length === 0) {
+    return (
+      <div className="rounded-control border border-line bg-sunk px-3.5 py-3 text-[12.5px] leading-[1.5] text-ink-faint">
+        This service has no links or leaflets yet, so this block will not show
+        anything.{' '}
+        {resourcesHref ? (
+          <a href={resourcesHref} className="font-medium text-brand-700 underline underline-offset-2">
+            Add some
+          </a>
+        ) : null}
+      </div>
+    );
+  }
+
+  function toggle(key: string, ticked: boolean) {
+    onChange(ticked ? [...new Set([...chosen, key])] : chosen.filter((k) => k !== key));
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-[12px] leading-[1.5] text-ink-faint">
+        {chosen.length === 0
+          ? 'Nothing ticked — this block shows every link no other block has taken, including any you add later.'
+          : `Shows the ${chosen.length === 1 ? 'one' : chosen.length} ticked below, in this order.`}
+      </p>
+
+      {available.map((r) => {
+        const ticked = chosen.includes(r.resourceKey);
+        return (
+          <label
+            key={r.resourceKey}
+            className="flex items-start gap-2.5 rounded-control border border-line bg-surface px-3 py-2 text-[13px] text-ink-soft"
+          >
+            <input
+              type="checkbox"
+              className="mt-[3px] h-[14px] w-[14px] accent-[var(--brand-600)]"
+              checked={ticked}
+              onChange={(e) => toggle(r.resourceKey, e.target.checked)}
+            />
+            <span className="min-w-0 flex-1">
+              {r.title}
+              {r.requiresAcknowledgement ? (
+                <span className="ml-1.5 font-mono text-[10px] uppercase tracking-[0.06em] text-ink-faint">
+                  must tick
+                </span>
+              ) : null}
+            </span>
+          </label>
+        );
+      })}
+
+      {resourcesHref ? (
+        <a
+          href={resourcesHref}
+          className="mt-0.5 text-[12px] font-medium text-brand-700 underline underline-offset-2"
+        >
+          Edit the links themselves
+        </a>
+      ) : null}
     </div>
   );
 }

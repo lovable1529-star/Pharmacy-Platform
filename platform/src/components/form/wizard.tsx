@@ -19,9 +19,14 @@ import { ArrowLeft, ArrowRight, Check, ExternalLink, Lock, Loader2 } from 'lucid
 import { cn } from '@/lib/cn';
 import { isExternalReferral } from '@/lib/services/referral';
 import {
+  fallbackStepIndex, hasResourceBlocks, placeResources, renderedResources, unticked,
+  type ResourceBlock,
+} from '@/lib/resources/placement';
+import {
   visibleSteps, visibleFieldsForStep, validateStep, validateForm,
   pruneHiddenAnswers, numberQuestions, activeWarnings, isStepUnlocked,
   resolveConsentClauses,
+  carriesNoAnswer,
 } from '@/lib/forms/runtime';
 import type { Answers, FormField, FormSchema } from '@/types/form-schema';
 import {
@@ -94,6 +99,8 @@ export function Control(props: FieldProps & { schema: FormSchema }) {
  */
 export interface WizardResource {
   id: string;
+  /** Stable across versions, so a block naming it survives a reworded leaflet. */
+  resourceKey: string;
   title: string;
   description: string | null;
   url: string;
@@ -179,6 +186,12 @@ export function FormWizard({
   /** Resource ids the patient has ticked. */
   const [acknowledged, setAcknowledged] = useState<string[]>([]);
 
+  function toggleAcknowledged(resourceId: string, ticked: boolean) {
+    setAcknowledged((previous) => (ticked
+      ? [...new Set([...previous, resourceId])]
+      : previous.filter((id) => id !== resourceId)));
+  }
+
   // Autosave notification lives in an effect, not in the state updater —
   // React may invoke an updater twice, and a double POST per keystroke is a
   // real cost when a patient is on a phone with poor signal.
@@ -210,42 +223,65 @@ export function FormWizard({
   }
 
   /*
-   * The step holding the signature. Resources belong immediately above it.
+   * Where the leaflets go.
    *
-   * The fallback is deliberately narrow. A form that asks for no signature at
-   * all — a repeat request does not sign anything — puts them on the last
-   * step rather than dropping them. But a signature that merely is not visible
-   * YET, because it sits behind a branch the patient has not answered, is not
-   * the same thing: falling back there would open the new-patient form with
-   * "before you sign, please read" above the first question, four steps before
-   * anything is signed.
+   * Computed against the VISIBLE steps and their visible fields: a block
+   * hidden behind an unanswered branch is not a place anybody can read
+   * anything, and treating it as one would strand a required tick somewhere
+   * the patient cannot reach.
+   *
+   * A form that places its own blocks gets exactly what it asked for. A form
+   * that places none — which is every version published before blocks existed
+   * — falls back to one block above the signature, so nothing that used to
+   * show its leaflets quietly stops.
    */
-  const resourceStepIndex = resources.length === 0
-    ? -1
-    : (() => {
-      const visibleSignature = steps.findIndex((st) =>
-        visibleFieldsForStep(st, answers, options).some((f) => f.type === 'signature'));
-      if (visibleSignature >= 0) return visibleSignature;
+  const visibleStepFields = steps.map((st) => ({
+    fields: visibleFieldsForStep(st, answers, options),
+  }));
 
-      const signsAtAll = schema.steps.some((st) =>
-        st.fields.some((f) => f.type === 'signature'));
-      return signsAtAll ? -1 : steps.length - 1;
-    })();
+  const placement = useMemo(() => {
+    if (resources.length === 0) return new Map<number, ResourceBlock[]>();
 
-  const onResourceStep = resourceStepIndex >= 0 && stepIndex === resourceStepIndex;
+    if (hasResourceBlocks(visibleStepFields)) {
+      return placeResources(visibleStepFields, resources);
+    }
+
+    const fallback = fallbackStepIndex(visibleStepFields, schema.steps);
+    if (fallback < 0) return new Map<number, ResourceBlock[]>();
+
+    return new Map<number, ResourceBlock[]>([
+      [fallback, [{ fieldId: '__fallback', resources: [...resources] }]],
+    ]);
+    // visibleStepFields is rebuilt every render; the answers it derives from
+    // are the real dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resources, answers, schema, stepIndex]);
+
+  const blocksHere = placement.get(stepIndex) ?? [];
 
   /*
-   * Required resources gate the button on their own step. Not on submit:
-   * leaving the tick four steps behind and refusing at the end tells somebody
+   * Required resources gate the step they are ON. Not the final submit:
+   * leaving the tick five steps behind and refusing at the end tells somebody
    * they are wrong without telling them where.
    *
    * Nothing is required of somebody who is only looking at a preview.
    */
-  const unreadResources = preview
-    ? []
-    : resources.filter((r) => r.requiresAcknowledgement && !acknowledged.includes(r.id));
+  const unreadHere = preview ? [] : unticked(blocksHere, acknowledged);
 
-  const heldByResources = onResourceStep && unreadResources.length > 0;
+  const unreadAnywhere = preview
+    ? []
+    : renderedResources(placement)
+      .filter((r) => r.requiresAcknowledgement && !acknowledged.includes(r.id));
+
+  const heldByResources = unreadHere.length > 0;
+
+  /** The first step still holding an unticked leaflet, for the submit guard. */
+  const firstUnreadStep = unreadAnywhere.length === 0
+    ? -1
+    : [...placement.entries()]
+      .filter(([, blocks]) => unticked(blocks, acknowledged).length > 0)
+      .map(([index]) => index)
+      .sort((a, b) => a - b)[0] ?? -1;
 
   const stepValidation = step ? validateStep(step, answers, options) : { valid: true, issues: [] };
   // Nothing is required of somebody who is only looking.
@@ -272,13 +308,13 @@ export function FormWizard({
     const validation = validateForm(schema, answers, options);
     if (!validation.valid) { setShowErrors(true); return; }
     /*
-     * Checked again here as well as on the step. The resource step is not
-     * always the last one — the weight-management form asks about delivery
-     * after the signature — so a patient can reach submit without the button
-     * that guards the ticks ever having been the one they pressed.
+     * Checked again here as well as on the step. A block is not always on the
+     * last step — the weight-management form asks about delivery after the
+     * signature — so a patient can reach submit without the button guarding
+     * that tick ever having been the one they pressed.
      */
-    if (!preview && unreadResources.length > 0 && resourceStepIndex >= 0) {
-      setStepIndex(resourceStepIndex);
+    if (!preview && unreadAnywhere.length > 0 && firstUnreadStep >= 0) {
+      setStepIndex(firstUnreadStep);
       setShowErrors(true);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
@@ -384,73 +420,55 @@ export function FormWizard({
                   ) : null}
                 </div>
 
-                {/* ── Resources ───────────────────────────── */}
-                {onResourceStep ? (
-                  <div className="mb-7 rounded-panel border border-line bg-sunk px-5 py-4">
-                    <h3 className="text-[15px] font-semibold text-ink">
-                      Before you sign, please read
-                    </h3>
-                    <p className="mt-0.5 text-[13px] text-ink-faint">
-                      These open in a new tab. This page keeps your answers.
-                    </p>
+                {/*
+                  ── Resources ─────────────────────────────
 
-                    <div className="mt-3.5 flex flex-col gap-2.5">
-                      {resources.map((r) => {
-                        const ticked = acknowledged.includes(r.id);
-                        const missing = showErrors && r.requiresAcknowledgement && !ticked;
-
-                        return (
-                          <div
-                            key={r.id}
-                            className={cn(
-                              'rounded-control border bg-surface px-4 py-3',
-                              missing ? 'border-stop-300' : 'border-line',
-                            )}
-                          >
-                            <a
-                              href={r.url}
-                              target="_blank"
-                              rel="noreferrer noopener"
-                              className="inline-flex items-center gap-1.5 text-[14.5px] font-semibold text-brand-700 underline-offset-2 hover:underline"
-                            >
-                              {r.title}
-                              <ExternalLink size={13} strokeWidth={2.2} />
-                            </a>
-
-                            {r.description ? (
-                              <p className="mt-0.5 text-[13px] text-ink-soft">{r.description}</p>
-                            ) : null}
-
-                            {r.requiresAcknowledgement ? (
-                              <label className="mt-2.5 flex items-start gap-2.5 text-[13.5px] text-ink-soft">
-                                <input
-                                  type="checkbox"
-                                  className="mt-[3px] h-[16px] w-[16px] accent-[var(--brand-600)]"
-                                  checked={ticked}
-                                  onChange={(e) =>
-                                    setAcknowledged((prev) => (e.target.checked
-                                      ? [...prev, r.id]
-                                      : prev.filter((id) => id !== r.id)))}
-                                />
-                                <span>I have read this.</span>
-                              </label>
-                            ) : null}
-
-                            {missing ? (
-                              <p className="mt-1.5 text-[12.5px] text-stop-700">
-                                Please confirm you have read this.
-                              </p>
-                            ) : null}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : null}
+                  Only the fallback block renders here, above the questions,
+                  because that is where it always was. A block the form places
+                  itself renders in its own position among the fields below.
+                */}
+                {blocksHere
+                  .filter((b) => b.fieldId === '__fallback')
+                  .map((block) => (
+                    <ResourceBlockView
+                      key={block.fieldId}
+                      heading="Before you sign, please read"
+                      block={block}
+                      acknowledged={acknowledged}
+                      onToggle={toggleAcknowledged}
+                      showErrors={showErrors && !preview}
+                      className="mb-7"
+                    />
+                  ))}
 
                 <div className="flex flex-col">
                   {visibleFieldsForStep(step, answers, options).map((field: FormField) => {
                     const fieldWarnings = warnings.filter((w) => w.fieldId === field.id);
+
+                    /*
+                     * A resource block is a position, not a question. It has
+                     * no answer, no validation and no field shell — what goes
+                     * in it comes from the database at render time, which is
+                     * the whole reason the pharmacy can change a leaflet
+                     * without republishing the form it sits on.
+                     */
+                    if (field.type === 'resourceList') {
+                      const block = blocksHere.find((b) => b.fieldId === field.id);
+                      if (!block || block.resources.length === 0) return null;
+
+                      return (
+                        <ResourceBlockView
+                          key={field.id}
+                          heading={field.label}
+                          block={block}
+                          acknowledged={acknowledged}
+                          onToggle={toggleAcknowledged}
+                          showErrors={showErrors && !preview}
+                          className="my-2"
+                        />
+                      );
+                    }
+
                     return (
                       <FieldShell key={field.id} field={field} error={errorFor(field.id)}>
                         <Control
@@ -592,7 +610,7 @@ function RecapList({
 }) {
   const entries = visibleSteps(schema, answers, options)
     .flatMap((s) => visibleFieldsForStep(s, answers, options))
-    .filter((f) => f.type !== 'infoBlock' && f.type !== 'signature' && f.type !== 'consentList')
+    .filter((f) => !carriesNoAnswer(f) && f.type !== 'signature' && f.type !== 'consentList')
     .map((f) => ({ field: f, value: answers[f.id] }))
     .filter((e) => e.value !== undefined && e.value !== null && e.value !== '')
     .slice(0, 8);
@@ -642,4 +660,86 @@ function formatRecapValue(field: FormField, value: unknown): string {
   if (value === 'na') return 'N/A';
 
   return String(value);
+}
+
+/**
+ * One block of leaflets, wherever the form puts it.
+ *
+ * Rendered from database rows rather than from the schema, which is the point:
+ * the pharmacy edits a leaflet and every form showing it changes, with no
+ * republish and no effect on anything already answered.
+ *
+ * The heading comes from the block — the fallback says "Before you sign,
+ * please read" because that is where it sits, and a block the client placed
+ * themselves says whatever they typed as its label.
+ */
+function ResourceBlockView({
+  heading, block, acknowledged, onToggle, showErrors, className,
+}: {
+  heading: string;
+  block: ResourceBlock;
+  acknowledged: string[];
+  onToggle: (resourceId: string, ticked: boolean) => void;
+  showErrors: boolean;
+  className?: string;
+}) {
+  if (block.resources.length === 0) return null;
+
+  return (
+    <div className={cn('rounded-panel border border-line bg-sunk px-5 py-4', className)}>
+      <h3 className="text-[15px] font-semibold text-ink">{heading}</h3>
+      <p className="mt-0.5 text-[13px] text-ink-faint">
+        These open in a new tab. This page keeps your answers.
+      </p>
+
+      <div className="mt-3.5 flex flex-col gap-2.5">
+        {block.resources.map((r) => {
+          const ticked = acknowledged.includes(r.id);
+          const missing = showErrors && r.requiresAcknowledgement && !ticked;
+
+          return (
+            <div
+              key={r.id}
+              className={cn(
+                'rounded-control border bg-surface px-4 py-3',
+                missing ? 'border-stop-300' : 'border-line',
+              )}
+            >
+              <a
+                href={r.url}
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex items-center gap-1.5 text-[14.5px] font-semibold text-brand-700 underline-offset-2 hover:underline"
+              >
+                {r.title}
+                <ExternalLink size={13} strokeWidth={2.2} />
+              </a>
+
+              {r.description ? (
+                <p className="mt-0.5 text-[13px] text-ink-soft">{r.description}</p>
+              ) : null}
+
+              {r.requiresAcknowledgement ? (
+                <label className="mt-2.5 flex items-start gap-2.5 text-[13.5px] text-ink-soft">
+                  <input
+                    type="checkbox"
+                    className="mt-[3px] h-[16px] w-[16px] accent-[var(--brand-600)]"
+                    checked={ticked}
+                    onChange={(e) => onToggle(r.id, e.target.checked)}
+                  />
+                  <span>I have read this.</span>
+                </label>
+              ) : null}
+
+              {missing ? (
+                <p className="mt-1.5 text-[12.5px] text-stop-700">
+                  Please confirm you have read this.
+                </p>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }

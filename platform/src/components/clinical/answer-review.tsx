@@ -26,7 +26,9 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { Control } from '@/components/form/wizard';
-import { visibleSteps, visibleFieldsForStep, numberQuestions } from '@/lib/forms/runtime';
+import {
+  visibleSteps, visibleFieldsForStep, numberQuestions, carriesNoAnswer,
+} from '@/lib/forms/runtime';
 import { presentAnswer, isImageAnswer } from '@/lib/forms/present';
 import { isStoredFileRef, formatFileSize } from '@/components/fields/stored-file';
 import type { Answers, FormField, FormSchema } from '@/types/form-schema';
@@ -231,7 +233,7 @@ export function AnswerReview({ schema, answers, onAmend }: Props) {
       {/* ── Full answers ────────────────────────────────── */}
       {steps.map((step) => {
         const fields = visibleFieldsForStep(step, answers, { includeClinicianOnly: false })
-          .filter((f) => f.type !== 'infoBlock');
+          .filter((f) => !carriesNoAnswer(f));
         if (fields.length === 0) return null;
 
         const isCollapsed = collapsed.has(step.id);

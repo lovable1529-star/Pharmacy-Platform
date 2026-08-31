@@ -14,7 +14,7 @@ import {
   submission, formVersion, ruleEvaluation,
 } from '@/lib/db/schema';
 import { allocatePrescriptionNumber } from './numbering';
-import { visibleSteps, visibleFieldsForStep } from '@/lib/forms/runtime';
+import { visibleSteps, visibleFieldsForStep, carriesNoAnswer } from '@/lib/forms/runtime';
 import { presentAnswer } from '@/lib/forms/present';
 import { formatMoney } from '@/lib/units';
 import type { PrescriptionData } from './prescription';
@@ -128,9 +128,10 @@ export async function buildPrescriptionData(
         const entries: { label: string; value: string }[] = [];
 
         for (const field of visibleFieldsForStep(step, answers, { includeClinicianOnly: true })) {
-          // An info block asks nothing, and a signature is an image rather than
-          // a value — printing its data URL as text helps nobody.
-          if (field.type === 'infoBlock') continue;
+          // An info block and a leaflet block ask nothing, and a signature is
+          // an image rather than a value — printing its data URL as text helps
+          // nobody.
+          if (carriesNoAnswer(field)) continue;
 
           if (field.type === 'signature') {
             const signed = answers[field.id];

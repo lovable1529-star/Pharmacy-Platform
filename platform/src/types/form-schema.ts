@@ -41,7 +41,8 @@ export type FieldType =
   | 'photoCapture'
   | 'signature'
   | 'infoBlock'
-  | 'consentList';
+  | 'consentList'
+  | 'resourceList';
 
 /**
  * How a field is presented. The schema owns the question; this owns the
@@ -142,6 +143,19 @@ export interface FormField {
      */
     offerReferral?: boolean;
   }[];
+  /**
+   * For a `resourceList` block: which resources appear here.
+   *
+   * Keys rather than ids, because a resource key survives a reworded leaflet
+   * being republished as a new version. Pointing at an id would mean a form
+   * silently stopped showing a leaflet the moment somebody fixed a typo in its
+   * title.
+   *
+   * Left empty, the block shows every applicable resource that no other block
+   * on the form has named — so one empty block is "show them all", and a named
+   * block plus an empty one is "these here, the rest there".
+   */
+  resourceKeys?: string[];
   /** Two fields side by side on wide screens. Layout hint, not free layout. */
   halfWidth?: boolean;
   /**
