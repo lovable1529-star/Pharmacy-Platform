@@ -196,9 +196,17 @@ export function buildWeightManagementNewPatientForm(
                * URL here would make it a code change every time it moves.
                */
               message:
-                'This online service may not be the right fit. Karsons Pharmacy runs a '
-                + 'face-to-face weight management programme — please book with them instead. '
-                + 'You do not need to finish this form.',
+                'No problem — this online service is not the right fit, but Karsons '
+                + 'Pharmacy runs a face-to-face weight management programme you can join '
+                + 'instead. You do not need to finish this form.',
+              /*
+               * The one warning in this form that earns a referral. The others
+               * — pregnancy, red-flag symptoms — stop the patient for clinical
+               * reasons and already tell them to contact the pharmacy today;
+               * answering those with "book an appointment" would be the wrong
+               * instruction at the worst moment.
+               */
+              offerReferral: true,
             }],
           },
         ],

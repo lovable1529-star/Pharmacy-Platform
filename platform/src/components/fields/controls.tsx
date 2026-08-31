@@ -16,7 +16,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 import PhoneInput, { isValidPhoneNumber } from 'react-phone-number-input';
-import { Check, Upload, Camera, Eraser, Info, AlertTriangle, OctagonX, Loader2 } from 'lucide-react';
+import {
+  Check, Upload, Camera, Eraser, Info, AlertTriangle, OctagonX, Loader2,
+  ExternalLink, ArrowRight,
+} from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { DateOfBirthField } from '@/components/ui/date-of-birth';
 import { SearchSelect } from '@/components/ui/search-select';
@@ -92,9 +95,18 @@ export function FieldShell({
 export function FieldWarning({
   message,
   severity,
+  action,
 }: {
   message: string;
   severity: 'info' | 'warn' | 'stop';
+  /**
+   * Somewhere to go, for a warning that closes a door.
+   *
+   * A stop tells a patient they cannot continue. Where there is a real
+   * alternative — the pharmacy's own face-to-face programme — leaving them to
+   * find it themselves loses them, so the warning carries the way out.
+   */
+  action?: { href: string; label: string; external: boolean };
 }) {
   const Icon = severity === 'stop' ? OctagonX : severity === 'warn' ? AlertTriangle : Info;
   return (
@@ -107,7 +119,33 @@ export function FieldWarning({
       )}
     >
       <Icon size={15} strokeWidth={2.1} className="mt-0.5 shrink-0" />
-      <span>{message}</span>
+      <div className="min-w-0">
+        <span>{message}</span>
+
+        {action ? (
+          <a
+            href={action.href}
+            /*
+             * The pharmacy's own site opens in a new tab so the half-finished
+             * form stays where it is; our own placeholder navigates normally,
+             * because it has a way back and a stack of tabs helps nobody.
+             */
+            target={action.external ? '_blank' : undefined}
+            rel={action.external ? 'noreferrer noopener' : undefined}
+            className={cn(
+              'mt-2.5 inline-flex items-center gap-1.5 rounded-control px-3.5 py-2 text-[13.5px] font-semibold text-white transition-colors',
+              severity === 'stop' && 'bg-stop-600 hover:bg-stop-700',
+              severity === 'warn' && 'bg-review-600 hover:bg-review-700',
+              severity === 'info' && 'bg-brand-600 hover:bg-brand-700',
+            )}
+          >
+            {action.label}
+            {action.external
+              ? <ExternalLink size={13} strokeWidth={2.2} />
+              : <ArrowRight size={14} strokeWidth={2.2} />}
+          </a>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -120,7 +120,28 @@ export interface FormField {
   /** Copies the selected option's metadata into the submission under this key. */
   storeMetadataAs?: string;
   /** Shown when this answer is given — e.g. "STOP: treatment cannot be supplied." */
-  warnWhen?: { value: unknown; message: string; severity: 'info' | 'warn' | 'stop' }[];
+  warnWhen?: {
+    value: unknown;
+    message: string;
+    severity: 'info' | 'warn' | 'stop';
+    /**
+     * Offer the patient the pharmacy's face-to-face service alongside this
+     * warning.
+     *
+     * A flag rather than a URL, and it lives here rather than in the service
+     * profile, because WHICH answers deserve a referral is a clinical decision
+     * that belongs to a form version — someone reading a submission in a year
+     * should be able to see that this version offered it. WHERE the referral
+     * points is operational and changes freely, so that lives in
+     * `service_public_profile.f2f_referral_url` instead.
+     *
+     * Deliberately not "every stop warning". A patient reporting persistent
+     * vomiting and yellowing eyes is also stopped, and answering that with
+     * "book an appointment" instead of "contact the pharmacy today" would be
+     * the wrong instruction at the worst moment.
+     */
+    offerReferral?: boolean;
+  }[];
   /** Two fields side by side on wide screens. Layout hint, not free layout. */
   halfWidth?: boolean;
   /**

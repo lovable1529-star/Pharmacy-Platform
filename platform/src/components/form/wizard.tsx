@@ -17,6 +17,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, ExternalLink, Lock, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/cn';
+import { isExternalReferral } from '@/lib/services/referral';
 import {
   visibleSteps, visibleFieldsForStep, validateStep, validateForm,
   pruneHiddenAnswers, numberQuestions, activeWarnings, isStepUnlocked,
@@ -131,6 +132,15 @@ export interface WizardProps {
    */
   resources?: WizardResource[];
   /**
+   * Where to send a patient the form has stopped, when the answer that stopped
+   * them is one the schema marks as deserving a referral.
+   *
+   * Passed in rather than read from the schema: which answers earn a referral
+   * is versioned with the form, but where it points is configuration the
+   * pharmacy changes without a republish.
+   */
+  referralUrl?: string | null;
+  /**
    * Preview: explorable, but nothing is recorded.
    *
    * Controls stay ENABLED on purpose. The point of a preview is to see what the
@@ -153,6 +163,7 @@ export function FormWizard({
   onAnswersChange,
   submitLabel = 'Submit',
   resources = [],
+  referralUrl = null,
   preview = false,
 }: WizardProps) {
   const schema = useMemo(
@@ -451,7 +462,28 @@ export function FormWizard({
                           disabled={false}
                         />
                         {fieldWarnings.map((w) => (
-                          <FieldWarning key={w.message} message={w.message} severity={w.severity} />
+                          <FieldWarning
+                            key={w.message}
+                            message={w.message}
+                            severity={w.severity}
+                            action={
+                              /*
+                               * Only where the schema asked for it. Every stop
+                               * warning ends the form, but "book an
+                               * appointment" is the right next step for
+                               * somebody who would rather be seen and the
+                               * wrong one for somebody reporting red-flag
+                               * symptoms, who was just told to ring today.
+                               */
+                              w.offerReferral && referralUrl
+                                ? {
+                                  href: referralUrl,
+                                  label: 'See the face-to-face programme',
+                                  external: isExternalReferral(referralUrl),
+                                }
+                                : undefined
+                            }
+                          />
                         ))}
                       </FieldShell>
                     );

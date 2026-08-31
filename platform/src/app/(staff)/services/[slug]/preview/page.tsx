@@ -18,7 +18,10 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, Eye, ExternalLink, PencilLine } from 'lucide-react';
 import { getStaffContext } from '@/lib/auth/context';
 import { db } from '@/lib/db/client';
-import { service, formVersion, patientResource, medicine } from '@/lib/db/schema';
+import {
+  service, formVersion, patientResource, medicine, servicePublicProfile,
+} from '@/lib/db/schema';
+import { resolveReferralUrl } from '@/lib/services/referral';
 import { applicableResources, type DisplayStage } from '@/lib/resources/applicable';
 import type { FormSchema } from '@/types/form-schema';
 import { FormPreview } from './form-preview';
@@ -103,6 +106,21 @@ export default async function ServicePreviewPage({
       eq(patientResource.organisationId, actor.organisationId),
     ));
 
+  const [profile] = await db
+    .select({ f2fReferralUrl: servicePublicProfile.f2fReferralUrl })
+    .from(servicePublicProfile)
+    .where(and(
+      eq(servicePublicProfile.serviceId, row.id),
+      eq(servicePublicProfile.organisationId, actor.organisationId),
+      eq(servicePublicProfile.active, true),
+    ))
+    .limit(1);
+
+  const referralUrl = resolveReferralUrl({
+    configured: profile?.f2fReferralUrl,
+    serviceSlug: slug,
+  });
+
   const resources = applicableResources(
     resourceRows.map((r) => ({ ...r, displayStage: r.displayStage as DisplayStage })),
     { stage: 'BEFORE_SUBMISSION' },
@@ -161,7 +179,7 @@ export default async function ServicePreviewPage({
         </p>
       </div>
 
-      <FormPreview schema={schema} resources={resources} />
+      <FormPreview schema={schema} resources={resources} referralUrl={referralUrl} />
     </div>
   );
 }

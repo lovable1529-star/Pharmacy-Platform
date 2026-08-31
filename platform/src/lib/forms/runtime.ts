@@ -319,11 +319,19 @@ export function collectMetadata(schema: FormSchema, answers: Answers): Record<st
 }
 
 /** Every warning currently triggered — including hard stops. */
+export interface ActiveWarning {
+  fieldId: string;
+  message: string;
+  severity: 'info' | 'warn' | 'stop';
+  /** This warning wants the face-to-face service offered beside it. */
+  offerReferral: boolean;
+}
+
 export function activeWarnings(
   schema: FormSchema,
   answers: Answers,
-): { fieldId: string; message: string; severity: 'info' | 'warn' | 'stop' }[] {
-  const warnings: { fieldId: string; message: string; severity: 'info' | 'warn' | 'stop' }[] = [];
+): ActiveWarning[] {
+  const warnings: ActiveWarning[] = [];
 
   for (const field of visibleFields(schema, answers, { includeClinicianOnly: true })) {
     if (!field.warnWhen?.length) continue;
@@ -333,6 +341,7 @@ export function activeWarnings(
           fieldId: field.id,
           message: warning.message,
           severity: warning.severity,
+          offerReferral: warning.offerReferral === true,
         });
       }
     }

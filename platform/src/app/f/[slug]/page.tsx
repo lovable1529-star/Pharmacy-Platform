@@ -20,8 +20,9 @@ import { notFound } from 'next/navigation';
 import { db } from '@/lib/db/client';
 import {
   service, formVersion, organisation, submission, appointment, branch,
-  patientResource, medicine,
+  patientResource, medicine, servicePublicProfile,
 } from '@/lib/db/schema';
+import { resolveReferralUrl } from '@/lib/services/referral';
 import { applicableResources, type DisplayStage } from '@/lib/resources/applicable';
 import { isExpired } from '@/lib/forms/draft';
 import { loadDoseLadders } from '@/lib/clinical/ladders';
@@ -224,6 +225,28 @@ export default async function PublicFormPage({
     ? resourceRows.find((r) => r.medicineBrand === currentMedicineBrand)?.medicineId ?? null
     : null;
 
+  /*
+   * Where a patient who would rather be seen in person is sent.
+   *
+   * Read here rather than baked into the form, because it is a different
+   * programme at the pharmacy's own address and price and it will move; a URL
+   * in the questionnaire would make every move a republish.
+   */
+  const [profile] = await db
+    .select({ f2fReferralUrl: servicePublicProfile.f2fReferralUrl })
+    .from(servicePublicProfile)
+    .where(and(
+      eq(servicePublicProfile.serviceId, row.serviceId),
+      eq(servicePublicProfile.organisationId, row.organisationId),
+      eq(servicePublicProfile.active, true),
+    ))
+    .limit(1);
+
+  const referralUrl = resolveReferralUrl({
+    configured: profile?.f2fReferralUrl,
+    serviceSlug: slug,
+  });
+
   const resources = applicableResources(
     resourceRows.map((r) => ({ ...r, displayStage: r.displayStage as DisplayStage })),
     { stage: 'BEFORE_SUBMISSION', medicineId: currentMedicineId },
@@ -295,6 +318,7 @@ export default async function PublicFormPage({
           token={token ?? null}
           savedAnswers={saved}
           resources={resources}
+          referralUrl={referralUrl}
         />
       )}
 

@@ -24,7 +24,12 @@ import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { action, query } from '@/lib/actions';
 import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { db } from '@/lib/db/client';
-import { medicine, patientResource, service } from '@/lib/db/schema';
+import {
+  medicine, patientResource, service, servicePublicProfile,
+} from '@/lib/db/schema';
+import {
+  isUsableReferralUrl, placeholderReferralUrl, resolveReferralUrl,
+} from '@/lib/services/referral';
 import {
   needsNewVersion,
   nextVersion,
@@ -43,9 +48,16 @@ export interface ResourceRow extends Resource {
 
 export interface ResourcesView {
   serviceId: string;
+  serviceSlug: string;
   serviceName: string;
   resources: ResourceRow[];
   medicines: { id: string; brand: string }[];
+  /** Exactly what the pharmacy typed, or empty where they have typed nothing. */
+  referralUrl: string;
+  /** Where the form actually sends people today, given the above. */
+  effectiveReferralUrl: string | null;
+  /** The in-app page used while nothing is configured. */
+  placeholderUrl: string;
 }
 
 /**
@@ -60,7 +72,7 @@ export async function getServiceResources(slug: string): Promise<ResourcesView |
     .scopedTo(() => ({}))
     .handler(async (input, { actor }) => {
       const [svc] = await db
-        .select({ id: service.id, name: service.name })
+        .select({ id: service.id, name: service.name, slug: service.slug })
         .from(service)
         .where(and(
           eq(service.slug, input.slug),
@@ -71,7 +83,7 @@ export async function getServiceResources(slug: string): Promise<ResourcesView |
 
       if (!svc) return null;
 
-      const [rows, meds] = await Promise.all([
+      const [rows, meds, profiles] = await Promise.all([
         db
           .select({
             id: patientResource.id,
@@ -104,7 +116,19 @@ export async function getServiceResources(slug: string): Promise<ResourcesView |
             eq(medicine.active, true),
           ))
           .orderBy(asc(medicine.brand)),
+
+        db
+          .select({ f2fReferralUrl: servicePublicProfile.f2fReferralUrl })
+          .from(servicePublicProfile)
+          .where(and(
+            eq(servicePublicProfile.serviceId, svc.id),
+            eq(servicePublicProfile.organisationId, actor.organisationId),
+            eq(servicePublicProfile.active, true),
+          ))
+          .limit(1),
       ]);
+
+      const configured = profiles[0]?.f2fReferralUrl ?? '';
 
       /* The highest version of each key is the live one; the rest are history. */
       const highest = new Map<string, number>();
@@ -114,8 +138,15 @@ export async function getServiceResources(slug: string): Promise<ResourcesView |
 
       return {
         serviceId: svc.id,
+        serviceSlug: svc.slug,
         serviceName: svc.name,
         medicines: meds,
+        referralUrl: configured,
+        effectiveReferralUrl: resolveReferralUrl({
+          configured,
+          serviceSlug: svc.slug,
+        }),
+        placeholderUrl: placeholderReferralUrl(svc.slug),
         resources: rows.map((r) => ({
           ...r,
           displayStage: r.displayStage as DisplayStage,
@@ -461,5 +492,103 @@ export async function archiveResource(resourceId: string) {
     return { ok: true as const, ...result };
   } catch (error) {
     return failure(error, 'Could not retire that resource.');
+  }
+}
+
+export interface SetReferralUrlInput {
+  serviceId: string;
+  /** Empty means "go back to the placeholder". */
+  url: string;
+}
+
+/**
+ * Point the face-to-face referral somewhere else.
+ *
+ * Upserts by hand rather than relying on a unique constraint, because the
+ * table has none — a service is expected to have one public profile but the
+ * schema does not enforce it, and inventing a constraint here would mean a
+ * migration for a one-field change.
+ *
+ * Clearing the box is a real instruction, not a mistake: it means "use the
+ * placeholder again", which is what somebody does when the pharmacy's own page
+ * comes down.
+ */
+const setReferral = action<SetReferralUrlInput>('services:edit').handler(
+  async (input, { tx, actor }) => {
+    const url = input.url.trim();
+
+    if (url.length > 0 && !isUsableReferralUrl(url)) {
+      throw new Error(
+        'That link is not a web address. It should start with https:// — '
+        + 'or leave it empty to use the placeholder page.',
+      );
+    }
+
+    const [svc] = await tx
+      .select({ id: service.id })
+      .from(service)
+      .where(and(
+        eq(service.id, input.serviceId),
+        eq(service.organisationId, actor.organisationId),
+        isNull(service.archivedAt),
+      ))
+      .limit(1);
+
+    if (!svc) throw new Error('That service no longer exists.');
+
+    const [existing] = await tx
+      .select({
+        id: servicePublicProfile.id,
+        f2fReferralUrl: servicePublicProfile.f2fReferralUrl,
+      })
+      .from(servicePublicProfile)
+      .where(and(
+        eq(servicePublicProfile.serviceId, input.serviceId),
+        eq(servicePublicProfile.organisationId, actor.organisationId),
+      ))
+      .limit(1);
+
+    if (existing) {
+      await tx
+        .update(servicePublicProfile)
+        .set({
+          f2fReferralUrl: url || null,
+          active: true,
+          updatedBy: actor.userId,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(servicePublicProfile.id, existing.id),
+          eq(servicePublicProfile.organisationId, actor.organisationId),
+        ));
+    } else {
+      await tx.insert(servicePublicProfile).values({
+        organisationId: actor.organisationId,
+        serviceId: input.serviceId,
+        f2fReferralUrl: url || null,
+        updatedBy: actor.userId,
+      });
+    }
+
+    return {
+      result: { url: url || null },
+      audit: {
+        action: 'service.referral_url_changed',
+        entityType: 'service',
+        entityId: input.serviceId,
+        before: { f2fReferralUrl: existing?.f2fReferralUrl ?? null },
+        after: { f2fReferralUrl: url || null },
+      },
+    };
+  },
+);
+
+export async function setReferralUrl(input: SetReferralUrlInput) {
+  try {
+    const result = await setReferral(input);
+    revalidateStaffViews();
+    return { ok: true as const, ...result };
+  } catch (error) {
+    return failure(error, 'Could not save that link.');
   }
 }

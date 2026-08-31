@@ -12,11 +12,19 @@ import { FormWizard, type WizardResource } from '@/components/form/wizard';
 import type { FormSchema } from '@/types/form-schema';
 
 export function FormPreview({
-  schema, resources = [],
+  schema, resources = [], referralUrl = null,
 }: {
   schema: FormSchema;
   /** Shown here too, so checking a form shows what the patient actually sees. */
   resources?: WizardResource[];
+  referralUrl?: string | null;
 }) {
-  return <FormWizard schema={schema} resources={resources} preview />;
+  return (
+    <FormWizard
+      schema={schema}
+      resources={resources}
+      referralUrl={referralUrl}
+      preview
+    />
+  );
 }

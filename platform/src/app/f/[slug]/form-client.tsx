@@ -18,6 +18,7 @@ export function PublicForm({
   token,
   savedAnswers,
   resources = [],
+  referralUrl = null,
 }: {
   slug: string;
   schema: FormSchema;
@@ -25,6 +26,8 @@ export function PublicForm({
   savedAnswers: Answers | null;
   /** Leaflets shown immediately before the signature. */
   resources?: WizardResource[];
+  /** Where a patient who would rather be seen in person is sent. */
+  referralUrl?: string | null;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
@@ -171,6 +174,7 @@ export function PublicForm({
           onAnswersChange={handleChange}
           onSubmit={handleSubmit}
           resources={resources}
+          referralUrl={referralUrl}
           submitLabel="Submit my answers"
         />
       </UploadTargetProvider>

@@ -16,10 +16,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  Plus, ExternalLink, Trash2, Pencil, Check, X, EyeOff, Eye, History,
+  Plus, ExternalLink, Trash2, Pencil, Check, X, EyeOff, Eye, History, Signpost,
 } from 'lucide-react';
 import {
-  archiveResource, saveResource, setResourceActive,
+  archiveResource, saveResource, setResourceActive, setReferralUrl,
   type ResourceRow, type ResourcesView,
 } from './actions';
 import { resourceProblems, type DisplayStage } from '@/lib/resources/applicable';
@@ -82,6 +82,28 @@ export function ResourcesClient({
   const [draft, setDraft] = useState<Draft>(BLANK);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  /* The face-to-face referral, edited in place at the top of this screen. */
+  const [referral, setReferral] = useState(view.referralUrl);
+  const [referralBusy, setReferralBusy] = useState(false);
+  const [referralError, setReferralError] = useState<string | null>(null);
+  const [referralSaved, setReferralSaved] = useState(false);
+
+  const referralDirty = referral.trim() !== view.referralUrl.trim();
+
+  async function saveReferral() {
+    setReferralBusy(true);
+    setReferralError(null);
+    setReferralSaved(false);
+
+    const result = await setReferralUrl({ serviceId: view.serviceId, url: referral });
+
+    setReferralBusy(false);
+    if (!result.ok) { setReferralError(result.error); return; }
+
+    setReferralSaved(true);
+    router.refresh();
+  }
 
   const live = view.resources.filter((r) => !r.superseded && r.archivedAt === null);
   const history = view.resources.filter((r) => r.superseded || r.archivedAt !== null);
@@ -308,6 +330,92 @@ export function ResourcesClient({
 
   return (
     <div className="grid gap-3">
+      {/*
+        ── Where the online form sends people who would rather be seen ──────
+
+        Not a resource, and kept visibly separate from the list below it. A
+        resource is something a patient reads on the way through; this is where
+        the form sends somebody it has just turned away, and confusing the two
+        would make it look optional.
+      */}
+      <Panel className="px-5 py-[17px]">
+        <div className="flex items-start gap-2.5">
+          <Signpost size={15} strokeWidth={2} className="mt-[3px] shrink-0 text-ink-faint" />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[15px] font-semibold text-ink">
+              If they would rather be seen in person
+            </h2>
+            <p className="mt-0.5 max-w-[68ch] text-[13px] leading-[1.5] text-ink-faint">
+              The online form stops anyone who says they would rather see somebody
+              face to face, and offers them this link instead. Paste your own
+              booking page here. Leave it empty and the form uses a placeholder
+              page in this system.
+            </p>
+
+            {editable ? (
+              <>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <input
+                    className={`${inputClass} min-w-[240px] flex-1 font-mono text-[12.5px]`}
+                    value={referral}
+                    onChange={(e) => { setReferral(e.target.value); setReferralSaved(false); }}
+                    placeholder={view.placeholderUrl}
+                    aria-label="Face-to-face booking link"
+                  />
+                  <button
+                    type="button"
+                    onClick={saveReferral}
+                    disabled={referralBusy || !referralDirty}
+                    className="flex items-center gap-1.5 rounded-control bg-brand-600 px-3.5 py-[8px] text-[12.5px] font-semibold text-white transition-colors hover:bg-brand-700 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Check size={13} strokeWidth={2.4} />
+                    {referralBusy ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+
+                {referralError ? (
+                  <div className="mt-2.5"><Notice tone="stop">{referralError}</Notice></div>
+                ) : null}
+              </>
+            ) : null}
+
+            {/*
+              What the patient would actually get, said plainly. "Saved" alone
+              does not tell somebody whether they have just switched the
+              placeholder off or typed a link nobody will ever reach.
+            */}
+            <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
+              {view.effectiveReferralUrl ? (
+                <>
+                  <Tag tone={view.referralUrl.trim() ? 'brand' : 'neutral'}>
+                    {view.referralUrl.trim() ? 'your page' : 'placeholder'}
+                  </Tag>
+                  <a
+                    href={view.effectiveReferralUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex min-w-0 items-center gap-1.5 font-mono text-[11.5px] text-brand-700 underline-offset-2 hover:underline"
+                  >
+                    <span className="truncate">{view.effectiveReferralUrl}</span>
+                    <ExternalLink size={11} strokeWidth={2.2} className="shrink-0" />
+                  </a>
+                </>
+              ) : (
+                <Tag tone="review">no link — patients are stopped with nowhere to go</Tag>
+              )}
+
+              {referralSaved && !referralDirty ? (
+                <span className="text-[11.5px] text-safe-700">Saved.</span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </Panel>
+
+      <div className="mt-3 flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">
+        Leaflets shown before they sign
+      </div>
+
       {editable ? (
         <div className="flex justify-end">
           <button
