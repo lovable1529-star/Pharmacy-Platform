@@ -245,14 +245,23 @@ export function StatCard({
   value,
   tone = 'neutral',
   footnote,
+  href,
 }: {
   label: string;
   value: React.ReactNode;
   tone?: Tone;
   footnote?: React.ReactNode;
+  /**
+   * Where the work behind this number lives.
+   *
+   * A counter a pharmacist has to go hunting for is a counter they stop
+   * reading. Optional, because some figures are genuinely just figures —
+   * "completed today" is not a list anybody needs to open.
+   */
+  href?: string;
 }) {
-  return (
-    <div className="rounded-panel border border-line bg-surface px-4 py-3.5">
+  const body = (
+    <>
       <div className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-faint">
         {label}
       </div>
@@ -273,7 +282,29 @@ export function StatCard({
       {footnote ? (
         <div className="mt-2 text-[11.5px] text-ink-faint">{footnote}</div>
       ) : null}
-    </div>
+    </>
+  );
+
+  const shell = 'rounded-panel border border-line bg-surface px-4 py-3.5';
+
+  /*
+   * A link only where there is somewhere to go. Rendering an anchor with no
+   * destination would make every card look clickable and leave two thirds of
+   * them doing nothing when pressed.
+   */
+  if (!href) return <div className={shell}>{body}</div>;
+
+  return (
+    <Link
+      href={href}
+      className={cn(
+        shell,
+        'block transition-[border-color,box-shadow] hover:border-brand-300 hover:shadow-lift',
+        'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600',
+      )}
+    >
+      {body}
+    </Link>
   );
 }
 

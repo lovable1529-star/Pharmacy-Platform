@@ -143,26 +143,70 @@ export default async function TodayPage() {
         </div>
       </section>
 
-      {/* ── Counters ──────────────────────────────────────────────────── */}
+      {/*
+        ── Counters ────────────────────────────────────────────────────
+
+        Ordered by how badly each ages rather than by category. A patient
+        waiting for a telephone call is the one who notices the delay, so it
+        comes first; expiring stock matters but nobody is sitting by a phone
+        because of it.
+
+        Every card that can be acted on links to the list it counts. A number
+        a pharmacist has to go hunting for is a number they stop reading.
+      */}
       <div className="mt-[18px] grid animate-rise gap-3.5 [animation-delay:60ms] sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Completed today" value={snapshot.completedToday} />
         <StatCard
-          label="Awaiting a decision"
-          value={snapshot.submissionsAwaiting}
-          tone={snapshot.submissionsAwaiting > 0 ? 'review' : 'neutral'}
+          label="New patients to call"
+          value={snapshot.callsOwed}
+          tone={snapshot.callsOwed > 0 ? 'review' : 'neutral'}
+          href="/repeat-care"
+          footnote={
+            snapshot.newPatientsAwaiting > snapshot.callsOwed
+              ? `${snapshot.newPatientsAwaiting} awaiting review in total`
+              : undefined
+          }
         />
         <StatCard
-          label="Blocked on safety"
-          value={blocked.length}
-          tone={blocked.length > 0 ? 'stop' : 'neutral'}
-          footnote={blocked.length > 0 ? 'Needs a pharmacist decision' : undefined}
+          label="Stopped on safety"
+          value={snapshot.repeatsStopped + blocked.length}
+          tone={snapshot.repeatsStopped + blocked.length > 0 ? 'stop' : 'neutral'}
+          href="/repeat-care"
+          footnote={
+            snapshot.repeatsStopped + blocked.length > 0
+              ? 'Cannot be supplied without a pharmacist'
+              : undefined
+          }
+        />
+        <StatCard
+          label="Waiting to be supplied"
+          value={snapshot.awaitingSupply}
+          tone={snapshot.awaitingSupply > 0 ? 'review' : 'neutral'}
+          href="/prescriptions"
+          footnote={snapshot.awaitingSupply > 0 ? 'Assemble, batch and hand over' : undefined}
         />
         <StatCard
           label="Batches expiring"
           value={snapshot.expiringSoon.length}
           tone={snapshot.expiringSoon.length > 0 ? 'review' : 'neutral'}
+          href="/inventory"
           footnote="Within 60 days"
         />
+      </div>
+
+      {/*
+        Kept, but demoted. "Completed today" and the total awaiting are worth
+        knowing and are not work — they answer "how are we doing", where the
+        row above answers "what should I pick up".
+      */}
+      <div className="mt-3.5 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[13px] text-ink-faint">
+        <span>
+          <strong className="tabular font-semibold text-ink">{snapshot.completedToday}</strong>
+          {' '}completed today
+        </span>
+        <span>
+          <strong className="tabular font-semibold text-ink">{snapshot.submissionsAwaiting}</strong>
+          {' '}awaiting a decision across all services
+        </span>
       </div>
 
       {/* ── Blocked on safety ─────────────────────────────────────────── */}

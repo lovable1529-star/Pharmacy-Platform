@@ -103,7 +103,14 @@ const NAV: NavGroup[] = [
       { href: '/patients', label: 'Patients', permission: 'patients:view', icon: Users },
       { href: '/consultations', label: 'Consultations', permission: 'consultations:view', icon: Stethoscope },
       { href: '/appointments', label: 'Appointments', permission: 'appointments:view', icon: CalendarDays },
-      { href: '/repeat-care', label: 'Repeat care', permission: 'repeat_care:view', icon: RefreshCw },
+      /*
+       * The route stays /repeat-care so existing links and bookmarks keep
+       * working; only the label changes. The screen has covered both new
+       * patients and repeats since the client made the service remote, and a
+       * menu that says "Repeat care" while the page says "Weight Management"
+       * makes somebody wonder which of the two they are looking at.
+       */
+      { href: '/repeat-care', label: 'Weight Management', permission: 'repeat_care:view', icon: RefreshCw },
       { href: '/vaccinations', label: 'Vaccinations', permission: 'consultations:view', icon: Syringe },
     ],
   },

@@ -9,8 +9,7 @@
 import { and, desc, eq, gte, isNull, lte, sql, inArray } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
-  patient, gpSurgery, consultation, service, clinician, branch, submission,
-  stockLevel, batch, product, auditEvent, appUser,
+  patient, gpSurgery, consultation, service, clinician, branch, submission, stockLevel, batch, product, auditEvent, appUser, prescriptionFulfilment,
 } from '@/lib/db/schema';
 import { dayBounds } from './notifications';
 
@@ -314,6 +313,14 @@ export async function getBatchRecipients(organisationId: string, batchId: string
 export interface TodaySnapshot {
   completedToday: number;
   submissionsAwaiting: number;
+  /** New patients waiting to be read and telephoned. */
+  newPatientsAwaiting: number;
+  /** How many of those nobody has yet spoken to and identified. */
+  callsOwed: number;
+  /** Repeat requests a safety rule stopped. */
+  repeatsStopped: number;
+  /** Prescriptions issued but not yet in the patient hands. */
+  awaitingSupply: number;
   lowStock: StockRow[];
   expiringSoon: StockRow[];
   recentConsultations: ConsultationRow[];
@@ -339,11 +346,80 @@ export async function getTodaySnapshot(
       ),
     );
 
+  /*
+   * "Awaiting a decision" is one number covering two different jobs.
+   *
+   * A new patient needs reading and telephoning; a repeat needs authorising
+   * and, per the client, no call at all. Somebody glancing at Today to decide
+   * what to pick up cannot tell those apart from a single figure — and the
+   * calls are the ones that age badly, because a patient is sitting waiting
+   * for the phone to ring.
+   *
+   * Split on service kind rather than name: the pharmacy renames its own
+   * services and a rename must not change what the dashboard counts.
+   */
+  const [newPatients] = await db
+    .select({
+      total: sql<number>`count(*)::int`,
+      toCall: sql<number>`count(*) filter (
+        where not exists (
+          select 1 from clinical_contact_event c
+          where c.submission_id = ${submission.id}
+            and c.outcome = 'COMPLETED'
+            and c.identity_verified = true
+        )
+      )::int`,
+    })
+    .from(submission)
+    .innerJoin(service, eq(submission.serviceId, service.id))
+    .where(
+      and(
+        eq(submission.organisationId, organisationId),
+        inArray(submission.status, ['SUBMITTED', 'IN_REVIEW', 'INFO_REQUESTED']),
+        eq(service.kind, 'CONSULTATION'),
+      ),
+    );
+
+  /*
+   * Repeats that a rule stopped. Read from the latest evaluation rather than
+   * from anything cached on the submission, because an amendment writes a
+   * fresh evaluation rather than overwriting the old one.
+   */
+  const [reds] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(submission)
+    .where(
+      and(
+        eq(submission.organisationId, organisationId),
+        inArray(submission.status, ['SUBMITTED', 'IN_REVIEW', 'INFO_REQUESTED']),
+        sql`(
+          select r.outcome from rule_evaluation r
+          where r.submission_id = ${submission.id}
+          order by r.evaluated_at desc limit 1
+        ) = 'RED'`,
+      ),
+    );
+
+  /* Approved, paid for or not, but the medicine has not gone out. */
+  const [toSupply] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(prescriptionFulfilment)
+    .where(
+      and(
+        eq(prescriptionFulfilment.organisationId, organisationId),
+        inArray(prescriptionFulfilment.status, ['PENDING', 'ASSEMBLING', 'READY']),
+      ),
+    );
+
   const stock = await getStock(organisationId, branchId ?? undefined);
 
   return {
     completedToday: todays.filter((c) => c.status === 'COMPLETED').length,
     submissionsAwaiting: awaiting[0]?.count ?? 0,
+    newPatientsAwaiting: newPatients?.total ?? 0,
+    callsOwed: newPatients?.toCall ?? 0,
+    repeatsStopped: reds?.count ?? 0,
+    awaitingSupply: toSupply?.count ?? 0,
     lowStock: stock.filter((s) => s.quantity > 0 && s.quantity <= 10),
     expiringSoon: stock.filter((s) => s.daysToExpiry <= 60 && s.quantity > 0),
     recentConsultations: todays.slice(0, 8),
