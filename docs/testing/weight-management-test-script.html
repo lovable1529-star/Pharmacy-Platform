@@ -1,0 +1,549 @@
+<title>Karsons Test Script</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+:root {
+  --ink:#191428; --ink-soft:#4A4363; --ink-faint:#736C8C;
+  --canvas:#F6F5F9; --surface:#FFFFFF; --sunk:#EFEDF5;
+  --line:#DEDAE9; --line-soft:#E9E6F1;
+  --brand:#5B3A8E; --brand-wash:#F0EBF9;
+  --safe:#1F7A50; --safe-wash:#E6F3EC;
+  --review:#A8700E; --review-wash:#FBF2DF;
+  --stop:#C23A2B; --stop-wash:#FBE9E7;
+  --shadow:0 1px 2px rgba(25,20,40,.05), 0 8px 24px -12px rgba(25,20,40,.16);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink:#F3F1F9; --ink-soft:#C0B9D6; --ink-faint:#8E86A8;
+    --canvas:#0F0C18; --surface:#191527; --sunk:#211C33;
+    --line:#2E2745; --line-soft:#262039;
+    --brand:#A98BE0; --brand-wash:#241B3A;
+    --safe:#3FBF83; --safe-wash:#14281F;
+    --review:#D9A64B; --review-wash:#2B2113;
+    --stop:#E4685A; --stop-wash:#2E1717;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --ink:#F3F1F9; --ink-soft:#C0B9D6; --ink-faint:#8E86A8;
+  --canvas:#0F0C18; --surface:#191527; --sunk:#211C33;
+  --line:#2E2745; --line-soft:#262039;
+  --brand:#A98BE0; --brand-wash:#241B3A;
+  --safe:#3FBF83; --safe-wash:#14281F;
+  --review:#D9A64B; --review-wash:#2B2113;
+  --stop:#E4685A; --stop-wash:#2E1717;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+}
+
+* { box-sizing:border-box; }
+body { margin:0; background:var(--canvas); color:var(--ink);
+  font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size:15px; line-height:1.62; -webkit-font-smoothing:antialiased; }
+.page { max-width:900px; margin:0 auto; padding:52px 26px 90px; }
+
+h1,h2,h3 { font-family:Newsreader, ui-serif, Georgia, serif; font-weight:600; margin:0; text-wrap:balance; letter-spacing:-.012em; }
+h1 { font-size:clamp(29px,4.2vw,40px); line-height:1.13; }
+h2 { font-size:24px; line-height:1.2; }
+h3 { font-size:17px; line-height:1.3; }
+h4 { font-family:"IBM Plex Sans",sans-serif; font-size:15px; font-weight:600; margin:0; }
+p { margin:0; max-width:68ch; }
+
+.eyebrow { font-family:"IBM Plex Mono", monospace; font-size:11px; font-weight:500; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-faint); }
+code { font-family:"IBM Plex Mono", ui-monospace, monospace; font-size:.885em; background:var(--sunk); border:1px solid var(--line-soft); border-radius:4px; padding:.08em .34em; color:var(--ink-soft); word-break:break-word; }
+a { color:var(--brand); text-underline-offset:2px; }
+a:focus-visible { outline:2px solid var(--brand); outline-offset:3px; border-radius:3px; }
+
+.masthead { display:flex; flex-direction:column; gap:13px; padding-bottom:24px; margin-bottom:30px; border-bottom:2px solid var(--ink); }
+.masthead p { color:var(--ink-soft); font-size:16px; }
+.meta { display:flex; flex-wrap:wrap; gap:7px 20px; font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-faint); padding-top:3px; }
+
+section { margin-bottom:44px; }
+.section-head { display:flex; flex-direction:column; gap:6px; margin-bottom:20px; padding-bottom:11px; border-bottom:1px solid var(--line); }
+.section-head p { color:var(--ink-soft); font-size:14.5px; }
+
+.panel { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:18px 20px; box-shadow:var(--shadow); }
+.stack { display:flex; flex-direction:column; gap:13px; }
+
+.notice { border-radius:10px; padding:18px 20px; display:flex; flex-direction:column; gap:10px; margin-bottom:32px; }
+.notice.warn { background:var(--review-wash); border:1px solid var(--review); }
+.notice.warn h2 { font-size:19px; color:var(--review); }
+.notice p { font-size:14.5px; }
+
+.step { display:grid; grid-template-columns:40px 1fr; gap:0 18px; position:relative; padding-bottom:24px; }
+.step::before { content:""; position:absolute; left:19px; top:36px; bottom:0; width:1px; background:var(--line); }
+.step:last-child::before { display:none; }
+.step-num { font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:600;
+  width:38px; height:30px; display:flex; align-items:center; justify-content:center;
+  border:1px solid var(--line); border-radius:7px; background:var(--surface); color:var(--brand); position:relative; z-index:1; }
+.step-num.gate { border-color:var(--stop); color:var(--stop); background:var(--stop-wash); }
+.step-body { display:flex; flex-direction:column; gap:8px; padding-top:2px; }
+.step-body p { font-size:14.5px; }
+.expect { background:var(--safe-wash); border-left:3px solid var(--safe); border-radius:0 7px 7px 0; padding:9px 13px; font-size:13.5px; color:var(--ink-soft); }
+.expect strong { color:var(--ink); font-weight:600; }
+.expect.gate { background:var(--stop-wash); border-left-color:var(--stop); }
+
+ul { margin:0; padding-left:19px; }
+li { margin-bottom:5px; font-size:14.5px; }
+li::marker { color:var(--ink-faint); }
+ul.tight li { margin-bottom:3px; font-size:13.5px; }
+
+.tag { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase;
+  padding:3px 8px; border-radius:5px; border:1px solid var(--line); color:var(--ink-faint); background:var(--sunk); white-space:nowrap; display:inline-block; }
+.tag.safety { color:var(--stop); background:var(--stop-wash); border-color:transparent; }
+.tag.fixed { color:var(--brand); background:var(--brand-wash); border-color:transparent; }
+
+.table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+table { border-collapse:collapse; width:100%; font-size:13.5px; min-width:500px; }
+th,td { text-align:left; padding:9px 13px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+th { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); background:var(--sunk); font-weight:500; }
+tr:last-child td { border-bottom:none; }
+td.tick { width:70px; font-family:"IBM Plex Mono",monospace; color:var(--ink-faint); }
+
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:13px; }
+.card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:15px 17px; display:flex; flex-direction:column; gap:7px; }
+.card p, .card li { font-size:13.5px; color:var(--ink-soft); }
+
+footer { margin-top:54px; padding-top:18px; border-top:1px solid var(--line); font-size:12.5px; color:var(--ink-faint); display:flex; flex-wrap:wrap; gap:6px 18px; }
+
+@media (max-width:720px) {
+  .page { padding:34px 17px 68px; }
+  .grid2 { grid-template-columns:1fr; }
+  .step { grid-template-columns:1fr; gap:10px; }
+  .step::before { display:none; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <span class="eyebrow">Karsons Pharmacy Platform · for the tester</span>
+    <h1>Test the remote Weight Management journey</h1>
+    <p>A patient goes from an online form to medicine in their hand, and comes out able to order a repeat. This walks that whole path, tells you exactly what should happen at each step, and lists what is deliberately unfinished so you do not waste time on it.</p>
+    <div class="meta">
+      <span>31 August 2026</span>
+      <span>main · 74eef8b</span>
+      <span>Database migrations 21–24 applied</span>
+      <span>693 automated tests passing</span>
+    </div>
+  </header>
+
+  <div class="notice warn">
+    <span class="eyebrow" style="color:var(--review)">Read before you start</span>
+    <h2>Some of what looks wrong is meant to be there</h2>
+    <p>The <strong>Known gaps</strong> table near the end lists work that is deliberately unfinished or waiting on the client. Please read it first — it will save you reporting eight things we already know about.</p>
+    <p>The queue already contains two rows saying <strong>"Unmatched patient"</strong>. Those are old test submissions from the previous version of the form, which never asked for a name. They cannot be fixed retrospectively. Anything <em>you</em> submit should show a real name.</p>
+  </div>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Before you start</h2>
+    </div>
+
+    <div class="stack">
+      <div class="panel">
+        <div class="stack" style="gap:8px">
+          <h4>What you need</h4>
+          <ul class="tight">
+            <li>A staff login for the platform.</li>
+            <li>Any three image files on your machine — a photo of anything will do. Three uploads are required and you cannot get past that step without them.</li>
+            <li>An email address you can make up. Nothing is actually sent.</li>
+            <li>About forty minutes for the full run.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="stack" style="gap:8px">
+          <h4>Test data that makes the rules fire</h4>
+          <p style="font-size:14px;color:var(--ink-soft)">The clinical rules depend on BMI, so use these unless a step says otherwise:</p>
+          <div class="table-wrap" style="margin-top:4px">
+            <table>
+              <thead><tr><th>Field</th><th>Use</th><th>Why</th></tr></thead>
+              <tbody>
+                <tr><td>Height</td><td>170 cm</td><td rowspan="2">Gives BMI 31.8 — above 30, so the patient qualifies without needing a weight-related condition.</td></tr>
+                <tr><td>Weight</td><td>92 kg</td></tr>
+                <tr><td>Waist</td><td>104 cm</td><td>Any plausible figure.</td></tr>
+                <tr><td>Date of birth</td><td>14/03/1979</td><td>An adult, comfortably inside the age rules.</td></tr>
+                <tr><td>Medicine</td><td>Mounjaro 2.5mg</td><td>The lowest strength, so no dose-step rules interfere.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p style="font-size:13.5px;color:var(--ink-faint);margin-top:4px">Use a different name each time you run through, or you will match an existing patient record and the results will confuse you.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="stack" style="gap:8px">
+          <h4>How to read the steps</h4>
+          <p style="font-size:14px;color:var(--ink-soft)">Steps marked <span class="tag safety">safety gate</span> are the ones that matter most. Each is a place the system must <strong>refuse</strong> to let you continue. If any of them lets you through, stop and report it immediately — that is a patient-safety problem, not a cosmetic one.</p>
+          <p style="font-size:14px;color:var(--ink-soft)">Steps marked <span class="tag fixed">was broken</span> are things that were badly wrong until this week. They are worth a second look.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Part one · The patient fills in the form</h2>
+      <p>Go to <code>/f/weight-management-first</code>. No login — this is the public front door.</p>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num gate">1</span></div>
+      <div class="step-body">
+        <h3>Ask to be seen in person <span class="tag safety">safety gate</span></h3>
+        <p>The first question asks how you would like to be seen. Choose <strong>"I would rather see someone in person"</strong>.</p>
+        <div class="expect gate"><strong>Must happen —</strong> a message appears pointing you at the separate Karsons face-to-face programme, and the button changes to <strong>"Cannot continue"</strong> and stops working. You must not be able to reach any of the clinical questions.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">2</span></div>
+      <div class="step-body">
+        <h3>Change your mind</h3>
+        <p>Choose <strong>"Continue online"</strong>.</p>
+        <div class="expect"><strong>Should happen —</strong> the warning disappears and the rest of the form opens: nine steps listed across the top, and the button becomes "Next".</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">3</span></div>
+      <div class="step-body">
+        <h3>About you</h3>
+        <p>Fill in name, date of birth, gender, phone, email and address.</p>
+        <div class="expect"><strong>Should happen —</strong> after a few seconds a line appears at the top: <strong>"Answers saved — you can close this and come back to it later."</strong></div>
+        <p style="font-size:14px"><strong>Then actually test that.</strong> Copy the URL, close the tab, and reopen it. Your answers should still be there.</p>
+        <div class="expect"><strong>Also check —</strong> the date of birth is three separate boxes, not a calendar. Typing <code>25</code> in the day box should give you 25, not 02 followed by a jump to the month.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">4</span></div>
+      <div class="step-body">
+        <h3>The transfer branch</h3>
+        <p>The last question on that step asks whether you are already being treated by another clinic. Answer <strong>Yes</strong>, watch the steps along the top, then answer <strong>No</strong> and watch again.</p>
+        <div class="expect"><strong>Should happen —</strong> Yes adds a step called <strong>"Your current treatment"</strong>, taking you to ten. No removes it, back to nine. Answer <strong>No</strong> to carry on with this run.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">5</span></div>
+      <div class="step-body">
+        <h3>Measurements</h3>
+        <p>Enter 170 cm and 92 kg. Then switch height to <strong>feet and inches</strong> and weight to <strong>stones and pounds</strong>.</p>
+        <div class="expect"><strong>Should happen —</strong> BMI appears underneath and reads <strong>31.8</strong>. Switching units converts the number rather than clearing it, and the BMI does not change.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">6</span></div>
+      <div class="step-body">
+        <h3>Medical history and habits</h3>
+        <p>Answer "None of the above" and "No" throughout. Then go back and answer <strong>Yes</strong> to one of the questions that reveals a follow-up — allergies, for example.</p>
+        <div class="expect"><strong>Should happen —</strong> answering Yes reveals a detail box that is required. Changing back to No hides it, and the text you typed is discarded rather than quietly submitted.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">7</span></div>
+      <div class="step-body">
+        <h3>Evidence <span class="tag fixed">was broken</span></h3>
+        <p>Three uploads: photo ID, a photo of yourself, and something showing your weight. Attach an image to each.</p>
+        <div class="expect"><strong>Must happen —</strong> each uploads and shows the file name.
+          <br><br>Until this week every one of these refused with <em>"This form cannot take attachments. Please bring the document with you"</em>. Since all three are required, the form could not be submitted by anybody. If you see that message, stop and tell us.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">8</span></div>
+      <div class="step-body">
+        <h3>Collection or delivery</h3>
+        <p>On "Getting your medicine", try both options.</p>
+        <div class="expect"><strong>Should happen —</strong> <strong>collection</strong> asks which pharmacy; <strong>delivery</strong> asks for an address instead. Never both at once. Choose <strong>collection</strong> and pick a branch to continue.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">9</span></div>
+      <div class="step-body">
+        <h3>Consent, signature and submit</h3>
+        <p>Read the consent list before ticking it.</p>
+        <div class="expect"><strong>Should happen —</strong> one line reads <em>"I understand this is a remote service…"</em>. Nothing in the consent should promise an appointment. Sign in the box and submit.</div>
+        <div class="expect"><strong>The thank-you page</strong> should say a pharmacist will review and be in touch. It must <strong>not</strong> mention an appointment.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Part two · The pharmacy reviews it</h2>
+      <p>Sign in and open <strong>Repeat care</strong> from the sidebar. The page itself is titled Weight Management.</p>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">10</span></div>
+      <div class="step-body">
+        <h3>Find your patient</h3>
+        <div class="expect"><strong>Should happen —</strong> two tabs: <strong>New patients</strong> and <strong>Repeat requests</strong>. Your patient is under New patients, <strong>by name</strong>, showing the medicine requested and how long they have waited. The tab shows how many are still to call.</div>
+        <div class="expect"><strong>Also check —</strong> there are no red/amber/green filters on the New patients tab. That is correct: no automatic triage runs on new patients, and showing three zeroes would suggest they had all been checked and passed.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">11</span></div>
+      <div class="step-body">
+        <h3>Read what they told you</h3>
+        <p>Open the patient and expand <strong>"What they told us"</strong>.</p>
+        <div class="expect"><strong>Should happen —</strong> every answer, grouped by section, in the patient's own units — "92 kg" not "92000". The signature shows as <em>Provided</em>, not as a wall of code.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num gate">12</span></div>
+      <div class="step-body">
+        <h3>Approve without calling <span class="tag safety">safety gate</span></h3>
+        <p>Fill in medicine, strength, quantity and directions, write a note, and press <strong>Confirm and issue</strong> — with no call recorded.</p>
+        <div class="expect gate"><strong>Must happen —</strong> refused: <em>"No verification call has been recorded. Call the patient before approving."</em> Check afterwards that the patient is still sitting in the queue and no prescription was created.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num gate">13</span></div>
+      <div class="step-body">
+        <h3>Call them, but do not confirm who they are <span class="tag safety">safety gate</span></h3>
+        <p>Press <strong>Record a call</strong>, choose <strong>"Spoke to them"</strong>, write something in the findings box, but <strong>leave the identity tick box empty</strong>. Save. Then try to approve again.</p>
+        <div class="expect gate"><strong>Must happen —</strong> still refused: <em>"The call was completed but identity was not verified."</em>
+          <br><br>This is the single most important check in the document. Speaking to somebody is not the same as knowing who they are, and this is the service's only identity check.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">14</span></div>
+      <div class="step-body">
+        <h3>Try to save a call with nothing written down</h3>
+        <p>Record another call, choose "Spoke to them", and save with the findings and notes both empty.</p>
+        <div class="expect gate"><strong>Should happen —</strong> refused: <em>"Write down what was said. A completed call with no record is not evidence of one."</em></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">15</span></div>
+      <div class="step-body">
+        <h3>Record it properly</h3>
+        <p>Record another attempt, tick <strong>"I confirmed I was speaking to the patient"</strong>, say how you confirmed it, and write findings.</p>
+        <div class="expect"><strong>Should happen —</strong> the panel now says <strong>verified</strong>, and <strong>both</strong> attempts remain listed with times and who made them. The failed one must not be overwritten — "we rang twice" has to stay provable.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">16</span></div>
+      <div class="step-body">
+        <h3>Approve — but change the dose <span class="tag fixed">was broken</span></h3>
+        <p>Deliberately authorise a <strong>different strength</strong> from the one the patient asked for. If they requested 2.5mg, authorise 5mg. Fill in quantity and directions too, and write a note.</p>
+        <div class="expect"><strong>Must happen —</strong> go to <strong>Prescriptions</strong> and confirm it shows <strong>your</strong> strength and <strong>your</strong> directions — not the patient's request.
+          <br><br>Until this week the prescription was built from what the patient asked for, so a dose reduced during the call was silently ignored.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Part three · Getting the medicine out</h2>
+      <p>Stay on <strong>Prescriptions</strong>.</p>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num gate">17</span></div>
+      <div class="step-body">
+        <h3>Try to supply with no batch number <span class="tag safety">safety gate</span></h3>
+        <p>Press <strong>Start assembling</strong>, then try <strong>Mark ready</strong> with the batch box empty.</p>
+        <div class="expect gate"><strong>Must happen —</strong> the button does not work, and it tells you why: <em>"Record the batch number before this can leave the pharmacy — it is what a recall is traced through."</em></div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num gate">18</span></div>
+      <div class="step-body">
+        <h3>Try a pack that expires today <span class="tag safety">safety gate</span></h3>
+        <p>Enter a batch number, and set the expiry to <strong>today's date</strong>.</p>
+        <div class="expect gate"><strong>Must happen —</strong> refused. A pack expiring today is not fit to hand to somebody who will use it over the next four weeks. Change the expiry to a future date and it should let you continue.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">19</span></div>
+      <div class="step-body">
+        <h3>Check that collection and delivery do not mix</h3>
+        <p>Your patient chose collection.</p>
+        <div class="expect"><strong>Should happen —</strong> you are offered <strong>Record collection</strong> and never "Mark dispatched". Run through again later choosing delivery and confirm the reverse.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">20</span></div>
+      <div class="step-body">
+        <h3>Complete the supply</h3>
+        <p>Mark it ready, then record the collection.</p>
+        <div class="expect"><strong>Should happen —</strong> a green line appears: <strong>"Repeat care is now open for this patient."</strong> That is the moment they become a repeat patient — and it happens by itself.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Part four · The loop closes</h2>
+      <p>None of this existed a week ago. A patient could previously finish the whole journey and still never reach the repeat form.</p>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">21</span></div>
+      <div class="step-body">
+        <h3>Find their Repeat Care ID</h3>
+        <p><strong>Patients</strong> → open the patient → the repeat care panel.</p>
+        <div class="expect"><strong>Should happen —</strong> an ID shaped like <code>RC-4H7K-M2PQ</code>, created automatically at supply. The baseline should show the height, starting weight, medicine and strength that were actually supplied.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">22</span></div>
+      <div class="step-body">
+        <h3>Order a repeat as the patient</h3>
+        <p>Open <code>/repeat/weight-management-repeat</code>. Enter the ID and the patient's email — but type the ID <strong>without its dashes and in lower case</strong>, the way somebody reads it back over the telephone.</p>
+        <div class="expect"><strong>Should happen —</strong> it lets you in and opens the repeat questionnaire. Dashes, spaces and capitals must not matter.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num gate">23</span></div>
+      <div class="step-body">
+        <h3>Try to get in without an enrolment <span class="tag safety">safety gate</span></h3>
+        <p>Try three things: a made-up ID; the correct ID with the wrong email; and the correct email with the wrong ID.</p>
+        <div class="expect gate"><strong>Must happen —</strong> the <strong>same message every time</strong>, whichever half is wrong, pointing you at the new-patient form. If it ever says which half was right, somebody could sit and guess IDs until one worked.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Part five · Flu, and checking nothing else broke</h2>
+      <p>The flu service was working and must still be. Any difference here is a regression.</p>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">24</span></div>
+      <div class="step-body">
+        <h3>Receive stock from Inventory <span class="tag fixed">moved</span></h3>
+        <p>Go to <strong>Inventory</strong> and press <strong>Receive stock</strong>.</p>
+        <div class="expect"><strong>Should happen —</strong> the dialog takes a product, batch number, expiry and quantity, and <strong>stays open</strong> after saving so you can enter the next batch from the same delivery.</div>
+        <div class="expect"><strong>Also check —</strong> <strong>Settings → Stock</strong> no longer has the form, and points you at Inventory instead. This was the client's first request in the group chat.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">25</span></div>
+      <div class="step-body">
+        <h3>Try to receive stock that has expired</h3>
+        <div class="expect"><strong>Should happen —</strong> a past date is refused. But a batch expiring <strong>today</strong> must be <em>accepted</em> — it has not expired yet. That was previously refused wrongly.</div>
+        <div class="expect"><strong>Also try —</strong> a quantity of <strong>0</strong>. It should be refused and point you at adjustments instead, because recording zero as a delivery makes the stock ledger claim something arrived when nothing did.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">26</span></div>
+      <div class="step-body">
+        <h3>Give a flu vaccination end to end</h3>
+        <p>Take an existing flu booking through to a completed vaccination record.</p>
+        <div class="expect"><strong>Should happen —</strong> exactly as before. Batch selection offers only in-date, un-recalled, in-stock batches; the expiry fills in automatically; stock drops by one and only one.</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div><span class="step-num">27</span></div>
+      <div class="step-body">
+        <h3>Spot-check the rest</h3>
+        <ul class="tight">
+          <li><strong>Today</strong> — loads, counts look sane.</li>
+          <li><strong>Patients</strong> — search by name and by date of birth.</li>
+          <li><strong>Consultations</strong> — open a completed one and download its PDF.</li>
+          <li><strong>Vaccinations</strong> — names shown, not "Unnamed patient".</li>
+          <li><strong>Documents, Reports, Compliance</strong> — open without error.</li>
+          <li><strong>Dark mode</strong> — the toggle in the header; check nothing becomes unreadable.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Known gaps — please do not report these</h2>
+      <p>Deliberately unfinished, or waiting on the client. Everything else is fair game.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>What you will see</th><th>Why it is like that</th></tr></thead>
+        <tbody>
+          <tr><td>The sidebar still says <strong>"Repeat care"</strong></td><td>The page is now Weight Management; the menu label has not been renamed yet.</td></tr>
+          <tr><td>Two rows say <strong>"Unmatched patient"</strong></td><td>Old submissions from the previous form, which never asked for a name. Cannot be fixed backwards.</td></tr>
+          <tr><td>The repeat form still offers <strong>"Visit the clinic"</strong></td><td>The wording is corrected in the code, but the repeat questionnaire has not been republished yet. The new-patient form has.</td></tr>
+          <tr><td><strong>No payment step</strong> anywhere</td><td>Neither Weight Management service has a price, so there is nothing to collect and supply proceeds. Waiting on the client for prices.</td></tr>
+          <tr><td>The first prescription has <strong>no number</strong></td><td>It was issued before that was fixed. Any new one is numbered.</td></tr>
+          <tr><td>Question numbers <strong>skip</strong> — 41, then 43</td><td>Hidden questions keep their number, so "question 43" means the same thing to you and to the patient.</td></tr>
+          <tr><td>No clinic branding, no information leaflets</td><td>Built as empty slots. Blocked on the client sending the brand and the links.</td></tr>
+          <tr><td>Nothing is emailed or texted</td><td>Messages are queued, not sent. No email or SMS provider is connected.</td></tr>
+          <tr><td>New patients show <strong>no red/amber/green</strong></td><td>Automatic triage only runs on repeat requests. New patients are read by a pharmacist.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Reporting back</h2>
+    </div>
+
+    <div class="stack">
+      <div class="panel">
+        <div class="stack" style="gap:8px">
+          <h4>For each problem</h4>
+          <ul class="tight">
+            <li>The <strong>step number</strong>.</li>
+            <li>What you did, what you expected, what actually happened.</li>
+            <li>A screenshot. Worth more than any description.</li>
+            <li>Whether it happened once or every time.</li>
+          </ul>
+          <p style="font-size:14px;color:var(--ink-soft);margin-top:4px">If a <strong>safety gate</strong> lets you through when it should have stopped you, send that one on its own and immediately. Everything else can be a list at the end.</p>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="stack" style="gap:8px">
+          <h4>Worth recording even if nothing breaks</h4>
+          <ul class="tight">
+            <li>Anywhere you had to guess what a button would do.</li>
+            <li>Anywhere the wording sounded wrong for a pharmacy.</li>
+            <li>Anything that felt slow. Pages take a moment — the database is hosted in Seoul and every request crosses the planet twice. Tell us which screens were worst.</li>
+            <li>Anything you expected to be able to do and could not find.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Karsons Pharmacy Platform · test script</span>
+    <span>31 August 2026</span>
+    <span>27 steps · 8 safety gates</span>
+  </footer>
+
+</div>

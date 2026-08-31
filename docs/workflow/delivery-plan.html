@@ -1,0 +1,792 @@
+<title>Karsons Delivery Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+/* ──────────────────────────────────────────────────────────────
+   Palette lifted from the platform's own globals.css, so this
+   document reads as part of the product rather than about it.
+   Semantic colours (safe/review/stop) are the app's RAG language
+   and are used ONLY where they carry that meaning.
+   ────────────────────────────────────────────────────────────── */
+:root {
+  --ink:        #191428;
+  --ink-soft:   #4A4363;
+  --ink-faint:  #736C8C;
+  --canvas:     #F6F5F9;
+  --surface:    #FFFFFF;
+  --sunk:       #EFEDF5;
+  --line:       #DEDAE9;
+  --line-soft:  #E9E6F1;
+
+  --brand:      #5B3A8E;
+  --brand-deep: #472C70;
+  --brand-wash: #F0EBF9;
+
+  --safe:       #1F7A50;
+  --safe-wash:  #E6F3EC;
+  --review:     #A8700E;
+  --review-wash:#FBF2DF;
+  --stop:       #C23A2B;
+  --stop-wash:  #FBE9E7;
+
+  --shadow: 0 1px 2px rgba(25, 20, 40, .05), 0 8px 24px -12px rgba(25, 20, 40, .16);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink:        #F3F1F9;
+    --ink-soft:   #C0B9D6;
+    --ink-faint:  #8E86A8;
+    --canvas:     #0F0C18;
+    --surface:    #191527;
+    --sunk:       #211C33;
+    --line:       #2E2745;
+    --line-soft:  #262039;
+
+    --brand:      #A98BE0;
+    --brand-deep: #C7B0F0;
+    --brand-wash: #241B3A;
+
+    --safe:       #3FBF83;
+    --safe-wash:  #14281F;
+    --review:     #D9A64B;
+    --review-wash:#2B2113;
+    --stop:       #E4685A;
+    --stop-wash:  #2E1717;
+
+    --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .7);
+  }
+}
+
+:root[data-theme="dark"] {
+  --ink:        #F3F1F9;
+  --ink-soft:   #C0B9D6;
+  --ink-faint:  #8E86A8;
+  --canvas:     #0F0C18;
+  --surface:    #191527;
+  --sunk:       #211C33;
+  --line:       #2E2745;
+  --line-soft:  #262039;
+
+  --brand:      #A98BE0;
+  --brand-deep: #C7B0F0;
+  --brand-wash: #241B3A;
+
+  --safe:       #3FBF83;
+  --safe-wash:  #14281F;
+  --review:     #D9A64B;
+  --review-wash:#2B2113;
+  --stop:       #E4685A;
+  --stop-wash:  #2E1717;
+
+  --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 8px 24px -12px rgba(0, 0, 0, .7);
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page { max-width: 940px; margin: 0 auto; padding: 56px 28px 96px; }
+
+/* ── Type ───────────────────────────────────────────────────── */
+h1, h2, h3, h4 {
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-weight: 600;
+  text-wrap: balance;
+  margin: 0;
+  letter-spacing: -.012em;
+}
+h1 { font-size: clamp(30px, 4.4vw, 42px); line-height: 1.12; }
+h2 { font-size: 25px; line-height: 1.2; }
+h3 { font-size: 18px; line-height: 1.3; }
+h4 { font-size: 15.5px; line-height: 1.35; font-family: "IBM Plex Sans", sans-serif; font-weight: 600; letter-spacing: 0; }
+p  { margin: 0; max-width: 68ch; }
+
+.eyebrow {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+code, .mono {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: .885em;
+  font-variant-numeric: tabular-nums;
+}
+code {
+  background: var(--sunk);
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  padding: .08em .34em;
+  color: var(--ink-soft);
+  word-break: break-word;
+}
+
+a { color: var(--brand); text-decoration-thickness: 1px; text-underline-offset: 2px; }
+a:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--brand); outline-offset: 3px; border-radius: 3px;
+}
+
+/* ── Masthead ───────────────────────────────────────────────── */
+.masthead {
+  display: flex; flex-direction: column; gap: 14px;
+  padding-bottom: 26px; margin-bottom: 34px;
+  border-bottom: 2px solid var(--ink);
+}
+.masthead p { color: var(--ink-soft); font-size: 16px; }
+.meta {
+  display: flex; flex-wrap: wrap; gap: 8px 20px;
+  font-family: "IBM Plex Mono", monospace; font-size: 11.5px;
+  color: var(--ink-faint); padding-top: 4px;
+}
+
+/* ── Generic blocks ─────────────────────────────────────────── */
+section { margin-bottom: 46px; }
+.stack { display: flex; flex-direction: column; gap: 16px; }
+.stack-sm { display: flex; flex-direction: column; gap: 9px; }
+
+.section-head {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-bottom: 20px; padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.section-head p { color: var(--ink-soft); font-size: 14.5px; }
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+}
+
+/* ── The hazard notice ──────────────────────────────────────── */
+.hazard {
+  background: var(--stop-wash);
+  border: 1px solid var(--stop);
+  border-radius: 10px;
+  padding: 22px 24px;
+  display: flex; flex-direction: column; gap: 13px;
+  margin-bottom: 46px;
+}
+.hazard h2 { font-size: 20px; color: var(--stop); }
+.hazard p { color: var(--ink); font-size: 14.5px; }
+.hazard .eyebrow { color: var(--stop); }
+
+/* The terminal block keeps one dark identity in both themes — it is a
+   console, and a console is dark. Its colours are therefore literal and
+   deliberate rather than token-driven, but declared in full so neither
+   theme leaks into it. */
+pre {
+  margin: 0;
+  background: #17122A;
+  color: #EDE9F7;
+  border: 1px solid #2E2745;
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.75;
+}
+pre .c { color: #9A90BC; }
+
+/* ── State snapshot ─────────────────────────────────────────── */
+.snapshot { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.snap {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; padding: 16px 18px;
+  display: flex; flex-direction: column; gap: 7px;
+}
+.snap .n {
+  font-family: Newsreader, serif; font-size: 30px; line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.snap .lbl { font-size: 13px; color: var(--ink-soft); line-height: 1.45; }
+.snap.good .n { color: var(--safe); }
+.snap.warn .n { color: var(--review); }
+.snap.bad  .n { color: var(--stop); }
+
+/* ── Stage spine ────────────────────────────────────────────── */
+.stage {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 0 22px;
+  position: relative;
+  padding-bottom: 30px;
+}
+.stage::before {
+  content: ""; position: absolute;
+  left: 28px; top: 46px; bottom: 0; width: 1px;
+  background: var(--line);
+}
+.stage:last-child::before { display: none; }
+
+.stage-num {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px; font-weight: 600;
+  width: 56px; height: 40px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--brand);
+  position: relative; z-index: 1;
+}
+.stage-body { display: flex; flex-direction: column; gap: 13px; padding-top: 5px; }
+.stage-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; }
+.stage-title h3 { flex: 1 1 auto; min-width: 200px; }
+
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase;
+  padding: 3px 8px; border-radius: 5px;
+  border: 1px solid var(--line);
+  color: var(--ink-faint);
+  background: var(--sunk);
+  white-space: nowrap;
+}
+.tag.effort { color: var(--brand); background: var(--brand-wash); border-color: transparent; }
+.tag.dep    { color: var(--ink-soft); }
+.tag.block  { color: var(--review); background: var(--review-wash); border-color: transparent; }
+
+ul { margin: 0; padding-left: 19px; }
+li { margin-bottom: 5px; }
+li::marker { color: var(--ink-faint); }
+ul.tight li { margin-bottom: 3px; }
+
+.gate {
+  background: var(--sunk);
+  border-left: 3px solid var(--safe);
+  border-radius: 0 7px 7px 0;
+  padding: 11px 15px;
+  font-size: 13.5px;
+  color: var(--ink-soft);
+}
+.gate strong { color: var(--ink); font-weight: 600; }
+
+.files {
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 11.5px; line-height: 1.85;
+  color: var(--ink-faint);
+  word-break: break-word;
+}
+
+/* ── Tables ─────────────────────────────────────────────────── */
+.table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; min-width: 520px; }
+th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+th {
+  font-family: "IBM Plex Mono", monospace; font-size: 10.5px;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--ink-faint);
+  background: var(--sunk); font-weight: 500;
+}
+tr:last-child td { border-bottom: none; }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.pill {
+  display: inline-block; font-family: "IBM Plex Mono", monospace;
+  font-size: 10px; letter-spacing: .05em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+}
+.pill.done  { background: var(--safe-wash);   color: var(--safe); }
+.pill.open  { background: var(--review-wash); color: var(--review); }
+.pill.stop  { background: var(--stop-wash);   color: var(--stop); }
+.pill.wait  { background: var(--sunk);        color: var(--ink-faint); }
+
+/* ── Register cards ─────────────────────────────────────────── */
+.register { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.reg {
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 10px; padding: 17px 19px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.reg h4 { color: var(--ink); }
+.reg p, .reg li { font-size: 13.5px; color: var(--ink-soft); }
+
+footer {
+  margin-top: 60px; padding-top: 20px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px; color: var(--ink-faint);
+  display: flex; flex-wrap: wrap; gap: 6px 18px;
+}
+
+@media (max-width: 760px) {
+  .page { padding: 36px 18px 72px; }
+  .snapshot { grid-template-columns: 1fr; }
+  .register { grid-template-columns: 1fr; }
+  .stage { grid-template-columns: 1fr; gap: 12px; }
+  .stage::before { display: none; }
+  .stage-num { width: 52px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <span class="eyebrow">Karsons Pharmacy Platform</span>
+    <h1>Everything left to build, in the order it has to happen</h1>
+    <p>The client's new Weight Management requirements, the flu work he asked for first, and the debt already on our own list — as one sequence with real dependencies.</p>
+    <div class="meta">
+      <span>31 August 2026</span>
+      <span>Sources: WhatsApp 29–30 Aug · 3 workflow images · Target Workflow spec · Implementation package</span>
+      <span>Latest client chat wins where anything conflicts</span>
+    </div>
+  </header>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       The hazard goes first because it is destructive and cheap
+       to avoid, and because it must happen before any other work.
+       ═══════════════════════════════════════════════════════════ -->
+  <div class="hazard">
+    <span class="eyebrow">Do this before anything else</span>
+    <h2>The migration ledger does not exist yet</h2>
+    <p>The <code>_migration</code> table is absent — not empty, absent. <code>--baseline</code> records <em>whatever SQL files are sitting in the folder at that moment</em> and runs none of them. So the order is not negotiable:</p>
+    <pre><span class="c"># 1. While ONLY scripts 01–20 are in platform/supabase/</span>
+pnpm db:migrate --baseline
+
+<span class="c"># 2. Now copy 21 and 22 in, then</span>
+pnpm db:migrate</pre>
+    <p>Do it the other way round — scripts 21 and 22 copied in first, then baseline — and both are marked applied <strong>without ever running</strong>. You would have a ledger claiming success over a database with none of the new tables, and the first symptom would be runtime errors pointing nowhere near the cause. The implementation package's README does not know about the baseline mechanism, so it cannot warn you.</p>
+  </div>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Where we actually are</h2>
+      <p>Measured against the live database on 31 August, not estimated.</p>
+    </div>
+
+    <div class="snapshot">
+      <div class="snap good">
+        <span class="n">542</span>
+        <span class="lbl">Tests passing, typecheck and production build clean. Flu runs end to end: booking → form → administer → batch → stock → GP.</span>
+      </div>
+      <div class="snap bad">
+        <span class="n">0</span>
+        <span class="lbl">Repeat enrolments, and 0 rule evaluations. The 24 published GLP-1 rules have never executed once. The whole weight-management chain is untested in reality.</span>
+      </div>
+      <div class="snap warn">
+        <span class="n">1 of 2</span>
+        <span class="lbl">Weight Management journeys exist. The repeat form is close to right; the "first consultation" form is now obsolete — it assumes a face-to-face appointment.</span>
+      </div>
+    </div>
+
+    <div class="panel" style="margin-top:16px">
+      <div class="stack-sm">
+        <h4>What changed on 30 August</h4>
+        <p style="font-size:14px;color:var(--ink-soft)">Muka confirmed both Weight Management journeys are <strong>non&#8209;face&#8209;to&#8209;face</strong>. That reverses the assumption baked into the current first-consultation form and into my earlier recommendation. It also means the NEW form must ask who the patient is — it currently has 42 questions and asks for no name, which is exactly why the review queue shows "Unmatched patient".</p>
+        <p style="font-size:14px;color:var(--ink-soft)">Payment stays a <strong>staff tickbox</strong> for this phase. No SmarterPayments, no live links. The provider abstraction and <code>/pay/[token]</code> stay on disk, dormant.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Already done — do not rebuild these</h2>
+      <p>Shipped in the last two days and live on <code>main</code>. The implementation package was written from a snapshot taken before them.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Commit</th><th>What it does</th><th>Bearing on this plan</th></tr></thead>
+        <tbody>
+          <tr>
+            <td class="mono">db338d8</td>
+            <td>Vaccinations list shows the booked name and a real stage per row; "waiting" counts only submitted forms.</td>
+            <td>Stage&nbsp;2 inherits this. No further work on that screen.</td>
+          </tr>
+          <tr>
+            <td class="mono">40b73e6</td>
+            <td>Enrol a patient into repeat care from the consultation record, prefilled from its own answers. Approval refuses when it cannot raise a prescription.</td>
+            <td>The approval guard is the same instinct as the payment gate in Stage&nbsp;5 — extend it, don't replace it. The enrol button becomes the secondary path once Stage&nbsp;6 lands.</td>
+          </tr>
+          <tr>
+            <td class="mono">443e1d0</td>
+            <td>Queue row carries dose, weight change, weeks on dose and age. Untriaged is a real state. Fixed the AMBER filter listing untriaged rows and the "asked a question" badge counting patients who answered "no".</td>
+            <td>Stage&nbsp;4 builds the workspace <em>around</em> this row, and Stage&nbsp;7 reuses the RAG chips.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════
+       Numbering is honest here: these stages have hard ordering
+       dependencies, and getting Stage 0 wrong is destructive.
+       ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>The sequence</h2>
+      <p>Eleven stages. The order is driven by dependency, not by importance — every stage below can only start once the ones it names are done. Estimates are focused working days for one developer.</p>
+    </div>
+
+    <!-- 0 ─────────────────────────────────────────────────── -->
+    <div class="stage">
+      <div><span class="stage-num">00</span></div>
+      <div class="stage-body">
+        <div class="stage-title">
+          <h3>Safety net</h3>
+          <div class="tags"><span class="tag effort">½ day</span><span class="tag dep">blocks everything</span></div>
+        </div>
+        <ul class="tight">
+          <li>Branch <code>feature/remote-weight-management</code>.</li>
+          <li><strong>Baseline the migration ledger while only 01–20 are present.</strong> See the notice above.</li>
+          <li>Back up the Supabase database. Migrations 21 and 22 are additive, but a backup is what makes "fix forward" a choice rather than a hope.</li>
+          <li>Commit the package's <code>CHANGELOG.md</code> into <code>docs/</code> before functional work starts, so it is maintained rather than reconstructed.</li>
+          <li>Record the current state: tests green, build clean, screenshots of Today, the WM forms, repeat-care, payments, prescriptions, inventory and Settings&nbsp;→&nbsp;Stock.</li>
+        </ul>
+        <div class="gate"><strong>Done when</strong> <code>_migration</code> holds exactly twenty rows, a restorable backup exists, and the baseline behaviour is reproducible from screenshots.</div>
+      </div>
+    </div>
+
+    <!-- 1 ─────────────────────────────────────────────────── -->
+    <div class="stage">
+      <div><span class="stage-num">01</span></div>
+      <div class="stage-body">
+        <div class="stage-title">
+          <h3>Database and schema</h3>
+          <div class="tags"><span class="tag effort">1 day</span><span class="tag dep">needs 00</span><span class="tag dep">blocks 03–06, 09</span></div>
+        </div>
+        <p style="font-size:14px;color:var(--ink-soft)">Both supplied scripts are sound. I checked every object they depend on against the live database — <code>payment_provider</code>, <code>current_organisation_id()</code>, <code>reject_clinical_delete()</code>, <code>medicine</code>, <code>dispensing_signoff</code>, <code>collection_signoff</code>, <code>gp_notification</code> — all present. <code>submission_status</code> really does include <code>RESUBMITTED</code>, and you are on PostgreSQL&nbsp;17.6 where the <code>ALTER TYPE … ADD VALUE</code> is safe.</p>
+        <ul class="tight">
+          <li><strong>One edit before running 22:</strong> its <code>UPDATE public.service … WHERE slug IN (…)</code> carries no <code>organisation_id</code> filter. Harmless today with one organisation, but every mutation in the app scopes to a tenant and a migration that doesn't is the pattern that gets copied.</li>
+          <li>Be aware 22 renames <code>weight-management-first</code> to <em>Weight Management — New Patient</em> in place. The slug and ID survive, so links and history do too; the display name changes the moment it runs.</li>
+          <li>Mirror every new column and table into <code>schema.ts</code> before deploying code that reads them.</li>
+        </ul>
+        <p class="files">submission.assignedTo · submission.reviewDueAt · payment.confirmedBy · payment.confirmationNote · paymentProvider.MANUAL · prescription.paymentId · clinicalContactEvent · prescriptionFulfilment · gpNotification.prescriptionId · service.bookingMode · servicePublicProfile · patientResource · resourceAcknowledgement</p>
+        <div class="gate"><strong>Done when</strong> <code>pnpm db:migrate</code> applies exactly two scripts, Drizzle compiles, both WM services read <code>booking_mode = NONE</code> and flu reads <code>OPTIONAL</code>.</div>
+      </div>
+    </div>
+
+    <!-- 2 ─────────────────────────────────────────────────── -->
+    <div class="stage">
+      <div><span class="stage-num">02</span></div>
+      <div class="stage-body">
+        <div class="stage-title">
+          <h3>Flu — finish what he asked for first</h3>
+          <div class="tags"><span class="tag effort">1 day</span><span class="tag dep">independent</span></div>
+        </div>
+        <p style="font-size:14px;color:var(--ink-soft)">Muka's opening message in the group was about selecting the vaccine batch during administration. That already works — validation rejects expired, recalled and zero-stock batches, and stock decrements correctly. The gap is that receiving stock lives in Settings, where a pharmacist will never look for it.</p>
+        <ul class="tight">
+          <li>Move <em>Receive a new batch</em> from Settings&nbsp;→&nbsp;Stock into Inventory. Extract the shared action rather than writing a second implementation.</li>
+          <li>Keep the product catalogue in Settings — masters belong there, day-to-day operations do not.</li>
+          <li>Verify the recall-impact query reads <code>vaccine_administration.batchId</code>, not <code>consultation.batchId</code>, or recalls will miss completed vaccinations.</li>
+          <li>Prove the double-submission case deducts stock exactly once.</li>
+        </ul>
+        <p class="files">settings/settings-view.tsx · settings/actions.ts → lib/inventory/receipts.ts · inventory/* · lib/vaccination/administration.ts</p>
+        <div class="gate"><strong>Done when</strong> a pharmacist can receive stock entirely from Inventory, and FLU‑01 to FLU‑04 pass.</div>
+      </div>
+    </div>
+
+    <!-- 3 ─────────────────────────────────────────────────── -->
+    <div class="stage">
+      <div><span class="stage-num">03</span></div>
+      <div class="stage-body">
+        <div class="stage-title">
+          <h3>NEW patient — the remote form</h3>
+          <div class="tags"><span class="tag effort">3–4 days</span><span class="tag dep">needs 01</span><span class="tag block">wording pending</span></div>
+        </div>
+        <p style="font-size:14px;color:var(--ink-soft)">Publish <strong>version 2</strong> of the existing service. Never edit v1 — two live submissions were answered against it and the record must keep saying what they were actually asked.</p>
+        <ul class="tight">
+          <li><strong>Remote pathway choice.</strong> Explain the low-touch service, offer face-to-face. Choosing F2F stops the form and links out to the Karsons programme, using <code>service_public_profile.f2f_referral_url</code> rather than a hard-coded URL. It must not create an internal appointment.</li>
+          <li><strong>Route question</strong> — "are you currently receiving, or have you recently received, weight-management treatment from another clinic?" No → new to treatment. Yes → transfer / continuation.</li>
+          <li><strong>New to treatment:</strong> BMI ≥ 30, or BMI ≥ 27 with a weight-related comorbidity. Reuse the existing derived BMI and the <code>WEIGHT_RELATED_CONDITIONS</code> options. A patient outside the criterion must not silently continue as eligible.</li>
+          <li><strong>Transfer / continuation:</strong> prior clinic, baseline and treatment evidence. Current BMI 20–&lt;25 may proceed only as verified continuation. Build the branch; the exact question wording is not supplied and must not be invented.</li>
+          <li><strong>Identity.</strong> Add first name, last name, date of birth, email and phone. The form currently asks for none of them across 42 questions, which is the direct cause of every "Unmatched patient" row in the queue and of approvals that silently raise no prescription.</li>
+          <li><strong>Evidence:</strong> ID, photograph, BMI evidence, and prior prescription evidence for transfers — using the existing upload and photo-capture controls, registered as <code>PATIENT_EVIDENCE</code> documents.</li>
+          <li><strong>Resources</strong> before consent, with acknowledgement snapshots written on submission.</li>
+          <li><strong>Consent.</strong> Replace the clause promising an in-person appointment "at any time" with wording that matches a remote clinic and an external F2F referral.</li>
+          <li><strong>Delivery or collection</strong>, captured as a supply preference — not as an appointment.</li>
+        </ul>
+        <p class="files">lib/services/weight-management.ts · app/f/[slug]/* · lib/patients/identify.ts</p>
+        <div class="gate"><strong>Done when</strong> a patient completes the journey remotely end to end, the F2F choice exits cleanly, both routes branch correctly, and no submission can reach the queue without an identifiable patient.</div>
+      </div>
+    </div>
+
+    <!-- 4 ─────────────────────────────────────────────────── -->
+    <div class="stage">
+      <div><span class="stage-num">04</span></div>
+      <div class="stage-body">
+        <div class="stage-title">
+          <h3>NEW patient — staff workspace and the verification call</h3>
+          <div class="tags"><span class="tag effort">3 days</span><span class="tag dep">needs 03</span></div>
+        </div>
+        <ul class="tight">
+          <li>Turn <code>/repeat-care</code> into a <strong>Weight Management workspace</strong> with tabs: New patients · Repeat GREEN · Repeat AMBER · Repeat RED · Awaiting payment · Fulfilment. One process, one screen — this also settles the scoping question left open before the client's update.</li>
+          <li>Queue rows carry route, submitted age, assignee, SLA, BMI, evidence completeness, flags and call state. The row summary built in <code>443e1d0</code> is the starting point.</li>
+          <li><strong>Structured verification call</strong> written to <code>clinical_contact_event</code> with purpose <code>NEW_PATIENT_VERIFICATION</code>: attempt time, staff, reached, identity verified, verification detail, findings, advice, follow-up, outcome.</li>
+          <li><strong>Server-side gate.</strong> <code>canApproveNewWeightManagement()</code> refuses approval without a completed, identity-verified call. A disabled button is not a gate.</li>
+          <li>Decisions: Approve · Defer for information · Decline · Escalate — each attributable and timestamped.</li>
+          <li>Approval captures the <strong>prescriber's</strong> medicine, strength, quantity, directions and rationale. Today the code copies <code>answers.requestedMedicine</code>, which means the patient's request becomes the prescription even when the pharmacist changed it.</li>
+        </ul>
+        <p class="files">app/(staff)/repeat-care/* → weight-management workspace · lib/prescriptions/approval.ts · new lib/clinical/contact.ts</p>
+        <div class="gate"><strong>Done when</strong> a NEW request cannot be approved without a verified call, and the prescribed product is clinician-controlled rather than patient-copied.</div>
+      </div>
+    </div>
+
+    <!-- 5 ─────────────────────────────────────────────────── -->
+    <div class="stage">
+      <div><span class="stage-num">05</span></div>
+      <div class="stage-body">
+        <div class="stage-title">
+          <h3>Payment tickbox and prescription issue</h3>
+          <div class="tags"><span class="tag effort">1–2 days</span><span class="tag dep">needs 04</span></div>
+        </div>
+        <ul class="tight">
+          <li>Stop <code>requestPaymentForSubmission()</code> firing on approval. No live link is sent in this phase.</li>
+          <li>Add <code>confirmManualPayment(paymentId, acknowledgement)</code> — requires the tick, authorises the user, checks the payment is still pending, then calls the <em>same</em> <code>settlePayment()</code> a webhook would later call. Provider <code>MANUAL</code>, <code>confirmed_by</code> recorded, <code>payment.confirmed_manual</code> audited.</li>
+          <li>Settlement allocates the prescription number and moves it to <code>ISSUED</code>. Nothing before payment produces a number or a document — a gap in the sequence reads later like a missing prescription.</li>
+          <li>GP notified at issue, linked through <code>gp_notification.prescription_id</code>, with no fake consultation row to make it traceable.</li>
+          <li>Keep the provider abstraction, the pay token and <code>/pay/[token]</code> on disk and out of the active flow.</li>
+        </ul>
+        <p class="files">repeat-care/actions.ts · lib/payments/lifecycle.ts · lib/prescriptions/issue.ts · app/(staff)/payments/*</p>
+        <div class="gate"><strong>Done when</strong> no prescription exists before payment is confirmed, the confirmation is attributable, and clicking confirm twice produces one prescription and one number.</div>
+      </div>
+    </div>
+
+    <!-- 6 ─────────────────────────────────────────────────── -->
+    <div class="stage">
+      <div><span class="stage-num">06</span></div>
+      <div class="stage-body">
+        <div class="stage-title">
+          <h3>Fulfilment — and the gap that breaks the chain</h3>
+          <div class="tags"><span class="tag effort">2–3 days</span><span class="tag dep">needs 05</span><span class="tag block">plan gap</span></div>
+        </div>
+        <p style="font-size:14px;color:var(--ink-soft)"><strong>The supplied plan has a dead end here.</strong> Repeat access requires a <code>repeat_enrolment</code> row, and no phase in the package ever creates one. Under the new model a NEW patient has no consultation to enrol from — so as written, a remote patient completes the entire journey and can then never use the repeat service.</p>
+        <ul class="tight">
+          <li><strong>Create the enrolment on first <code>SUPPLIED</code></strong>, with the baseline taken from the prescriber-authorised values. This follows the plan's own rule that history moves only after a real supply, and it closes the dead end.</li>
+          <li>Create one <code>prescription_fulfilment</code> per issued prescription, from the patient's collection-or-delivery choice, snapshotting the delivery address.</li>
+          <li>Batch number and expiry are <strong>mandatory</strong> before READY, DISPATCHED, COLLECTED or SUPPLIED, and expiry must be later than the supply date. Enforced in the database by migration 21 and again server-side so the error is legible.</li>
+          <li>Collection reuses <code>collection_signoff</code>; delivery records carrier, tracking, dispatch time and staff member. Reuse <code>dispensing_signoff</code> rather than adding a second signature table.</li>
+          <li>Repeat baseline updates only after supply, using supplied values rather than requested ones.</li>
+        </ul>
+        <p class="files">app/(staff)/prescriptions/* · new lib/fulfilment/* · lib/clinical/previous-supply.ts · patients/[id]/enrolment-actions.ts</p>
+        <div class="gate"><strong>Done when</strong> supply is blocked without batch and expiry, collection and delivery diverge cleanly, and a remote NEW patient can afterwards start a repeat request.</div>
+      </div>
+    </div>
+
+    <!-- 7 ─────────────────────────────────────────────────── -->
+    <div class="stage">
+      <div><span class="stage-num">07</span></div>
+      <div class="stage-body">
+        <div class="stage-title">
+          <h3>Repeat — align the RAG semantics</h3>
+          <div class="tags"><span class="tag effort">2 days</span><span class="tag dep">needs 05, 06</span></div>
+        </div>
+        <ul class="tight">
+          <li><strong>GREEN no longer auto-approves.</strong> It means fast-track prescriber authorisation with no mandatory call. Correct the README, which still states the opposite.</li>
+          <li><strong>AMBER</strong> requires documented assessment or contact before approval, recorded through <code>clinical_contact_event</code>.</li>
+          <li><strong>RED</strong> cannot reach payment or prescription. Surface it as an urgent task.</li>
+          <li><code>canAuthoriseRepeat()</code> as a tested domain function, not a condition buried in a component.</li>
+          <li>Strip "review in person", "needs review in person" and "book them in" from the ruleset — the low-touch service contacts by phone, and F2F is an external pathway.</li>
+          <li>Non-enrolled patients are directed to the NEW remote journey, not to booking.</li>
+          <li>Leave the three-month rule at AMBER and label it pending. Do not convert it to GREEN on an invented rule.</li>
+        </ul>
+        <p class="files">lib/rules/glp1-ruleset.ts · lib/repeat-care/access.ts · app/repeat/[slug]/* · README.md</p>
+        <div class="gate"><strong>Done when</strong> GREEN never issues without authorisation, AMBER cannot be approved without a documented rationale, RED cannot be paid, and the full trace stays visible.</div>
+      </div>
+    </div>
+
+    <!-- 8 ─────────────────────────────────────────────────── -->
+    <div class="stage">
+      <div><span class="stage-num">08</span></div>
+      <div class="stage-body">
+        <div class="stage-title">
+          <h3>Today dashboard and navigation</h3>
+          <div class="tags"><span class="tag effort">1–2 days</span><span class="tag dep">needs 04–07</span></div>
+        </div>
+        <ul class="tight">
+          <li>Counters that answer "what needs me now?": NEW awaiting review, calls required, GREEN awaiting authorisation, AMBER, RED, awaiting payment, batch needed, ready for collection, delivery pending. Each links straight to a filtered list.</li>
+          <li>Flu alongside: appointments today, forms awaiting administration, incomplete records, GP notifications failed, expiring stock.</li>
+          <li>Navigation: <em>Weight Management</em> replaces the generic <em>Repeat care</em> entry once NEW exists.</li>
+        </ul>
+        <div class="gate"><strong>Done when</strong> a pharmacist can start their day from Today without opening Settings or scanning record lists.</div>
+      </div>
+    </div>
+
+    <!-- 9 ─────────────────────────────────────────────────── -->
+    <div class="stage">
+      <div><span class="stage-num">09</span></div>
+      <div class="stage-body">
+        <div class="stage-title">
+          <h3>Resources and standalone branding</h3>
+          <div class="tags"><span class="tag effort">2 days</span><span class="tag dep">needs 01</span><span class="tag block">content pending</span></div>
+        </div>
+        <ul class="tight">
+          <li>Resource library under service configuration: title, URL, medicine, display stage, acknowledgement required, order, version. The client changes a link without a deployment.</li>
+          <li>Acknowledgement snapshots record the exact title, URL and version the patient saw — not a pointer to whatever it says today.</li>
+          <li><code>service_public_profile</code> drives the public form: brand name, logo, colours, support details, privacy and terms links, F2F referral URL.</li>
+          <li>Karsons stays visible as the fulfilment pharmacy. Do not falsify prescriber or legal identity for the sake of white-labelling.</li>
+        </ul>
+        <div class="gate"><strong>Done when</strong> the WM journey can look like a separate clinic and a historical acknowledgement proves what was shown. <em>Build the slots now; the content is blocked on the client.</em></div>
+      </div>
+    </div>
+
+    <!-- 10 ────────────────────────────────────────────────── -->
+    <div class="stage">
+      <div><span class="stage-num">10</span></div>
+      <div class="stage-body">
+        <div class="stage-title">
+          <h3>Rules administration</h3>
+          <div class="tags"><span class="tag effort">3–4 days</span><span class="tag dep">needs 07</span></div>
+        </div>
+        <p style="font-size:14px;color:var(--ink-soft)">The rules already live in <code>ruleset_version.definition</code> and are already versioned. What is missing is the client-facing editor — today, changing a threshold means a developer editing TypeScript, which is the opposite of what Muka asked for.</p>
+        <ul class="tight">
+          <li>Edit outcome, priority, enabled, field, operator, value, nested ALL/ANY groups, clinician message, patient message and advice.</li>
+          <li>Draft against published. Publishing creates a new immutable version.</li>
+          <li>A simulator that runs the draft against sample or historical submissions, with a diff from the current published version, before anyone can publish.</li>
+          <li>No raw JSON as the primary interface, and no arbitrary executable code.</li>
+        </ul>
+        <div class="gate"><strong>Done when</strong> the pharmacy can change a clinical threshold, preview its effect and publish it, without us.</div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Effort at a glance</h2>
+      <p>Focused working days, one developer. Stage 02 can run in parallel with 01 — everything else is a chain.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Stage</th><th>Days</th><th>Priority</th><th>Blocked by</th></tr></thead>
+        <tbody>
+          <tr><td>00 · Safety net</td><td class="num">0.5</td><td><span class="pill stop">first</span></td><td>—</td></tr>
+          <tr><td>01 · Database and schema</td><td class="num">1</td><td><span class="pill stop">P0</span></td><td>00</td></tr>
+          <tr><td>02 · Flu inventory</td><td class="num">1</td><td><span class="pill stop">P0</span></td><td>—</td></tr>
+          <tr><td>03 · NEW remote form</td><td class="num">3–4</td><td><span class="pill stop">P0</span></td><td>01</td></tr>
+          <tr><td>04 · NEW workspace + call</td><td class="num">3</td><td><span class="pill stop">P0</span></td><td>03</td></tr>
+          <tr><td>05 · Payment and Rx issue</td><td class="num">1–2</td><td><span class="pill stop">P0</span></td><td>04</td></tr>
+          <tr><td>06 · Fulfilment + enrolment</td><td class="num">2–3</td><td><span class="pill stop">P0</span></td><td>05</td></tr>
+          <tr><td>07 · Repeat RAG semantics</td><td class="num">2</td><td><span class="pill stop">P0</span></td><td>05, 06</td></tr>
+          <tr><td>08 · Dashboard and nav</td><td class="num">1–2</td><td><span class="pill open">P1</span></td><td>04–07</td></tr>
+          <tr><td>09 · Resources and branding</td><td class="num">2</td><td><span class="pill open">P1</span></td><td>01 + client content</td></tr>
+          <tr><td>10 · Rules admin</td><td class="num">3–4</td><td><span class="pill open">P1</span></td><td>07</td></tr>
+          <tr><td><strong>Total</strong></td><td class="num"><strong>20–25</strong></td><td><strong>≈ 4–5 weeks</strong></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:14px;font-size:14px;color:var(--ink-soft)">If the season forces a cut, stages 00–07 are the deliverable. They are what makes both journeys work end to end. Stages 08–10 are quality-of-life and client self-service — genuinely valuable, and three of them are partly blocked on content anyway.</p>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Carried over from our own list</h2>
+      <p>Not part of the client's new requirements. Tracked here so it stays a decision rather than a surprise.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Item</th><th>State</th><th>Note</th></tr></thead>
+        <tbody>
+          <tr><td>Cross-tenant scoping on mutations</td><td><span class="pill done">done</span></td><td>Six unscoped mutations fixed; a source-level guard test now catches regressions. The audit doc is simply out of date.</td></tr>
+          <tr><td>Patient duplicate race under concurrency</td><td><span class="pill open">open</span></td><td>Needs a database unique constraint. Small, and it belongs with Stage 03 where identity capture is being added.</td></tr>
+          <tr><td>Inventory adjustment / transfer / reconcile</td><td><span class="pill open">open</span></td><td>Overlaps Stage 02. Worth folding in while that module is open.</td></tr>
+          <tr><td>Client-side pagination on large tables</td><td><span class="pill open">open</span></td><td>Harmless at current volume; it will not stay that way once a season of flu records lands.</td></tr>
+          <tr><td>RLS negative tests</td><td><span class="pill open">open</span></td><td>Not a code change. Needs a second organisation in a test database to prove isolation behaviourally.</td></tr>
+          <tr><td><code>drizzle/</code> versus <code>supabase/</code> trees</td><td><span class="pill open">open</span></td><td>The stale tree still sits on disk with a README explaining why. Deleting it is a decision, not a task.</td></tr>
+          <tr><td>Consultation PDF runs to three pages</td><td><span class="pill wait">decision</span></td><td>Muka wants two, for print cost. The remaining lever is moving the advice block to the front page — roughly 90pt.</td></tr>
+          <tr><td>Waist field accepts 38&nbsp;cm</td><td><span class="pill open">open</span></td><td>No plausibility range. It is a <code>warnWhen</code> in the designer, so the bounds are the pharmacy's call, not ours.</td></tr>
+          <tr><td>Three flu questions beyond the agreed set</td><td><span class="pill wait">client</span></td><td>Need approval or removal before the season.</td></tr>
+          <tr><td>Supabase region is Seoul</td><td><span class="pill open">open</span></td><td>Roughly 180&nbsp;ms per database round trip, and it dominates page load. Moving to London is the single largest performance win available.</td></tr>
+          <tr><td>Designer: drag-reorder, copy step, duplicate question</td><td><span class="pill wait">deferred</span></td><td>Drawn in the design, entry points exist, mechanics do not. Reordering works through the up/down controls.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Blocked on the client — do not invent these</h2>
+      <p>Each has a configurable slot to build now and content to fill in later. Writing clinical wording ourselves is the one thing this project cannot afford.</p>
+    </div>
+    <div class="register">
+      <div class="reg">
+        <h4>Transfer patient questions</h4>
+        <p>The route, the evidence categories and the BMI 20–&lt;25 rule are supplied. The individual prior-clinic, baseline and treatment-evidence questions are not, nor is what counts as acceptable proof.</p>
+      </div>
+      <div class="reg">
+        <h4>Three-month supply</h4>
+        <p>The workflow image says "where permitted" without saying when. Stays AMBER until Muka defines it — by product, dose, stability or holiday reason.</p>
+      </div>
+      <div class="reg">
+        <h4>Standalone clinic identity</h4>
+        <p>Brand name, logo, colours, support email and phone, terms, privacy text, and the F2F referral URL. He is explicit that nobody should know it is a Karsons product.</p>
+      </div>
+      <div class="reg">
+        <h4>Digital resources</h4>
+        <p>The actual treatment, risk and side-effect links, and which are mandatory for which medicine. He asked for these as clickable links with a tick to confirm they were read.</p>
+      </div>
+      <div class="reg">
+        <h4>Dispatch</h4>
+        <p>Whether carrier and tracking should be automated at all, and with whom. Manual entry is assumed until told otherwise.</p>
+      </div>
+      <div class="reg">
+        <h4>Enrolment trigger</h4>
+        <p>We propose enrolling a patient into repeat care automatically on their first supply. It closes the dead end in Stage 06, but it is a clinical authorisation and should be confirmed rather than assumed.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>What could go wrong</h2>
+    </div>
+    <div class="stack">
+      <div class="panel">
+        <div class="stack-sm">
+          <h4>Baselining in the wrong order <span class="pill stop" style="margin-left:6px">highest</span></h4>
+          <p style="font-size:14px;color:var(--ink-soft)">Silent, and it looks like success. Covered at the top of this document; it is the only item here that can destroy work rather than delay it.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="stack-sm">
+          <h4>Publishing over form version 1 <span class="pill open" style="margin-left:6px">medium</span></h4>
+          <p style="font-size:14px;color:var(--ink-soft)">Two submissions were answered against v1. Editing it in place would rewrite what those patients were asked, which is exactly what the versioning exists to prevent. Stage 03 publishes v2 and leaves v1 untouched.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="stack-sm">
+          <h4>The chain still untested in reality <span class="pill open" style="margin-left:6px">medium</span></h4>
+          <p style="font-size:14px;color:var(--ink-soft)">Zero rule evaluations exist. Every clinical rule is proven by unit tests and none by a real submission. Enrolling one test patient and putting a request through is the cheapest way to find out what the tests do not cover — and it should happen before Stage 07, not after.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="stack-sm">
+          <h4>Season versus scope <span class="pill open" style="margin-left:6px">medium</span></h4>
+          <p style="font-size:14px;color:var(--ink-soft)">Twenty to twenty-five focused days against a September flu season. Stage 02 protects flu early and cheaply; the weight-management work is what needs the runway. If something has to give, it is stages 08 to 10, and that should be said out loud now rather than discovered in three weeks.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Karsons Pharmacy Platform · delivery plan</span>
+    <span>31 August 2026</span>
+    <span>Supersedes the queue-scoping and access-mode items left open on 30 August</span>
+  </footer>
+
+</div>

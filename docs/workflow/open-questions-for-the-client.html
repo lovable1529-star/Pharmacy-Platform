@@ -1,0 +1,358 @@
+<title>Questions for Karsons</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+:root {
+  --ink:#191428; --ink-soft:#4A4363; --ink-faint:#736C8C;
+  --canvas:#F6F5F9; --surface:#FFFFFF; --sunk:#EFEDF5;
+  --line:#DEDAE9; --line-soft:#E9E6F1;
+  --brand:#5B3A8E; --brand-wash:#F0EBF9;
+  --safe:#1F7A50; --safe-wash:#E6F3EC;
+  --review:#A8700E; --review-wash:#FBF2DF;
+  --stop:#C23A2B; --stop-wash:#FBE9E7;
+  --shadow:0 1px 2px rgba(25,20,40,.05), 0 8px 24px -12px rgba(25,20,40,.16);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink:#F3F1F9; --ink-soft:#C0B9D6; --ink-faint:#8E86A8;
+    --canvas:#0F0C18; --surface:#191527; --sunk:#211C33;
+    --line:#2E2745; --line-soft:#262039;
+    --brand:#A98BE0; --brand-wash:#241B3A;
+    --safe:#3FBF83; --safe-wash:#14281F;
+    --review:#D9A64B; --review-wash:#2B2113;
+    --stop:#E4685A; --stop-wash:#2E1717;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --ink:#F3F1F9; --ink-soft:#C0B9D6; --ink-faint:#8E86A8;
+  --canvas:#0F0C18; --surface:#191527; --sunk:#211C33;
+  --line:#2E2745; --line-soft:#262039;
+  --brand:#A98BE0; --brand-wash:#241B3A;
+  --safe:#3FBF83; --safe-wash:#14281F;
+  --review:#D9A64B; --review-wash:#2B2113;
+  --stop:#E4685A; --stop-wash:#2E1717;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+}
+
+* { box-sizing:border-box; }
+body { margin:0; background:var(--canvas); color:var(--ink);
+  font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size:15.5px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+.page { max-width:840px; margin:0 auto; padding:56px 26px 92px; }
+
+h1,h2,h3 { font-family:Newsreader, ui-serif, Georgia, serif; font-weight:600; margin:0; text-wrap:balance; letter-spacing:-.012em; }
+h1 { font-size:clamp(30px,4.4vw,42px); line-height:1.12; }
+h2 { font-size:24px; line-height:1.2; }
+h3 { font-size:19px; line-height:1.28; }
+h4 { font-family:"IBM Plex Sans",sans-serif; font-size:13px; font-weight:600; margin:0;
+     letter-spacing:.02em; text-transform:uppercase; color:var(--ink-faint); }
+p { margin:0; max-width:66ch; }
+
+.eyebrow { font-family:"IBM Plex Mono", monospace; font-size:11px; font-weight:500; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-faint); }
+a { color:var(--brand); text-underline-offset:2px; }
+a:focus-visible { outline:2px solid var(--brand); outline-offset:3px; border-radius:3px; }
+
+.masthead { display:flex; flex-direction:column; gap:14px; padding-bottom:26px; margin-bottom:34px; border-bottom:2px solid var(--ink); }
+.masthead p { color:var(--ink-soft); font-size:16.5px; }
+.meta { display:flex; flex-wrap:wrap; gap:7px 20px; font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-faint); padding-top:3px; }
+
+section { margin-bottom:44px; }
+.section-head { display:flex; flex-direction:column; gap:6px; margin-bottom:22px; padding-bottom:12px; border-bottom:1px solid var(--line); }
+.section-head p { color:var(--ink-soft); font-size:15px; }
+
+/* ── A question ─────────────────────────────────────────────── */
+.q {
+  background:var(--surface); border:1px solid var(--line); border-radius:11px;
+  padding:22px 24px; box-shadow:var(--shadow); margin-bottom:16px;
+  display:flex; flex-direction:column; gap:15px;
+}
+.q-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:11px; }
+.q-num {
+  font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:600;
+  color:var(--brand); background:var(--brand-wash);
+  padding:3px 9px; border-radius:5px; white-space:nowrap;
+}
+.q-head h3 { flex:1 1 auto; min-width:200px; }
+
+.block { display:flex; flex-direction:column; gap:5px; }
+.block p, .block li { font-size:14.5px; color:var(--ink-soft); }
+.block strong { color:var(--ink); }
+
+.assumed { background:var(--sunk); border-radius:8px; padding:12px 15px; display:flex; flex-direction:column; gap:5px; }
+.assumed p { font-size:14px; }
+
+.cost { border-left:3px solid var(--review); padding:2px 0 2px 14px; }
+.cost p { font-size:14.5px; color:var(--ink-soft); }
+.cost.blocking { border-left-color:var(--stop); }
+
+ul { margin:0; padding-left:19px; }
+li { margin-bottom:4px; }
+li::marker { color:var(--ink-faint); }
+
+.tag { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase;
+  padding:3px 9px; border-radius:5px; white-space:nowrap; display:inline-block; }
+.tag.blocking { color:var(--stop); background:var(--stop-wash); }
+.tag.soon { color:var(--review); background:var(--review-wash); }
+.tag.later { color:var(--ink-faint); background:var(--sunk); }
+
+.panel { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:19px 21px; box-shadow:var(--shadow); }
+
+footer { margin-top:56px; padding-top:20px; border-top:1px solid var(--line); font-size:12.5px; color:var(--ink-faint); display:flex; flex-wrap:wrap; gap:6px 18px; }
+
+@media (max-width:720px) { .page { padding:36px 17px 70px; } }
+@media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <span class="eyebrow">Karsons Pharmacy · Weight Management</span>
+    <h1>Ten questions only you can answer</h1>
+    <p>Every one of these is a clinical or commercial decision rather than a technical one, which is why we have not guessed. Each says what we have assumed in the meantime and what it costs to leave it open — so you can answer the four that matter and leave the rest.</p>
+    <div class="meta">
+      <span>31 August 2026</span>
+      <span>4 blocking · 3 needed soon · 3 can wait</span>
+    </div>
+  </header>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Blocking</h2>
+      <p>These four are stopping work. Everything else can proceed around them.</p>
+    </div>
+
+    <div class="q">
+      <div class="q-head">
+        <span class="q-num">01</span>
+        <h3>What does it cost?</h3>
+        <span class="tag blocking">blocking</span>
+      </div>
+      <div class="block">
+        <h4>The question</h4>
+        <p>What does a new patient pay, and what does a repeat supply cost? Does the price change with the medicine, the strength, or how many months they take?</p>
+      </div>
+      <div class="assumed">
+        <h4>What happens now</h4>
+        <p>Neither service has a price, so <strong>there is no payment step at all</strong> — the prescription is simply released. Your staff are never asked to confirm anything, and nobody is ever asked for money.</p>
+      </div>
+      <div class="cost blocking">
+        <p>Until we have prices, the service gives medicine away. It is the single largest gap between what is built and what you can actually open.</p>
+      </div>
+    </div>
+
+    <div class="q">
+      <div class="q-head">
+        <span class="q-num">02</span>
+        <h3>Should repeat care switch itself on?</h3>
+        <span class="tag blocking">blocking</span>
+      </div>
+      <div class="block">
+        <h4>The question</h4>
+        <p>At the moment, as soon as a new patient's first supply actually leaves the pharmacy, they are enrolled in repeat care automatically and given a Repeat Care ID. From then on they can order online without speaking to anybody.</p>
+        <p>Is that what you want — or should a pharmacist have to switch it on deliberately for each patient?</p>
+      </div>
+      <div class="assumed">
+        <h4>What we built, and why</h4>
+        <p>Automatic on first supply. Your own workflow says a patient's history should only move forward after a real supply, and without something doing this a remote patient could complete the entire journey and <strong>still never be able to order a repeat</strong> — the pathway simply dead-ended.</p>
+      </div>
+      <div class="cost blocking">
+        <p>This is a clinical authorisation happening without a human pressing anything. We are comfortable with the reasoning but it is your decision, not ours. If you would rather it were deliberate, it is a small change — but it needs deciding before patients are using it.</p>
+      </div>
+    </div>
+
+    <div class="q">
+      <div class="q-head">
+        <span class="q-num">03</span>
+        <h3>What happens to somebody who does not meet the BMI rule?</h3>
+        <span class="tag blocking">blocking</span>
+      </div>
+      <div class="block">
+        <h4>The question</h4>
+        <p>You told us: BMI 30 and above, or 27 and above with a weight-related condition. Somebody with a BMI of 28 and no qualifying condition falls outside that.</p>
+        <p>Should the form <strong>stop them there</strong> and explain why, or let them submit so a pharmacist can look at the whole picture?</p>
+      </div>
+      <div class="assumed">
+        <h4>What happens now</h4>
+        <p>They can submit, and your pharmacist sees a clear note saying they do not meet the criterion and why. Nobody is ever silently passed as eligible — but nobody is turned away either.</p>
+      </div>
+      <div class="cost">
+        <p>These are genuinely different products. Stopping them is cleaner and cheaper to run; letting them through catches the patient who should have been seen but whose numbers happen to fall short. We did not want to choose that on your behalf.</p>
+      </div>
+    </div>
+
+    <div class="q">
+      <div class="q-head">
+        <span class="q-num">04</span>
+        <h3>What do we ask a patient transferring from another clinic?</h3>
+        <span class="tag blocking">blocking</span>
+      </div>
+      <div class="block">
+        <h4>The question</h4>
+        <p>You gave us the route and the categories — prior clinic, baseline, treatment evidence — and the rule that a current BMI between 20 and 25 may only proceed as a verified continuation.</p>
+        <p>We need the actual questions, and what counts as acceptable proof. A photograph of the box? A prescription? A letter from the clinic? Does a screenshot of an app count?</p>
+      </div>
+      <div class="assumed">
+        <h4>What happens now</h4>
+        <p>The branch exists and asks the categories you named: which clinic, which medicine and strength, when that strength started, when they last had a supply, what they weighed when treatment began, and any side effects. It also asks for a photograph of their current prescription or medicine box.</p>
+        <p>We have deliberately <strong>not invented</strong> clinical wording to fill the rest.</p>
+      </div>
+      <div class="cost">
+        <p>Somebody transferring is arguably your highest-risk patient — already on a medicine, and you have only their word for what and how much. The questions matter more here than anywhere else on the form.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Needed soon</h2>
+      <p>Not blocking today, but they shape work already scheduled.</p>
+    </div>
+
+    <div class="q">
+      <div class="q-head">
+        <span class="q-num">05</span>
+        <h3>When is a three-month supply allowed?</h3>
+        <span class="tag soon">needed soon</span>
+      </div>
+      <div class="block">
+        <h4>The question</h4>
+        <p>Your workflow allows one, two or three months "where permitted" without saying when. Is it about how long they have been stable, which medicine, which strength, or a holiday?</p>
+      </div>
+      <div class="assumed">
+        <h4>What happens now</h4>
+        <p>A three-month request is flagged for a pharmacist to review. Not refused, not waved through.</p>
+      </div>
+      <div class="cost">
+        <p>Inventing a permission would be as wrong as inventing a restriction, so it stays under review until you tell us. It simply means more work for your team than it needs to be.</p>
+      </div>
+    </div>
+
+    <div class="q">
+      <div class="q-head">
+        <span class="q-num">06</span>
+        <h3>What is the clinic called?</h3>
+        <span class="tag soon">needed soon</span>
+      </div>
+      <div class="block">
+        <h4>The question</h4>
+        <p>You said you want this marketed as a separate business and that nobody should know it is a Karsons product. We need the name, a logo, the colours, a support email and telephone number, and the link to your face-to-face programme for patients who want to be seen.</p>
+        <p>We also need the terms and conditions and privacy wording you want patients to agree to.</p>
+      </div>
+      <div class="assumed">
+        <h4>What happens now</h4>
+        <p>Patient-facing pages carry Karsons branding. The system is built to swap that for a separate identity while keeping Karsons named as the dispensing pharmacy — which is a legal requirement and not something we would hide.</p>
+      </div>
+      <div class="cost">
+        <p>Nothing is broken, but you cannot launch it as a separate clinic until this arrives.</p>
+      </div>
+    </div>
+
+    <div class="q">
+      <div class="q-head">
+        <span class="q-num">07</span>
+        <h3>Which information leaflets, and which are compulsory?</h3>
+        <span class="tag soon">needed soon</span>
+      </div>
+      <div class="block">
+        <h4>The question</h4>
+        <p>You asked for treatment, risk and side-effect material shown as links the patient ticks to confirm they have read before signing. We need the actual links — and which of them a patient <strong>must</strong> tick, as opposed to being offered.</p>
+        <p>Do they differ between Mounjaro and Wegovy?</p>
+      </div>
+      <div class="assumed">
+        <h4>What happens now</h4>
+        <p>The mechanism is built, including recording exactly which version of which leaflet a patient agreed to — so if you update a link next year, last year's record still says what they actually saw. There is simply no content in it.</p>
+      </div>
+      <div class="cost">
+        <p>You described this as part of how the service is safe without seeing anybody. At the moment that part is missing.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Can wait</h2>
+      <p>Worth thinking about, but nothing is waiting on them.</p>
+    </div>
+
+    <div class="q">
+      <div class="q-head">
+        <span class="q-num">08</span>
+        <h3>Who is allowed to do what?</h3>
+        <span class="tag later">can wait</span>
+      </div>
+      <div class="block">
+        <h4>The question</h4>
+        <p>Can any trained member of staff make the verification call, or must it be a pharmacist? And separately — who may press <strong>approve</strong>? We can restrict that to registered prescribers only.</p>
+        <p>Also: how do you want identity confirmed on the telephone? Date of birth and address, or something else? Whatever you say, the system will record that the check was done.</p>
+      </div>
+      <div class="assumed">
+        <h4>What happens now</h4>
+        <p>Anybody with review access can record a call and approve. The system records who did each, and captures how they say they confirmed identity — but does not prescribe the method.</p>
+      </div>
+    </div>
+
+    <div class="q">
+      <div class="q-head">
+        <span class="q-num">09</span>
+        <h3>What if you cannot reach them?</h3>
+        <span class="tag later">can wait</span>
+      </div>
+      <div class="block">
+        <h4>The question</h4>
+        <p>How many attempts before a request is parked or closed? Should the patient be emailed asking them to ring back? Should it drop off the queue after a fortnight?</p>
+      </div>
+      <div class="assumed">
+        <h4>What happens now</h4>
+        <p>Every attempt is recorded and the request stays in the queue indefinitely, showing how long it has been waiting. Nobody is chased automatically.</p>
+      </div>
+    </div>
+
+    <div class="q">
+      <div class="q-head">
+        <span class="q-num">10</span>
+        <h3>How is it posted?</h3>
+        <span class="tag later">can wait</span>
+      </div>
+      <div class="block">
+        <h4>The question</h4>
+        <p>Are you posting these yourself? Do you want to record a carrier and a tracking number, and should that be connected to a courier automatically or typed in?</p>
+      </div>
+      <div class="assumed">
+        <h4>What happens now</h4>
+        <p>Carrier and tracking can be typed in by hand at dispatch. Nothing connects to a courier.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Two smaller things</h2>
+    </div>
+    <div class="panel">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="block">
+          <h4>The consultation printout runs to three pages</h4>
+          <p>You wanted two, to keep printing costs down. We can get there by moving the advice section onto the front page — it will look tighter but it will fit. Say the word.</p>
+        </div>
+        <div class="block">
+          <h4>Three questions on the flu form are not in the agreed set</h4>
+          <p>They were added at some point and do not appear in the specification. Do you want them kept or removed before the season starts?</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Karsons Pharmacy Platform · open questions</span>
+    <span>31 August 2026</span>
+    <span>Answers to 1–4 unblock the remaining work</span>
+  </footer>
+
+</div>

@@ -1,0 +1,433 @@
+<title>How Karsons Weight Management Works</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+:root {
+  --ink:#191428; --ink-soft:#4A4363; --ink-faint:#736C8C;
+  --canvas:#F6F5F9; --surface:#FFFFFF; --sunk:#EFEDF5;
+  --line:#DEDAE9; --line-soft:#E9E6F1;
+  --brand:#5B3A8E; --brand-wash:#F0EBF9;
+  --safe:#1F7A50; --safe-wash:#E6F3EC;
+  --review:#A8700E; --review-wash:#FBF2DF;
+  --stop:#C23A2B; --stop-wash:#FBE9E7;
+  --shadow:0 1px 2px rgba(25,20,40,.05), 0 8px 24px -12px rgba(25,20,40,.16);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink:#F3F1F9; --ink-soft:#C0B9D6; --ink-faint:#8E86A8;
+    --canvas:#0F0C18; --surface:#191527; --sunk:#211C33;
+    --line:#2E2745; --line-soft:#262039;
+    --brand:#A98BE0; --brand-wash:#241B3A;
+    --safe:#3FBF83; --safe-wash:#14281F;
+    --review:#D9A64B; --review-wash:#2B2113;
+    --stop:#E4685A; --stop-wash:#2E1717;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --ink:#F3F1F9; --ink-soft:#C0B9D6; --ink-faint:#8E86A8;
+  --canvas:#0F0C18; --surface:#191527; --sunk:#211C33;
+  --line:#2E2745; --line-soft:#262039;
+  --brand:#A98BE0; --brand-wash:#241B3A;
+  --safe:#3FBF83; --safe-wash:#14281F;
+  --review:#D9A64B; --review-wash:#2B2113;
+  --stop:#E4685A; --stop-wash:#2E1717;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px -12px rgba(0,0,0,.7);
+}
+
+* { box-sizing:border-box; }
+body { margin:0; background:var(--canvas); color:var(--ink);
+  font-family:"IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size:15.5px; line-height:1.65; -webkit-font-smoothing:antialiased; }
+.page { max-width:880px; margin:0 auto; padding:56px 26px 92px; }
+
+h1,h2,h3 { font-family:Newsreader, ui-serif, Georgia, serif; font-weight:600; margin:0; text-wrap:balance; letter-spacing:-.012em; }
+h1 { font-size:clamp(30px,4.4vw,42px); line-height:1.12; }
+h2 { font-size:25px; line-height:1.2; }
+h3 { font-size:18px; line-height:1.3; }
+h4 { font-family:"IBM Plex Sans",sans-serif; font-size:15px; font-weight:600; margin:0; }
+p { margin:0; max-width:66ch; }
+
+.eyebrow { font-family:"IBM Plex Mono", monospace; font-size:11px; font-weight:500; letter-spacing:.13em; text-transform:uppercase; color:var(--ink-faint); }
+a { color:var(--brand); text-underline-offset:2px; }
+a:focus-visible { outline:2px solid var(--brand); outline-offset:3px; border-radius:3px; }
+
+.masthead { display:flex; flex-direction:column; gap:14px; padding-bottom:26px; margin-bottom:36px; border-bottom:2px solid var(--ink); }
+.masthead p { color:var(--ink-soft); font-size:16.5px; }
+.meta { display:flex; flex-wrap:wrap; gap:7px 20px; font-family:"IBM Plex Mono",monospace; font-size:11.5px; color:var(--ink-faint); padding-top:3px; }
+
+section { margin-bottom:48px; }
+.section-head { display:flex; flex-direction:column; gap:6px; margin-bottom:22px; padding-bottom:12px; border-bottom:1px solid var(--line); }
+.section-head p { color:var(--ink-soft); font-size:15px; }
+
+.panel { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:19px 21px; box-shadow:var(--shadow); }
+.stack { display:flex; flex-direction:column; gap:14px; }
+
+/* ── Journey stages ─────────────────────────────────────────── */
+.stage { display:grid; grid-template-columns:44px 1fr; gap:0 20px; position:relative; padding-bottom:26px; }
+.stage::before { content:""; position:absolute; left:21px; top:40px; bottom:0; width:1px; background:var(--line); }
+.stage:last-child::before { display:none; }
+.stage-num { font-family:"IBM Plex Mono",monospace; font-size:12.5px; font-weight:600;
+  width:42px; height:34px; display:flex; align-items:center; justify-content:center;
+  border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--brand); position:relative; z-index:1; }
+.stage-body { display:flex; flex-direction:column; gap:10px; padding-top:4px; }
+.stage-title { display:flex; flex-wrap:wrap; align-items:baseline; gap:9px; }
+.stage-title h3 { flex:1 1 auto; min-width:180px; }
+
+.who { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.06em; text-transform:uppercase;
+  padding:3px 9px; border-radius:5px; white-space:nowrap; }
+.who.patient { background:var(--brand-wash); color:var(--brand); }
+.who.staff   { background:var(--sunk); color:var(--ink-soft); }
+.who.auto    { background:var(--safe-wash); color:var(--safe); }
+
+.note { border-left:3px solid var(--line); padding:2px 0 2px 14px; font-size:14.5px; color:var(--ink-soft); }
+.note.safety { border-left-color:var(--stop); }
+.note.safety strong { color:var(--stop); }
+
+ul { margin:0; padding-left:19px; }
+li { margin-bottom:5px; }
+li::marker { color:var(--ink-faint); }
+ul.tight li { margin-bottom:3px; font-size:14.5px; }
+
+.table-wrap { overflow-x:auto; border:1px solid var(--line); border-radius:10px; background:var(--surface); }
+table { border-collapse:collapse; width:100%; font-size:14px; min-width:480px; }
+th,td { text-align:left; padding:10px 14px; border-bottom:1px solid var(--line-soft); vertical-align:top; }
+th { font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); background:var(--sunk); font-weight:500; }
+tr:last-child td { border-bottom:none; }
+
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.card { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:16px 18px; display:flex; flex-direction:column; gap:8px; }
+.card p, .card li { font-size:14px; color:var(--ink-soft); }
+
+.rag { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.band { border-radius:10px; padding:16px 18px; display:flex; flex-direction:column; gap:7px; }
+.band h4 { font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.1em; }
+.band p { font-size:13.5px; }
+.band.g { background:var(--safe-wash);   border:1px solid var(--safe); }
+.band.g h4 { color:var(--safe); }
+.band.a { background:var(--review-wash); border:1px solid var(--review); }
+.band.a h4 { color:var(--review); }
+.band.r { background:var(--stop-wash);   border:1px solid var(--stop); }
+.band.r h4 { color:var(--stop); }
+
+footer { margin-top:58px; padding-top:20px; border-top:1px solid var(--line); font-size:12.5px; color:var(--ink-faint); display:flex; flex-wrap:wrap; gap:6px 18px; }
+
+@media (max-width:720px) {
+  .page { padding:36px 17px 70px; }
+  .grid2, .rag { grid-template-columns:1fr; }
+  .stage { grid-template-columns:1fr; gap:11px; }
+  .stage::before { display:none; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+
+<div class="page">
+
+  <header class="masthead">
+    <span class="eyebrow">Karsons Pharmacy · Weight Management</span>
+    <h1>How the service works, end to end</h1>
+    <p>What a patient does, what your team does, and what the system does on its own — for both the new patient and the repeat request. Written to be read straight through, so you can tell us where it does not match how you want to work.</p>
+    <div class="meta">
+      <span>31 August 2026</span>
+      <span>Built to the workflow you sent on 30 August</span>
+      <span>Both journeys are remote — no appointment</span>
+    </div>
+  </header>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>The idea, as we understood it</h2>
+    </div>
+    <div class="stack">
+      <div class="panel">
+        <p style="font-size:15.5px;color:var(--ink-soft)">You asked to automate as much as possible while keeping the safety touch points, and to reduce human input except where it is genuinely needed. So the system does everything that does not require judgement, and <strong>stops dead</strong> at the places that do.</p>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h4>What happens without anybody doing anything</h4>
+          <ul class="tight">
+            <li>Answers save as the patient types.</li>
+            <li>BMI is calculated as they enter their measurements.</li>
+            <li>A patient record is created and matched.</li>
+            <li>Repeat requests are triaged red, amber or green.</li>
+            <li>A prescription number is allocated on issue.</li>
+            <li>Repeat care switches on once medicine is supplied.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h4>What the system refuses to do without a person</h4>
+          <ul class="tight">
+            <li>Approve a new patient before somebody has telephoned them and confirmed who they are.</li>
+            <li>Approve a repeat flagged amber without written reasoning.</li>
+            <li>Supply anything flagged red.</li>
+            <li>Let medicine leave without a batch number and expiry.</li>
+            <li>Supply a pack that expires on or before the day it goes out.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="stack" style="gap:8px">
+          <h4>Nobody is seen in person</h4>
+          <p style="font-size:15px;color:var(--ink-soft)">Both journeys are remote, as you specified. The very first question a new patient answers asks whether they would rather be seen face to face — and if they say yes, <strong>the form stops there</strong> and points them at your separate Karsons programme. They cannot carry on and submit anyway.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Journey one · A patient who is new to you</h2>
+      <p>From the online form to medicine in their hand.</p>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">1</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>They choose how to be seen</h3><span class="who patient">Patient</span></div>
+        <p>The form opens by explaining this is an online service and offering face-to-face care instead.</p>
+        <div class="note safety"><strong>This is a stop, not a warning.</strong> Choosing face-to-face ends the form and links them to your other programme. Nothing else on the form is even shown.</div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">2</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>Are they already treated elsewhere?</h3><span class="who patient">Patient</span></div>
+        <p>Your question, in your words. Answering <strong>no</strong> gives them the standard new-patient questions. Answering <strong>yes</strong> adds a section about their current clinic — what they are on, when they started it, when they last had a supply, and what they weighed when treatment began.</p>
+        <div class="note">We have built the branch and asked for the categories you named. The exact wording of those transfer questions, and what counts as acceptable proof, is one of the things we still need from you.</div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">3</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>They tell you who they are</h3><span class="who patient">Patient</span></div>
+        <p>Name, date of birth, gender, telephone, email, address and GP surgery. The telephone number matters more than usual — it is the number a pharmacist will ring.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">4</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>Measurements, history and habits</h3><span class="who patient">Patient</span></div>
+        <p>Height, weight and waist in whatever units they know — the system converts them. BMI appears as they type. Then the contraindication screening, medical history, eating habits and current medication, with follow-up questions appearing only where they apply.</p>
+        <div class="note">Against your criteria — BMI 30 and above, or 27 and above with a weight-related condition — the system works out whether they qualify and shows the answer to your pharmacist. <strong>It does not currently stop them.</strong> That is one of our questions for you.</div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">5</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>Evidence</h3><span class="who patient">Patient</span></div>
+        <p>Photographic ID, a photograph of themselves taken there and then, and evidence of their current weight. A patient transferring from another clinic is also asked for their current prescription or medicine box.</p>
+        <div class="note">All of these are required. Since nobody is seen in person, this and the telephone call are the identity check.</div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">6</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>How they want it, then consent</h3><span class="who patient">Patient</span></div>
+        <p>Collection from a branch, or posted to them. Then the consent statements and a signature.</p>
+        <div class="note">The consent wording has been changed. It used to promise an appointment with a pharmacist at any time, which this service does not offer. It now says they can contact the team and will be told if they need to be seen.</div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">7</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>It appears in your queue</h3><span class="who auto">Automatic</span></div>
+        <p>Under <strong>Weight Management → New patients</strong>, with their name, what they have asked for, how long they have waited, and whether anyone has telephoned them yet. The tab tells you how many are still to call.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">8</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>A pharmacist reads and telephones</h3><span class="who staff">Your team</span></div>
+        <p>Every answer is on one screen, in the patient's own units. The pharmacist records the call: whether they reached them, whether they confirmed who they were speaking to and how, what they established clinically, and what advice they gave.</p>
+        <div class="note safety"><strong>The request cannot be approved until that call exists.</strong> Not a reminder — the system refuses. And a call where the pharmacist could not confirm identity does not count: speaking to somebody is not the same as knowing who they are.</div>
+        <div class="note">Every attempt is kept. Rang twice and reached them on the third is three records, so "we tried" is provable months later.</div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">9</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>The clinical decision</h3><span class="who staff">Your team</span></div>
+        <p>Approve, ask for more information, or decline — with a reason recorded against the pharmacist's name.</p>
+        <div class="note safety"><strong>On approval, the pharmacist states what they are authorising:</strong> medicine, strength, quantity and directions. That is what appears on the prescription — not what the patient asked for. If they reduce the dose on the telephone, the reduced dose is what is supplied.</div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">10</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>Payment</h3><span class="who staff">Your team</span></div>
+        <p>A member of staff ticks to confirm the money has been received, and that is what releases the prescription and allocates its number. The system records who confirmed it and when.</p>
+        <div class="note"><strong>Currently this step does not appear</strong>, because neither service has a price set. Tell us the prices and it switches on. No payment link is emailed to anybody — that waits until SmarterPayments is connected, and when it is, it will release the prescription through exactly the same route.</div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">11</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>Assembling and supplying</h3><span class="who staff">Your team</span></div>
+        <p>The prescription appears in the dispensary list with the patient's collection or delivery choice already on it. Your team records the batch number and expiry, marks it ready, and then records the collection or the dispatch.</p>
+        <div class="note safety"><strong>Nothing leaves without a batch number and expiry</strong>, and a pack expiring on the day of supply is refused — it is not fit for somebody who will use it over the following weeks. A collection cannot be dispatched and a delivery cannot be marked collected.</div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">12</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>Repeat care switches on</h3><span class="who auto">Automatic</span></div>
+        <p>The moment the medicine actually goes out, the patient is enrolled in repeat care and given a Repeat Care ID in the shape <strong>RC-4H7K-M2PQ</strong>. Their baseline — height, starting weight, medicine and strength — is recorded from what was actually supplied.</p>
+        <div class="note">Deliberately at supply, not at approval: approving is not supplying, and a baseline set for medicine that never left the pharmacy would be measured against at the next request. <strong>We need you to confirm you want this to be automatic</strong> — see the questions document.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Journey two · A repeat request</h2>
+      <p>Shorter, because the patient is already known to you.</p>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">1</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>They let themselves in</h3><span class="who patient">Patient</span></div>
+        <p>Their Repeat Care ID and the email address you hold. No account and no password.</p>
+        <div class="note">Typing it without the dashes or in lower case still works, because that is how people read a reference back over the telephone. A failed attempt gives the same message whichever half was wrong — otherwise somebody could sit and guess IDs until one worked.</div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">2</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>The questionnaire already knows them</h3><span class="who auto">Automatic</span></div>
+        <p>Their last medicine and strength, their previous weight and the date of their last supply are carried over. The dose options offer their current strength or one step either way — nothing else can be selected.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">3</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>It is triaged the moment they submit</h3><span class="who auto">Automatic</span></div>
+        <p>Twenty-four rules run against their answers and their history — weight change, weeks on the dose, missed doses, side effects, appetite, hydration, the dose step they are asking for.</p>
+        <div class="note">Every rule that fired is shown to your pharmacist, along with the ones that were skipped because an answer was missing. <strong>A missing answer is never treated as a safe one.</strong></div>
+      </div>
+    </div>
+
+    <div class="stage" style="padding-bottom:20px">
+      <div><span class="stage-num">4</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>What the three colours now mean</h3><span class="who staff">Your team</span></div>
+        <p>Following your latest workflow, green no longer approves anything by itself.</p>
+      </div>
+    </div>
+
+    <div class="rag" style="margin-left:64px;margin-bottom:26px">
+      <div class="band g">
+        <h4>GREEN</h4>
+        <p>Everything checks out. A prescriber authorises it in one step — but a prescriber still authorises it. No telephone call needed.</p>
+      </div>
+      <div class="band a">
+        <h4>AMBER</h4>
+        <p>Something needs a look. The pharmacist must write down why they are content before it can be approved. The system refuses without it.</p>
+      </div>
+      <div class="band r">
+        <h4>RED</h4>
+        <p>A safety stop. It cannot be paid for or supplied from the queue at all. It goes to the urgent list, or is declined with a reason.</p>
+      </div>
+    </div>
+
+    <div class="stage">
+      <div><span class="stage-num">5</span></div>
+      <div class="stage-body">
+        <div class="stage-title"><h3>Then exactly as before</h3><span class="who staff">Your team</span></div>
+        <p>Payment confirmation, prescription, batch and expiry, collection or delivery. The same path a new patient takes, so there is one way of supplying medicine rather than two.</p>
+        <div class="note">Their history only moves forward once the medicine has actually gone out — so the next request measures weight loss and time on dose from a real supply.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Flu vaccination</h2>
+      <p>Unchanged, apart from one thing you asked for.</p>
+    </div>
+    <div class="stack">
+      <div class="panel">
+        <div class="stack" style="gap:8px">
+          <h4>Receiving stock has moved</h4>
+          <p style="font-size:15px;color:var(--ink-soft)">You asked to put quantity, batch number and expiry into inventory, and to pick the batch when recording a vaccination. The picking already worked. Receiving a delivery did not live anywhere sensible — it was inside Settings, several clicks from the stock list it changes.</p>
+          <p style="font-size:15px;color:var(--ink-soft)">It is now a <strong>Receive stock</strong> button on the Inventory page, and the dialog stays open after each batch so a delivery of six can be entered in one sitting.</p>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="stack" style="gap:8px">
+          <h4>One thing we found while we were in there</h4>
+          <p style="font-size:15px;color:var(--ink-soft)">A recall was reporting <strong>nobody affected</strong> for vaccinations given through the newer recording screen. The system was looking in only one of the two places a batch is stored. On your live data that was already true of a real vaccination — recalling that batch would have told you no patient had received it. It now checks both.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>What is not built yet</h2>
+      <p>Honestly listed, so nothing is a surprise later.</p>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Not yet</th><th>Why, and what unblocks it</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Payment</strong></td><td>Neither service has a price. Tell us the prices and the confirmation step appears. SmarterPayments itself is a later piece of work.</td></tr>
+          <tr><td><strong>The standalone clinic identity</strong></td><td>You said nobody should know it is a Karsons product. The system can carry a separate name, logo, colours and support details on the patient-facing pages while Karsons remains the dispensing pharmacy — we need the brand from you.</td></tr>
+          <tr><td><strong>Information leaflets and links</strong></td><td>You asked for treatment, risk and side-effect material shown as links a patient ticks to say they have read. The mechanism is built, including keeping a record of exactly which version they agreed to. We need the actual links.</td></tr>
+          <tr><td><strong>Emails and text messages</strong></td><td>Messages are prepared and queued but nothing is sent — no email or SMS provider is connected yet.</td></tr>
+          <tr><td><strong>Three-month supply</strong></td><td>Your workflow allows one, two or three months "where permitted" without saying when. Three months is currently flagged for a pharmacist to review rather than allowed or refused outright.</td></tr>
+          <tr><td><strong>You editing the clinical rules yourself</strong></td><td>The rules are already versioned and stored so this is possible; the screen for you to edit them is not built. Today a threshold change means asking us.</td></tr>
+          <tr><td><strong>Delivery tracking</strong></td><td>Carrier and tracking number can be recorded by hand. Whether you want that automated, and with whom, is a question for you.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ═════════════════════════════════════════════════════════ -->
+  <section>
+    <div class="section-head">
+      <h2>Where we need you</h2>
+    </div>
+    <div class="panel">
+      <div class="stack" style="gap:10px">
+        <p style="font-size:15.5px;color:var(--ink-soft)">Four decisions are holding things up, and they are all clinical or commercial rather than technical — which is why we have not guessed at them. They are set out separately in the questions document, but in short:</p>
+        <ul>
+          <li><strong>Prices</strong> for a new patient and for a repeat.</li>
+          <li>Whether <strong>repeat care should switch on automatically</strong> at first supply, or be something a pharmacist turns on deliberately.</li>
+          <li>What happens to somebody who <strong>does not meet the BMI criteria</strong> — stopped at the form, or accepted for a pharmacist to judge.</li>
+          <li>The exact <strong>questions for transfer patients</strong>, and what proof you will accept.</li>
+        </ul>
+        <p style="font-size:15px;color:var(--ink-soft);margin-top:2px">Everything else can proceed while we wait.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Karsons Pharmacy Platform · how the service works</span>
+    <span>31 August 2026</span>
+    <span>Built to the workflow supplied 30 August 2026</span>
+  </footer>
+
+</div>
