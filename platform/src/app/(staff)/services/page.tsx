@@ -19,6 +19,7 @@ import Link from 'next/link';
 import { eq, and, isNull, desc } from 'drizzle-orm';
 import { PencilLine, Scale, Eye } from 'lucide-react';
 import { NewServiceButton } from './new-service-button';
+import { ServiceActionsMenu } from './service-actions-menu';
 import { getStaffContext } from '@/lib/auth/context';
 import { can } from '@/lib/tenancy/scope';
 import { db } from '@/lib/db/client';
@@ -32,6 +33,11 @@ export const dynamic = 'force-dynamic';
 export default async function ServicesPage() {
   const { actor } = await getStaffContext();
   const editable = can(actor, 'services:edit');
+  // Separate from editing on purpose. Authoring a form and withdrawing a
+  // service are different acts, and the permission grid already distinguishes
+  // them — a technician who may edit wording should not be able to take a
+  // service off the shelf.
+  const removable = can(actor, 'services:delete');
 
   const rows = await db
     .select({
@@ -129,6 +135,9 @@ export default async function ServicesPage() {
                       <PencilLine size={13} strokeWidth={2.2} />
                       Edit form
                     </Link>
+                  ) : null}
+                  {removable ? (
+                    <ServiceActionsMenu serviceId={row.id} serviceName={row.name} />
                   ) : null}
                 </div>
               </div>
