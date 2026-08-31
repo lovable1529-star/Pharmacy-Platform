@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   isSamePatient, chooseMatch, normalisePhone, normaliseEmail,
 } from '@/lib/patients/matching';
+import { identityLockKey } from '@/lib/patients/identify';
 
 const ada = {
   firstName: 'Ada',
@@ -132,5 +133,55 @@ describe('chooseMatch', () => {
     // The correct outcome is a new record: these are two different people who
     // happen to share a name and a birthday.
     expect(chooseMatch([different], ada)).toBeNull();
+  });
+});
+
+describe('serialising two submissions for the same person', () => {
+  /*
+   * Matching reads the candidates, decides, then inserts if none fit. Two
+   * requests doing that at once both read an empty list and both insert,
+   * leaving one patient with two records.
+   *
+   * That was theoretical while only staff created patients at a counter. It
+   * stopped being theoretical when the public form began creating them: a
+   * double-tapped submit is two concurrent submissions for one person.
+   *
+   * The lock is keyed on the identity, so the key has to normalise exactly as
+   * the candidate query does — otherwise the two requests take different locks
+   * and the race comes quietly back.
+   */
+  it('is the same key however the name was typed', () => {
+    const canonical = identityLockKey('org-1', {
+      firstName: 'Eleanor', lastName: 'Quirk', dateOfBirth: '1979-03-14',
+    });
+
+    for (const variant of [
+      { firstName: 'eleanor', lastName: 'quirk', dateOfBirth: '1979-03-14' },
+      { firstName: 'ELEANOR', lastName: 'QUIRK', dateOfBirth: '1979-03-14' },
+      { firstName: '  Eleanor ', lastName: 'Quirk  ', dateOfBirth: '1979-03-14' },
+    ]) {
+      expect(identityLockKey('org-1', variant)).toBe(canonical);
+    }
+  });
+
+  it('is a different key for a different person', () => {
+    const a = identityLockKey('org-1', {
+      firstName: 'Eleanor', lastName: 'Quirk', dateOfBirth: '1979-03-14',
+    });
+    for (const other of [
+      { firstName: 'Eleanor', lastName: 'Quirk', dateOfBirth: '1980-03-14' },
+      { firstName: 'Elinor', lastName: 'Quirk', dateOfBirth: '1979-03-14' },
+      { firstName: 'Eleanor', lastName: 'Quirke', dateOfBirth: '1979-03-14' },
+    ]) {
+      expect(identityLockKey('org-1', other)).not.toBe(a);
+    }
+  });
+
+  /* Two tenants must never wait on each other's patients. */
+  it('is a different key in a different organisation', () => {
+    const identity = {
+      firstName: 'Eleanor', lastName: 'Quirk', dateOfBirth: '1979-03-14',
+    };
+    expect(identityLockKey('org-1', identity)).not.toBe(identityLockKey('org-2', identity));
   });
 });

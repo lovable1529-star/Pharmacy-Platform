@@ -22,7 +22,7 @@ Ranked by real harm, not by the audit's own numbering.
 | 5 | Export permissions never enforced | confirmed | **done** |
 | 6 | Cross-tenant object scoping on mutations | partly true — needs a sweep | ☐ |
 | 7 | Duplicate `getStaffContext()` per navigation | confirmed | **done** |
-| 8 | Patient duplicate race under concurrency | confirmed — needs a DB constraint | ☐ |
+| 8 | Patient duplicate race under concurrency | confirmed — a constraint was the wrong tool | **done** — advisory lock, see below |
 | 9 | Inventory: adjustment / transfer / reconcile missing | confirmed | ☐ |
 | 10 | Client-side pagination on large tables | confirmed | ☐ |
 | 11 | Settings loads every tab's data | **measured — not slow** | **closed, no change** |
@@ -171,3 +171,25 @@ Three claims did not hold up:
 - **Command palette inert (F-022).** Already addressed — it is explicitly
   non-interactive and hidden from screen readers, so it cannot be discovered by
   tabbing. Recorded in `docs/open-items.html`.
+
+---
+
+## 8 — Patient duplicate race, revisited
+
+Closed 31 August 2026, but **not** the way the audit proposed.
+
+The audit called for a unique constraint. That would have been wrong.
+ deliberately creates a second record when two people
+share a name and a date of birth but contradict on contact details — they are a
+real pair of people, and a constraint on name and date of birth would refuse
+the second of them. A constraint on email cannot help either: email is
+optional, and Postgres treats nulls as distinct.
+
+The race is instead serialised with a transaction-scoped advisory lock keyed on
+the identity, the same mechanism  uses to stop concurrent writes
+forking the hash chain. The second request waits, reads the candidates the
+first has committed, and matches rather than inserting.
+
+Urgency changed on the way: this was theoretical while only staff created
+patients at a counter, and stopped being theoretical when the public
+new-patient form began creating them automatically.

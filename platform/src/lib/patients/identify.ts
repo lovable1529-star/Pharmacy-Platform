@@ -72,6 +72,29 @@ export function readIdentity(answers: Answers): PatientIdentity | null {
  * It never affects who can see the patient — patients are organisation-scoped,
  * because someone who had a flu jab at Onchan must be findable at Kirk Michael.
  */
+/**
+ * The key two submissions must agree on to queue behind each other.
+ *
+ * Normalised exactly as the candidate query normalises: trimmed and lowered.
+ * If they disagreed, "Eleanor" and "eleanor " would take different locks,
+ * both would find no candidate, and the race this exists to prevent would come
+ * quietly back.
+ *
+ * The organisation is included so two tenants holding a patient with the same
+ * name and birthday never wait on each other.
+ */
+export function identityLockKey(
+  organisationId: string,
+  identity: Pick<PatientIdentity, 'firstName' | 'lastName' | 'dateOfBirth'>,
+): string {
+  return [
+    organisationId,
+    identity.firstName.trim().toLowerCase(),
+    identity.lastName.trim().toLowerCase(),
+    identity.dateOfBirth,
+  ].join('|');
+}
+
 export async function matchOrCreatePatient(
   tx: Tx,
   input: {
@@ -81,6 +104,39 @@ export async function matchOrCreatePatient(
   },
 ): Promise<{ id: string; created: boolean; confirmedBy: ('phone' | 'email')[] }> {
   const { organisationId, identity } = input;
+
+  /*
+   * Serialise everybody claiming to be the same person.
+   *
+   * Matching reads the candidates, decides, and then inserts if none of them
+   * fit. Two requests running that at once both read an empty list and both
+   * insert, leaving one patient with two records — and every later lookup
+   * silently picking whichever comes back first.
+   *
+   * That was a theoretical race while only staff created patients, one at a
+   * time, at a counter. It stopped being theoretical when the public form
+   * began creating them: a patient who double-taps submit, or whose browser
+   * retries a slow request, is two concurrent submissions for one person.
+   *
+   * A UNIQUE constraint would be the usual answer and is the wrong one here.
+   * The code below deliberately creates a second record when two people share
+   * a name and a birthday but contradict on contact details — that is a real
+   * pair of people, not a duplicate — and a constraint on name and date of
+   * birth would refuse the second of them. One on the email cannot help
+   * either, because email is optional and Postgres treats nulls as distinct.
+   *
+   * An advisory lock keyed on the identity itself lets the second request wait
+   * rather than race: by the time it reads the candidates, the first has
+   * committed and it matches instead of inserting. It is held for the
+   * transaction only, it is per-identity rather than per-organisation so
+   * unrelated patients do not queue behind each other, and it works across
+   * application instances because the lock lives in the database.
+   *
+   * The same pattern the audit chain uses, for the same reason.
+   */
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtext(${identityLockKey(organisationId, identity)}))`,
+  );
 
   // Everyone who shares the name and date of birth — not just the first.
   // Taking `limit(1)` here was the bug: where two people genuinely shared both,
