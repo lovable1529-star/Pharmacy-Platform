@@ -179,16 +179,21 @@ Three claims did not hold up:
 Closed 31 August 2026, but **not** the way the audit proposed.
 
 The audit called for a unique constraint. That would have been wrong.
- deliberately creates a second record when two people
+`matchOrCreatePatient` deliberately creates a second record when two people
 share a name and a date of birth but contradict on contact details — they are a
 real pair of people, and a constraint on name and date of birth would refuse
 the second of them. A constraint on email cannot help either: email is
 optional, and Postgres treats nulls as distinct.
 
 The race is instead serialised with a transaction-scoped advisory lock keyed on
-the identity, the same mechanism  uses to stop concurrent writes
+the identity, the same mechanism `appendAudit` uses to stop concurrent writes
 forking the hash chain. The second request waits, reads the candidates the
 first has committed, and matches rather than inserting.
+
+Verified against the live database with warmed connections: a second attempt on
+the same identity waited 2289 ms behind a holder holding for 1500 ms, while a
+different identity got through in 921 ms rather than the ~1750 ms queuing would
+have cost.
 
 Urgency changed on the way: this was theoretical while only staff created
 patients at a counter, and stopped being theoretical when the public
