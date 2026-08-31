@@ -20,10 +20,10 @@ import { notFound } from 'next/navigation';
 import { db } from '@/lib/db/client';
 import {
   service, formVersion, organisation, submission, appointment, branch,
-  patientResource, medicine, servicePublicProfile,
+  medicine, servicePublicProfile,
 } from '@/lib/db/schema';
 import { resolveReferralUrl } from '@/lib/services/referral';
-import { applicableResources, type DisplayStage } from '@/lib/resources/applicable';
+import { loadApplicableResources } from '@/lib/resources/load';
 import { isExpired } from '@/lib/forms/draft';
 import { loadDoseLadders } from '@/lib/clinical/ladders';
 import { loadPreviousSupply } from '@/lib/clinical/previous-supply';
@@ -184,48 +184,6 @@ export default async function PublicFormPage({
   }
 
   /*
-   * The leaflets this patient must see before they sign.
-   *
-   * Read here rather than baked into the form version, because the client
-   * edits these without a deployment and a form republish would split the
-   * answer history of every unrelated question on the questionnaire.
-   *
-   * Only BEFORE_SUBMISSION and BOTH: a resource shown after the prescription
-   * has nothing to do with a form somebody is still filling in.
-   */
-  const resourceRows = await db
-    .select({
-      id: patientResource.id,
-      resourceKey: patientResource.resourceKey,
-      version: patientResource.version,
-      title: patientResource.title,
-      description: patientResource.description,
-      url: patientResource.url,
-      displayStage: patientResource.displayStage,
-      requiresAcknowledgement: patientResource.requiresAcknowledgement,
-      sortOrder: patientResource.sortOrder,
-      active: patientResource.active,
-      archivedAt: patientResource.archivedAt,
-      medicineId: patientResource.medicineId,
-      medicineBrand: medicine.brand,
-    })
-    .from(patientResource)
-    .leftJoin(medicine, eq(patientResource.medicineId, medicine.id))
-    .where(and(
-      eq(patientResource.serviceId, row.serviceId),
-      eq(patientResource.organisationId, row.organisationId),
-    ));
-
-  /*
-   * Matched on brand rather than on id. The enrolment records the medicine as
-   * a name, and resolving that to an id here would be a second query to learn
-   * something this row already carries.
-   */
-  const currentMedicineId = currentMedicineBrand
-    ? resourceRows.find((r) => r.medicineBrand === currentMedicineBrand)?.medicineId ?? null
-    : null;
-
-  /*
    * Where a patient who would rather be seen in person is sent.
    *
    * Read here rather than baked into the form, because it is a different
@@ -247,10 +205,41 @@ export default async function PublicFormPage({
     serviceSlug: slug,
   });
 
-  const resources = applicableResources(
-    resourceRows.map((r) => ({ ...r, displayStage: r.displayStage as DisplayStage })),
-    { stage: 'BEFORE_SUBMISSION', medicineId: currentMedicineId },
-  ).map((r) => ({
+  /* The enrolment records a brand name; resources are keyed by medicine id. */
+  const [currentMedicine] = currentMedicineBrand
+    ? await db
+      .select({ id: medicine.id })
+      .from(medicine)
+      .where(and(
+        eq(medicine.brand, currentMedicineBrand),
+        eq(medicine.organisationId, row.organisationId),
+      ))
+      .limit(1)
+    : [];
+
+  const currentMedicineId = currentMedicine?.id ?? null;
+
+  /*
+   * The leaflets this patient must see before they sign.
+   *
+   * Read here rather than baked into the form version, because the client
+   * edits these without a deployment and a form republish would split the
+   * answer history of every unrelated question on the questionnaire.
+   *
+   * Only BEFORE_SUBMISSION and BOTH: a resource shown after the prescription
+   * has nothing to do with a form somebody is still filling in.
+   */
+  const resources = (await loadApplicableResources(db, {
+    organisationId: row.organisationId,
+    serviceId: row.serviceId,
+    stage: 'BEFORE_SUBMISSION',
+    /*
+     * A repeat patient's enrolment names their medicine; a new patient has not
+     * been prescribed anything yet, so the medicine-specific leaflets are left
+     * out rather than all shown.
+     */
+    medicineId: currentMedicineId,
+  })).map((r) => ({
     id: r.id,
     title: r.title,
     description: r.description,

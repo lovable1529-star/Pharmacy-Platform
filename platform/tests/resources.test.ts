@@ -23,6 +23,10 @@ import {
   acknowledgementValues,
   requestedIds,
 } from '../src/lib/workflow/resources';
+import {
+  resourceAppendixHtml,
+  resourceAppendixText,
+} from '../src/lib/resources/appendix';
 
 const MOUNJARO = '11111111-1111-1111-1111-111111111111';
 const WEGOVY = '22222222-2222-2222-2222-222222222222';
@@ -354,5 +358,84 @@ describe('ids arriving from the browser', () => {
 
   it('returns nothing for nothing', () => {
     expect(requestedIds([])).toEqual([]);
+  });
+});
+
+describe('the leaflets that go out with a prescription', () => {
+  const leaflet = {
+    title: 'Storing your pens',
+    description: 'Keep them in the fridge until first use.',
+    url: 'https://karsons.im/storage',
+  };
+
+  it('says nothing at all when there is nothing to say', () => {
+    // A message headed "While you are taking this" with nothing under it
+    // looks broken, and a pharmacy may have configured no resources.
+    expect(resourceAppendixHtml([])).toBeNull();
+    expect(resourceAppendixText([])).toBeNull();
+  });
+
+  it('links each leaflet by its title', () => {
+    const html = resourceAppendixHtml([leaflet])!;
+    expect(html).toContain('https://karsons.im/storage');
+    expect(html).toContain('Storing your pens');
+    expect(html).toContain('Keep them in the fridge until first use.');
+  });
+
+  it('leaves out a description that was never written', () => {
+    const html = resourceAppendixHtml([{ ...leaflet, description: null }])!;
+    expect(html).toContain('Storing your pens');
+    expect(html).not.toContain('undefined');
+    expect(html).not.toContain('null');
+  });
+
+  it('leaves out a description that is only whitespace', () => {
+    const html = resourceAppendixHtml([{ ...leaflet, description: '   ' }])!;
+    expect(html).not.toMatch(/margin-top:2px;">\s*<\/div>/);
+  });
+
+  it('escapes a title so it cannot break out of the markup', () => {
+    // Staff type these. A title is not markup.
+    const html = resourceAppendixHtml([{
+      ...leaflet,
+      title: '<script>alert(1)</script>',
+      description: null,
+    }])!;
+
+    expect(html).not.toContain('<script>');
+    expect(html).toContain('&lt;script&gt;');
+  });
+
+  it('escapes a link so a quote cannot escape the href', () => {
+    const html = resourceAppendixHtml([{
+      ...leaflet,
+      url: 'https://karsons.im/a" onmouseover="alert(1)',
+      description: null,
+    }])!;
+
+    expect(html).not.toContain('onmouseover="alert(1)"');
+    expect(html).toContain('&quot;');
+  });
+
+  it('keeps the order it was given, which is the order the client set', () => {
+    const html = resourceAppendixHtml([
+      { ...leaflet, title: 'First' },
+      { ...leaflet, title: 'Second' },
+    ])!;
+
+    expect(html.indexOf('First')).toBeLessThan(html.indexOf('Second'));
+  });
+
+  it('has a plain-text form that is not the HTML with the tags pulled off', () => {
+    const text = resourceAppendixText([{
+      ...leaflet,
+      title: 'Sharps & needles',
+      description: null,
+    }])!;
+
+    // An ampersand is an ampersand in plain text, not an entity.
+    expect(text).toContain('Sharps & needles');
+    expect(text).toContain('https://karsons.im/storage');
+    expect(text).not.toContain('<');
   });
 });

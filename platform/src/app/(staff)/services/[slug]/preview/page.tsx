@@ -18,11 +18,9 @@ import { notFound } from 'next/navigation';
 import { ArrowLeft, Eye, ExternalLink, PencilLine } from 'lucide-react';
 import { getStaffContext } from '@/lib/auth/context';
 import { db } from '@/lib/db/client';
-import {
-  service, formVersion, patientResource, medicine, servicePublicProfile,
-} from '@/lib/db/schema';
+import { service, formVersion, servicePublicProfile } from '@/lib/db/schema';
 import { resolveReferralUrl } from '@/lib/services/referral';
-import { applicableResources, type DisplayStage } from '@/lib/resources/applicable';
+import { loadApplicableResources } from '@/lib/resources/load';
 import type { FormSchema } from '@/types/form-schema';
 import { FormPreview } from './form-preview';
 
@@ -75,37 +73,6 @@ export default async function ServicePreviewPage({
 
   const schema = row.schema as unknown as FormSchema;
 
-  /*
-   * The leaflets a patient would see on this form. Shown in preview for the
-   * same reason the conditional questions are: a colleague checking whether
-   * the form reads correctly should see what the patient sees, and resources
-   * are now part of that. Nothing is required and nothing is recorded here.
-   *
-   * No medicine filter — a preview has no patient, so only the resources that
-   * apply to everybody appear, which is what a new patient would get too.
-   */
-  const resourceRows = await db
-    .select({
-      id: patientResource.id,
-      resourceKey: patientResource.resourceKey,
-      version: patientResource.version,
-      title: patientResource.title,
-      description: patientResource.description,
-      url: patientResource.url,
-      displayStage: patientResource.displayStage,
-      requiresAcknowledgement: patientResource.requiresAcknowledgement,
-      sortOrder: patientResource.sortOrder,
-      active: patientResource.active,
-      archivedAt: patientResource.archivedAt,
-      medicineId: patientResource.medicineId,
-    })
-    .from(patientResource)
-    .leftJoin(medicine, eq(patientResource.medicineId, medicine.id))
-    .where(and(
-      eq(patientResource.serviceId, row.id),
-      eq(patientResource.organisationId, actor.organisationId),
-    ));
-
   const [profile] = await db
     .select({ f2fReferralUrl: servicePublicProfile.f2fReferralUrl })
     .from(servicePublicProfile)
@@ -121,10 +88,20 @@ export default async function ServicePreviewPage({
     serviceSlug: slug,
   });
 
-  const resources = applicableResources(
-    resourceRows.map((r) => ({ ...r, displayStage: r.displayStage as DisplayStage })),
-    { stage: 'BEFORE_SUBMISSION' },
-  ).map((r) => ({
+  /*
+   * The leaflets a patient would see on this form. Shown in preview for the
+   * same reason the conditional questions are: a colleague checking whether
+   * the form reads correctly should see what the patient sees. Nothing is
+   * required and nothing is recorded here.
+   *
+   * No medicine, because a preview has no patient — so only the resources that
+   * apply to everybody appear, which is what a new patient gets too.
+   */
+  const resources = (await loadApplicableResources(db, {
+    organisationId: actor.organisationId,
+    serviceId: row.id,
+    stage: 'BEFORE_SUBMISSION',
+  })).map((r) => ({
     id: r.id,
     title: r.title,
     description: r.description,

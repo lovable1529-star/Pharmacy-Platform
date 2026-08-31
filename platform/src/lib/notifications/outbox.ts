@@ -67,6 +67,16 @@ export async function queueFromTemplate(input: {
   recipient: string;
   templateKey: string;
   values: Substitutions;
+  /**
+   * A block appended after the wording — today, the leaflets that go out with
+   * a prescription.
+   *
+   * Held to the same rule as clinical substitutions and for the same reason: a
+   * link reading "How to inject your Mounjaro" names the medicine as surely as
+   * a {medicine} token would. A template not allowed clinical detail never
+   * gets it, whatever the caller passes.
+   */
+  clinicalAppendix?: string | null;
   entityType?: string | null;
   entityId?: string | null;
   scheduledFor?: Date;
@@ -75,9 +85,15 @@ export async function queueFromTemplate(input: {
   // rest on somebody's phone, and neither should carry clinical detail.
   const channel: TemplateChannel = input.channel === 'EMAIL' ? 'EMAIL' : 'SMS';
   const template = await loadTemplate(db, input.organisationId, input.templateKey, channel);
-  const body = render(template, input.values);
+  const rendered = render(template, input.values);
 
-  if (hasUnfilled(body)) {
+  const appendix = template.clinicalDetailAllowed ? input.clinicalAppendix?.trim() : null;
+  const body = appendix ? `${rendered}
+${appendix}` : rendered;
+
+  // Checked against the wording alone. The appendix is generated, not
+  // authored, so a brace in a leaflet title is not an unfilled placeholder.
+  if (hasUnfilled(rendered)) {
     // A placeholder that never filled means the template asks for something
     // this channel may not carry. Sending it would show a patient a raw
     // {token}; refusing it puts the problem in the log where it gets fixed.

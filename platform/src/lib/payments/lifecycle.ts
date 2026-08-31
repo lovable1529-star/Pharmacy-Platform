@@ -26,6 +26,8 @@ import { resolveAppUrl } from '@/lib/app-url';
 import { changeSubmissionStatus } from '@/lib/workflow/history';
 import { issuePrescription } from '@/lib/prescriptions/issue';
 import { createFulfilmentForPrescription } from '@/lib/fulfilment/create';
+import { loadApplicableResources } from '@/lib/resources/load';
+import { resourceAppendixHtml } from '@/lib/resources/appendix';
 import { canTransition, type SubmissionStatus } from '@/lib/workflow/status';
 import {
   generatePaymentToken, paymentExpiry, activeProvider, formatMoney,
@@ -320,6 +322,8 @@ export async function settlePayment(input: {
       .select({
         patientEmail: patient.email,
         patientName: patient.firstName,
+        patientId: patient.id,
+        serviceId: submission.serviceId,
         serviceName: service.name,
         branchName: branch.name,
         branchInbox: branch.inboxEmail,
@@ -361,12 +365,40 @@ export async function settlePayment(input: {
        * cannot name what they are collecting.
        */
       if (context.patientEmail) {
+        /*
+         * The leaflets the pharmacy wants read once somebody actually has the
+         * medicine — storage, side effects, needle disposal. This is the first
+         * moment the medicine is known, so medicine-specific ones can finally
+         * apply; on the form nobody had been prescribed anything yet.
+         *
+         * Passed as an appendix rather than a substitution because the list is
+         * a different length for every patient, and passed as CLINICAL detail
+         * because "How to inject your Mounjaro" names the medicine — the
+         * outbox drops it on any template not allowed clinical detail.
+         */
+        const [rx] = await db
+          .select({ medicineId: prescription.medicineId })
+          .from(prescription)
+          .where(and(
+            eq(prescription.submissionId, settled.submissionId),
+            eq(prescription.organisationId, settled.organisationId),
+          ))
+          .limit(1);
+
+        const afterRx = await loadApplicableResources(db, {
+          organisationId: settled.organisationId,
+          serviceId: context.serviceId,
+          stage: 'AFTER_RX',
+          medicineId: rx?.medicineId ?? null,
+        });
+
         await queueFromTemplate({
           organisationId: settled.organisationId,
           channel: 'EMAIL',
           recipient: context.patientEmail,
           templateKey: 'prescription.ready',
           values: { safe: { firstName: context.patientName ?? 'there' } },
+          clinicalAppendix: resourceAppendixHtml(afterRx),
           entityType: 'submission',
           entityId: settled.submissionId ?? null,
         });
