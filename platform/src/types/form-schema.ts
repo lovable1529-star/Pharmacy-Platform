@@ -169,6 +169,14 @@ export interface FormSchema {
   schemaVersion: 1;
   title: string;
   description?: string;
+  /**
+   * What the patient reads after submitting.
+   *
+   * Optional, because the wizard's default has to be true for every service.
+   * Set it where a service can say something more specific - a remote patient
+   * being telephoned needs different words from somebody with an appointment.
+   */
+  completionMessage?: string;
   steps: FormStep[];
   /** Numbers every question sequentially — he asked for this and never got it. */
   numberQuestions?: boolean;

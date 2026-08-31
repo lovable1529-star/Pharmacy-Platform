@@ -206,8 +206,20 @@ export function FormWizard({
         </div>
         <h2 className="mb-2 text-[24px] text-ink">Thank you</h2>
         <p className="text-[15px] leading-relaxed text-ink-soft">
-          Your answers have been sent to the pharmacy. There is nothing else to do — a pharmacist
-          will go through them with you at your appointment.
+          {/*
+            The default has to be true for every service using this wizard.
+            It said "a pharmacist will go through them with you at your
+            appointment", which is right for a booked flu jab and wrong for a
+            remote weight-management patient who will never have one — and
+            being told to expect an appointment that is not coming is worse
+            than being told nothing.
+
+            A form can override it with `completionMessage` where the pharmacy
+            wants to say something more specific.
+          */}
+          {schema.completionMessage
+            ?? 'Your answers have been sent to the pharmacy. There is nothing else to do — '
+              + 'a pharmacist will review them and be in touch.'}
         </p>
       </div>
     );

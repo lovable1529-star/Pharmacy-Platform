@@ -22,7 +22,7 @@ import type { Tx } from '@/lib/actions';
 import {
   prescription, submission, service, clinician, medicine, medicineStrength,
 } from '@/lib/db/schema';
-import { allocatePrescriptionNumber } from '@/lib/pdf/numbering';
+import { allocatePrescriptionNumber, allocatePrescriptionNumberForSubmission } from '@/lib/pdf/numbering';
 import { parseMedicineValue } from '@/lib/clinical/derived';
 import type { DoseLadders } from '@/lib/clinical/derived';
 
@@ -153,6 +153,7 @@ export async function issuePrescription(
       status: prescription.status,
       number: prescription.number,
       submissionId: prescription.submissionId,
+      consultationId: prescription.consultationId,
     })
     .from(prescription)
     .where(eq(prescription.id, prescriptionId))
@@ -163,21 +164,33 @@ export async function issuePrescription(
   // Already issued. Re-issuing must not burn a second number for one supply.
   if (row.status !== 'PENDING_PAYMENT') return { number: row.number };
 
-  const consultationNumber = row.submissionId
-    ? await allocatePrescriptionNumber(row.submissionId).catch(() => null)
-    : null;
+  /*
+   * Numbered from whichever record this supply actually has.
+   *
+   * `allocatePrescriptionNumber` reads the organisation and branch from the
+   * CONSULTATION table, and was being handed a submission id. For a
+   * face-to-face supply the two happen to line up often enough that it worked;
+   * for a remote one there is no consultation at all, so it raised, the error
+   * was swallowed, and the prescription was issued with no number — the
+   * pharmacy's only external reference to a real supply.
+   */
+  const allocated = row.consultationId
+    ? await allocatePrescriptionNumber(row.consultationId).catch(() => null)
+    : row.submissionId
+      ? await allocatePrescriptionNumberForSubmission(row.submissionId).catch(() => null)
+      : null;
 
   await tx
     .update(prescription)
     .set({
       status: 'ISSUED',
-      number: consultationNumber ?? row.number,
+      number: allocated ?? row.number,
       issuedAt: new Date(),
       updatedAt: new Date(),
     })
     .where(eq(prescription.id, prescriptionId));
 
-  return { number: consultationNumber ?? row.number };
+  return { number: allocated ?? row.number };
 }
 
 /** The strengths on the master, for the issue form's dropdown. */

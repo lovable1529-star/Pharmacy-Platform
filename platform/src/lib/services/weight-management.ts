@@ -155,6 +155,12 @@ export function buildWeightManagementNewPatientForm(
       + 'is right for you. It takes about ten minutes and you can stop and come back.',
     numberQuestions: true,
     estimatedMinutes: 10,
+    // Says what actually happens next on this service. Takes effect on the
+    // next publish; the wizard default is already safe for both journeys.
+    completionMessage:
+      'Thank you. A pharmacist will review your answers and telephone you on the number you '
+      + 'gave us, usually within one working day. Nothing is supplied until you have spoken '
+      + 'to them.',
     consentClauses: GLP1_CONSENT_CLAUSES,
     clinicianDeclarations: GLP1_CLINICIAN_DECLARATIONS,
     steps: [

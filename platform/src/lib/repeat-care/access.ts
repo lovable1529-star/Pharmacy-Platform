@@ -20,6 +20,7 @@
 import { and, eq, sql } from 'drizzle-orm';
 import type { Tx } from '@/lib/actions';
 import { repeatEnrolment, patient } from '@/lib/db/schema';
+import { normaliseRepeatReference } from '@/lib/repeat-care/reference';
 
 export type AccessOutcome =
   | { allowed: true; enrolmentId: string; patientId: string; serviceId: string }
@@ -90,7 +91,13 @@ export async function checkRepeatCareAccess(
         eq(repeatEnrolment.serviceId, attempt.serviceId),
         // Case and padding are not identity. Compared in SQL so the index and
         // the comparison agree rather than filtering in application code.
-        sql`lower(trim(${repeatEnrolment.externalRef})) = lower(${reference})`,
+        /*
+         * Dashes and spaces are not identity. A reference read over the
+         * telephone comes back without its dashes about as often as with them,
+         * and refusing that teaches people the system is broken.
+         */
+        sql`upper(replace(replace(trim(${repeatEnrolment.externalRef}), '-', ''), ' ', ''))
+            = ${normaliseRepeatReference(reference)}`,
         sql`lower(trim(${patient.email})) = ${email}`,
       ),
     )

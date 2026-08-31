@@ -26,6 +26,7 @@ import { changeSubmissionStatus } from '@/lib/workflow/history';
 import { raisePrescription } from '@/lib/prescriptions/issue';
 import { registerDocument } from '@/lib/documents/register';
 import { approvalBlocker } from '@/lib/prescriptions/approval';
+import { issuePrescriptionWithoutPayment } from '@/lib/fulfilment/create';
 import {
   newPatientApprovalBlockers, type VerificationCall,
 } from '@/lib/clinical/new-patient-gate';
@@ -318,6 +319,11 @@ const decide = action<DecideInput>('repeat_care:edit')
           quantity: authorised?.quantity?.trim()
             || (typeof answers.supplyQuantity === 'string'
               ? `${answers.supplyQuantity} month(s)` : null),
+          // Was never passed. `raisePrescription` has always accepted it, so a
+          // prescriber typed the directions, the field was stored on the
+          // authorisation, and the prescription came out with none — which is
+          // the one part of it the patient actually follows.
+          directions: authorised?.directions?.trim() || null,
           paidOnline: answers.paymentPreference === 'online',
         });
       }
@@ -367,7 +373,30 @@ async function raisePendingPayment(submissionId: string): Promise<string | null>
       .where(eq(submission.id, submissionId))
       .limit(1);
 
-    if (!row || !row.priceMinor || row.priceMinor <= 0) return null;
+    if (!row) return null;
+
+    /*
+     * No price means nothing to collect, not nothing to do.
+     *
+     * This returned null and stopped, which left the prescription sitting at
+     * PENDING_PAYMENT with no payment to settle it — forever, and with nothing
+     * on screen saying why. Both Weight Management services currently have no
+     * price set, so every approval produced a prescription that could never be
+     * issued.
+     *
+     * Where there is genuinely nothing to charge — an NHS-funded service, or a
+     * price the pharmacy has not configured yet — the supply proceeds. It is
+     * issued here rather than by a payment that will never arrive.
+     */
+    if (!row.priceMinor || row.priceMinor <= 0) {
+      await db.transaction(async (tx) => {
+        await issuePrescriptionWithoutPayment(tx, {
+          organisationId: row.organisationId,
+          submissionId,
+        });
+      });
+      return null;
+    }
 
     const requested = await requestPayment({
       organisationId: row.organisationId,

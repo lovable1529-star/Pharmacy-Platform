@@ -15,6 +15,8 @@ import {
 } from '@/lib/db/schema';
 import { methodFromAnswers } from '@/lib/fulfilment/transitions';
 import { enrolmentSeedFromSupply, seedGaps } from '@/lib/clinical/enrol-on-supply';
+import { issuePrescription } from '@/lib/prescriptions/issue';
+import { generateRepeatReference } from '@/lib/repeat-care/reference';
 import type { Answers } from '@/types/form-schema';
 
 /**
@@ -193,6 +195,12 @@ export async function enrolFromSupply(
     patientId: row.patientId,
     serviceId: repeatService.id,
     status: 'ACTIVE',
+    /*
+     * The Repeat Care ID the patient types at the gate. Without one the
+     * enrolment is unreachable - they have nothing to enter and the gate
+     * refuses everybody, which is what an automatically created enrolment did.
+     */
+    externalRef: generateRepeatReference(),
     heightCm: seed.heightCm,
     startingWeightKg: seed.startingWeightKg,
     startingWaistCm: seed.startingWaistCm,
@@ -205,4 +213,44 @@ export async function enrolFromSupply(
   });
 
   return { created: true, updated: false, gaps };
+}
+
+/**
+ * Issue a prescription where there is nothing to pay.
+ *
+ * Payment is normally what releases the document: it allocates the number and
+ * moves the prescription to ISSUED. A service with no price has no payment to
+ * settle, so without this the prescription sits at PENDING_PAYMENT waiting for
+ * an event that will never happen — which is what both Weight Management
+ * services did, since neither has a price configured.
+ *
+ * Deliberately the same three steps settlement performs, in the same order, so
+ * a free supply and a paid one produce the same records.
+ */
+export async function issuePrescriptionWithoutPayment(
+  tx: Tx,
+  input: { organisationId: string; submissionId: string },
+): Promise<{ issued: boolean }> {
+  const [raised] = await tx
+    .select({ id: prescription.id, status: prescription.status })
+    .from(prescription)
+    .where(
+      and(
+        eq(prescription.submissionId, input.submissionId),
+        eq(prescription.organisationId, input.organisationId),
+      ),
+    )
+    .limit(1);
+
+  if (!raised || raised.status !== 'PENDING_PAYMENT') return { issued: false };
+
+  await issuePrescription(tx, raised.id);
+
+  await createFulfilmentForPrescription(tx, {
+    organisationId: input.organisationId,
+    prescriptionId: raised.id,
+    submissionId: input.submissionId,
+  });
+
+  return { issued: true };
 }
