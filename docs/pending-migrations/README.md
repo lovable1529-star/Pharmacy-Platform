@@ -68,6 +68,36 @@ This applies exactly two scripts.
 
 ---
 
+## Running these in the Supabase SQL editor
+
+That editor runs whatever you paste as ONE batch, inside its own transaction.
+So a script that publishes a form version and then reads it back is doing the
+expensive read inside the same transaction as the write — and if the editor
+times out on the read, it rolls the write back with it. The publish appears to
+run, sits on "running…", and changes nothing.
+
+That is what happened with `25_wm_new_patient_form_v3.sql` on 1 September 2026.
+Nothing was left locked and nothing was half-applied; the version simply was
+not there afterwards.
+
+So the checks now ship as separate `*_verify.sql` files. Run the migration on
+its own — it is a single insert and returns immediately — then run the verify
+file separately. Never paste both together.
+
+Before re-running anything that publishes a form version, check whether it
+actually applied. These scripts are not idempotent: a second successful run
+publishes ANOTHER version.
+
+```sql
+select fv.version, fv.published_at, (fv.id = s.published_form_version_id) as live
+  from form_version fv
+  join service s on s.id = fv.service_id
+ where s.slug = 'weight-management-first'
+ order by fv.version;
+```
+
+---
+
 ## Verify
 
 Both scripts end with a `select` that counts what they created. Every column

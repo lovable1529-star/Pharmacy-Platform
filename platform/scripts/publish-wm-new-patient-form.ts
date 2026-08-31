@@ -156,8 +156,9 @@ update public.service
  where public.service.id = '${service.id}'::uuid;
 
 commit;
+`;
 
--- ── Verify ──────────────────────────────────────────────────
+const verify = `-- ── Verify ──────────────────────────────────────────────────
 -- Expect: the next version, ${steps} steps, and 1 / 3 / 1 / 1 across the flags.
 select s.slug,
        fv.version,
@@ -180,7 +181,24 @@ select s.slug,
     const path = join(root, '..', 'docs', 'pending-migrations', outputName);
     writeFileSync(path, out, 'utf8');
 
+    /*
+     * The check ships as its own file.
+     *
+     * It used to sit at the bottom of the migration, which meant the Supabase
+     * SQL editor ran both in one batch — and that editor wraps a batch in its
+     * own transaction. The check is four correlated jsonb_array_elements scans
+     * and a full ::text cast over a 20KB document, so on a slow connection the
+     * batch timed out AFTER the insert and rolled the publish back with it.
+     * The publish looked like it had run and had not.
+     *
+     * Separated, the migration is one small insert that returns immediately,
+     * and the slow read cannot take it down.
+     */
+    const verifyName = outputName.replace(/\.sql$/, '_verify.sql');
+    writeFileSync(join(root, '..', 'docs', 'pending-migrations', verifyName), verify, 'utf8');
+
     console.log(`Wrote docs/pending-migrations/${outputName}`);
+    console.log(`Wrote docs/pending-migrations/${verifyName} — run after, on its own`);
     console.log(`  ${steps} steps, ${fields} top-level questions`);
     console.log(`  ${branches.length} branches: ${branches.map((b) => b.name).join(', ')}`);
     console.log(`  service ${service.id} (${service.name})`);
