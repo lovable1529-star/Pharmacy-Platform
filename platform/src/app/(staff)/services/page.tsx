@@ -100,10 +100,17 @@ export default async function ServicesPage() {
                     ) : (
                       <Tag tone="review">no published form</Tag>
                     )}
+                    {/* The tag was the only sign a service had rules and led
+                        nowhere. It is now the way in to reading them. */}
                     {row.rulesetVersion !== null ? (
-                      <Tag tone="brand">
-                        <Scale size={10} strokeWidth={2.2} /> rules v{row.rulesetVersion}
-                      </Tag>
+                      <Link
+                        href={`/services/${row.slug}/rules`}
+                        className="rounded-[5px] transition-opacity hover:opacity-75"
+                      >
+                        <Tag tone="brand">
+                          <Scale size={10} strokeWidth={2.2} /> rules v{row.rulesetVersion}
+                        </Tag>
+                      </Link>
                     ) : null}
                     <span className="tabular font-mono text-[11.5px] text-ink-faint">
                       {steps} steps · {questions} questions
