@@ -6,10 +6,11 @@
  * query the database. A pharmacist asked "why was this amber?" could see the
  * trace on the request but never the rulebook it came from.
  *
- * Read-only on purpose, for now. Editing clinical rules needs the same
- * versioning discipline forms have — an edit must not change what a past RED
- * meant — and that is a larger piece of work than showing them. Seeing them is
- * most of the value and none of the risk.
+ * Editable, within limits. A rule can be turned off, re-graded, re-prioritised,
+ * reworded and have its thresholds moved; adding or removing rules and changing
+ * the shape of a condition are not offered, because those change what a rule IS
+ * rather than how it is tuned. Every change publishes a new version and leaves
+ * the old one untouched, so what a past RED meant does not move underneath it.
  *
  * The part that earns its place is the check at the top. Rules read answers by
  * field id, the form is versioned separately, and the pharmacy can republish it
@@ -24,24 +25,16 @@ import Link from 'next/link';
 import { and, eq, isNull } from 'drizzle-orm';
 import { ArrowLeft, Scale, TriangleAlert, PencilLine } from 'lucide-react';
 import { getStaffContext } from '@/lib/auth/context';
+import { can } from '@/lib/tenancy/scope';
 import { db } from '@/lib/db/client';
 import { service, formVersion, rulesetVersion } from '@/lib/db/schema';
-import {
-  byOutcome, checkRulesetCoverage, describeCondition,
-} from '@/lib/rules/coverage';
-import type { Condition, RulesetDefinition } from '@/lib/rules/engine';
+import { checkRulesetCoverage } from '@/lib/rules/coverage';
+import { RulesClient } from './rules-client';
+import type { RulesetDefinition } from '@/lib/rules/engine';
 import type { FormSchema } from '@/types/form-schema';
-import { EmptyState, Notice, PageHeader, Panel, Tag } from '@/components/ui/primitives';
+import { EmptyState, Notice, PageHeader, Panel } from '@/components/ui/primitives';
 
 export const dynamic = 'force-dynamic';
-
-const OUTCOME_TONE = { RED: 'stop', AMBER: 'review', GREEN: 'safe' } as const;
-
-const OUTCOME_MEANING = {
-  RED: 'Cannot be supplied on the form alone. A pharmacist has to act.',
-  AMBER: 'A pharmacist reads it and decides.',
-  GREEN: 'Nothing flagged — authorise and supply.',
-} as const;
 
 export default async function ServiceRulesPage(
   { params }: { params: Promise<{ slug: string }> },
@@ -105,7 +98,6 @@ export default async function ServiceRulesPage(
   const definition = row.ruleset as unknown as RulesetDefinition;
   const schema = (row.schema as unknown as FormSchema | null) ?? null;
   const coverage = checkRulesetCoverage(definition, schema);
-  const groups = byOutcome(coverage.rules);
 
   return (
     <div className="page-shell mx-auto max-w-[calc(940px_+_var(--nav-freed,0px))] animate-rise px-7 pb-11 pt-7">
@@ -166,94 +158,23 @@ export default async function ServiceRulesPage(
         </p>
       </Panel>
 
-      <div className="grid gap-5">
-        {groups.map((group) => (
-          <section key={group.outcome}>
-            <div className="mb-2 flex flex-wrap items-baseline gap-x-2.5 gap-y-1">
-              <Tag tone={OUTCOME_TONE[group.outcome]}>{group.outcome}</Tag>
-              <span className="text-[13px] text-ink-faint">
-                {OUTCOME_MEANING[group.outcome]}
-              </span>
-              <span className="tabular ml-auto font-mono text-[11.5px] text-ink-faint">
-                {group.rules.length} {group.rules.length === 1 ? 'rule' : 'rules'}
-              </span>
-            </div>
+      <RulesClient
+        definition={definition}
+        coverage={coverage.rules}
+        serviceId={row.id}
+        version={row.rulesetVersion!}
+        editable={can(actor, 'services:edit')}
+      />
 
-            <div className="grid gap-2">
-              {group.rules.map((rule) => {
-                const source = definition.rules.find((r) => r.id === rule.ruleId);
-
-                return (
-                  <Panel
-                    key={rule.ruleId}
-                    className={`px-5 py-[13px] ${rule.broken ? 'border-stop-200 bg-stop-50/40' : ''}`}
-                  >
-                    <div className="flex flex-wrap items-start gap-x-3 gap-y-1.5">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="text-[14.5px] font-semibold text-ink">
-                          {rule.label}
-                        </h3>
-
-                        {/*
-                          The condition in words. A pharmacist deciding whether a
-                          rule says what they meant cannot answer that from
-                          {"op":"lt","field":"derived.bmi","value":23}.
-                        */}
-                        <p className="mt-1 text-[13px] leading-[1.5] text-ink-soft">
-                          when{' '}
-                          <span className="text-ink">
-                            {source ? describeCondition(source.when as Condition) : '—'}
-                          </span>
-                        </p>
-
-                        {source?.message ? (
-                          <p className="mt-1 text-[12.5px] italic leading-[1.5] text-ink-faint">
-                            Staff see: {source.message}
-                          </p>
-                        ) : null}
-
-                        {rule.broken ? (
-                          <p className="mt-1.5 text-[12.5px] font-medium text-stop-700">
-                            Never matches — the form does not ask{' '}
-                            <span className="font-mono">
-                              {rule.dependencies
-                                .filter((d) => d.status === 'missing')
-                                .map((d) => d.key)
-                                .join(', ')}
-                            </span>
-                          </p>
-                        ) : null}
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-2">
-                        {!rule.enabled ? <Tag tone="neutral">off</Tag> : null}
-                        <span
-                          className="tabular font-mono text-[11px] text-ink-faint"
-                          title="Higher is considered first among equally severe matches"
-                        >
-                          p{rule.priority}
-                        </span>
-                      </div>
-                    </div>
-                  </Panel>
-                );
-              })}
-            </div>
-          </section>
-        ))}
-      </div>
-
-      {/*
-        Said plainly rather than left for somebody to discover by hunting for an
-        edit button that is not there.
-      */}
       <p className="mt-6 flex items-start gap-2 text-[12.5px] leading-[1.5] text-ink-faint">
         <PencilLine size={13} strokeWidth={2} className="mt-[2px] shrink-0" />
         <span>
-          These are not editable here yet. Changing a clinical rule has to version
-          the way a form does, so that what a past red meant does not change
-          underneath it — that is being built. Ask for a rule change and it is a
-          scripted database update in the meantime.
+          A rule can be turned off, re-graded, re-prioritised, reworded, and have
+          its thresholds moved. Adding or removing a rule, or changing the SHAPE
+          of a condition, is not offered here — moving "BMI under 23" to 25 is
+          tuning; rewriting what the rule asks is a different act. Every change
+          publishes a new version and leaves the old one untouched, so what a
+          past red meant does not move underneath it.
         </span>
       </p>
     </div>
