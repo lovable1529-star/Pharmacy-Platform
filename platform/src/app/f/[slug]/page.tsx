@@ -191,7 +191,16 @@ export default async function PublicFormPage({
    * in the questionnaire would make every move a republish.
    */
   const [profile] = await db
-    .select({ f2fReferralUrl: servicePublicProfile.f2fReferralUrl })
+    .select({
+      f2fReferralUrl: servicePublicProfile.f2fReferralUrl,
+      publicBrandName: servicePublicProfile.publicBrandName,
+      primaryColour: servicePublicProfile.primaryColour,
+      supportEmail: servicePublicProfile.supportEmail,
+      supportPhone: servicePublicProfile.supportPhone,
+      privacyUrl: servicePublicProfile.privacyUrl,
+      termsUrl: servicePublicProfile.termsUrl,
+      fulfilmentName: servicePublicProfile.fulfilmentName,
+    })
     .from(servicePublicProfile)
     .where(and(
       eq(servicePublicProfile.serviceId, row.serviceId),
@@ -204,6 +213,22 @@ export default async function PublicFormPage({
     configured: profile?.f2fReferralUrl,
     serviceSlug: slug,
   });
+
+  /*
+   * The clinic the patient thinks they are dealing with.
+   *
+   * Falls back to the pharmacy's own name, which is what every form showed
+   * before this existed. The brand is presentation only — who prescribed and
+   * who dispensed is recorded as it actually happened, on the prescription,
+   * the label and the GP notification, and none of that is renamed here.
+   */
+  const brandName = profile?.publicBrandName?.trim() || row.organisationName;
+  const brandColour = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(profile?.primaryColour?.trim() ?? '')
+    ? profile!.primaryColour!.trim()
+    : null;
+  // The pharmacy behind the clinic, named only where it differs from the brand
+  // shown above it — repeating "Karsons" under "Karsons" says nothing.
+  const dispensedBy = profile?.fulfilmentName?.trim() || row.organisationName;
 
   /* The enrolment records a brand name; resources are keyed by medicine id. */
   const [currentMedicine] = currentMedicineBrand
@@ -252,12 +277,15 @@ export default async function PublicFormPage({
     <div className="min-h-screen bg-canvas">
       <header className="border-b border-line bg-surface">
         <div className="mx-auto flex max-w-[1000px] items-center gap-3 px-5 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-control bg-brand-600 font-display text-[14px] font-bold text-white">
-            K
+          <div
+            className="flex h-8 w-8 items-center justify-center rounded-control bg-brand-600 font-display text-[14px] font-bold text-white"
+            style={brandColour ? { background: brandColour } : undefined}
+          >
+            {brandName.trim().charAt(0).toUpperCase()}
           </div>
           <div className="leading-tight">
             <div className="font-display text-[15px] font-semibold text-ink">
-              {row.organisationName}
+              {brandName}
             </div>
             <div className="text-[12.5px] text-ink-faint">{row.serviceName}</div>
           </div>
@@ -318,6 +346,61 @@ export default async function PublicFormPage({
             Your answers are stored securely and shared only with your GP practice, in line with
             data protection law.
           </p>
+
+          {/*
+            Somewhere to turn. A patient halfway through a health questionnaire
+            who has a question has, until now, had nothing on the page telling
+            them how to ask it.
+          */}
+          {profile?.supportPhone?.trim() || profile?.supportEmail?.trim() ? (
+            <p className="mt-2 text-[12.5px] text-ink-faint">
+              Questions?{' '}
+              {profile.supportPhone?.trim() ? (
+                <a
+                  href={`tel:${profile.supportPhone.replace(/\s+/g, '')}`}
+                  className="text-brand-700 underline underline-offset-2"
+                >
+                  {profile.supportPhone}
+                </a>
+              ) : null}
+              {profile.supportPhone?.trim() && profile.supportEmail?.trim() ? ' or ' : null}
+              {profile.supportEmail?.trim() ? (
+                <a
+                  href={`mailto:${profile.supportEmail}`}
+                  className="text-brand-700 underline underline-offset-2"
+                >
+                  {profile.supportEmail}
+                </a>
+              ) : null}
+            </p>
+          ) : null}
+
+          {profile?.privacyUrl?.trim() || profile?.termsUrl?.trim() ? (
+            <p className="mt-2 flex flex-wrap justify-center gap-x-3 text-[12.5px]">
+              {profile.privacyUrl?.trim() ? (
+                <a href={profile.privacyUrl} target="_blank" rel="noreferrer noopener" className="text-brand-700 underline underline-offset-2">
+                  Privacy policy
+                </a>
+              ) : null}
+              {profile.termsUrl?.trim() ? (
+                <a href={profile.termsUrl} target="_blank" rel="noreferrer noopener" className="text-brand-700 underline underline-offset-2">
+                  Terms
+                </a>
+              ) : null}
+            </p>
+          ) : null}
+
+          {/*
+            Said whenever the clinic is presented under a different name from
+            the pharmacy that actually supplies. A patient is entitled to know
+            who is dispensing their medicine, and a white label that hid it
+            would be a lie in a place where lying matters.
+          */}
+          {brandName !== dispensedBy ? (
+            <p className="mt-2 text-[12.5px] text-ink-faint">
+              Dispensed by {dispensedBy}.
+            </p>
+          ) : null}
         </footer>
       )}
     </div>

@@ -17,7 +17,7 @@
 
 import Link from 'next/link';
 import { eq, and, isNull, desc } from 'drizzle-orm';
-import { PencilLine, Scale, Eye, BookOpen } from 'lucide-react';
+import { PencilLine, Scale, Eye, BookOpen, SlidersHorizontal } from 'lucide-react';
 import { NewServiceButton } from './new-service-button';
 import { ServiceActionsMenu } from './service-actions-menu';
 import { getStaffContext } from '@/lib/auth/context';
@@ -115,7 +115,14 @@ export default async function ServicesPage() {
                     <span className="tabular font-mono text-[11.5px] text-ink-faint">
                       {steps} steps · {questions} questions
                     </span>
-                    {row.priceMinor !== null ? (
+                    {editable ? (
+                      <Link
+                        href={`/services/${row.slug}/settings`}
+                        className="tabular font-mono text-[11.5px] text-ink-faint underline-offset-2 hover:text-ink hover:underline"
+                      >
+                        {row.priceMinor !== null ? formatMoney(row.priceMinor) : 'no price set'}
+                      </Link>
+                    ) : row.priceMinor !== null ? (
                       <span className="tabular font-mono text-[11.5px] text-ink-faint">
                         {formatMoney(row.priceMinor)}
                       </span>
@@ -137,6 +144,16 @@ export default async function ServicesPage() {
                   {/* Resources are content, not form structure — a leaflet
                       changes without republishing a questionnaire, so it gets
                       its own way in rather than living inside the designer. */}
+                  {editable ? (
+                    <Link
+                      href={`/services/${row.slug}/settings`}
+                      aria-label={`Settings for ${row.name}`}
+                      title="Price and branding"
+                      className="flex h-[32px] w-[32px] items-center justify-center rounded-control border border-line text-ink-faint transition-colors hover:border-brand-300 hover:text-ink"
+                    >
+                      <SlidersHorizontal size={13} strokeWidth={2} />
+                    </Link>
+                  ) : null}
                   <Link
                     href={`/services/${row.slug}/resources`}
                     className="flex items-center gap-1.5 rounded-control border border-line bg-surface px-3 py-[7px] text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-300 hover:text-ink"
