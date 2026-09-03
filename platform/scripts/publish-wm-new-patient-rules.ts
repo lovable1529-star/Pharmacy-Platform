@@ -1,0 +1,200 @@
+/**
+ * Give the new-patient service its own ruleset.
+ *
+ * The ask was to "link rules v1 to the new-patient service too", since both
+ * journeys are remote. Two things make that not quite a link.
+ *
+ * First, rulesets are per service in the schema — `ruleset_version.service_id`
+ * — so sharing one means copying it, not pointing at it. That is the right
+ * shape anyway: a new-patient threshold and a repeat threshold are separate
+ * decisions and should be tunable separately.
+ *
+ * Second, and the reason this is a filtered copy rather than a whole one: 18 of
+ * the 24 rules ask about ONGOING treatment. Adverse effects so far, doses
+ * missed in the last four weeks, weeks on the current strength, weight lost
+ * since starting, fluid intake, appetite suppression. A patient who has not
+ * started has no answer to any of them, so those rules are recorded as skipped
+ * and decide nothing. Copying them across would put eighteen rules on the
+ * screen that can never fire, which teaches whoever reads it to ignore the
+ * screen.
+ *
+ * What is left is the eligibility set, and it is exactly what you would triage
+ * a new patient on. Verified against the live engine before writing this:
+ *
+ *     pregnant            → RED    (Pregnant or breastfeeding)
+ *     BMI 21.8            → RED    (BMI under 23 and not requesting a decrease)
+ *     age 86 on Mounjaro  → RED    (outside the 18–84 range)
+ *     age 16              → RED    (outside the 18–84 range)
+ *     BMI 24.2            → AMBER  (BMI between 23 and 24.9)
+ *     healthy, BMI 31.8   → AMBER  (nothing matched — the default)
+ *
+ * Today every one of those comes back AMBER with no reason attached, because
+ * the service has no ruleset at all. That is the whole gain: four real stops
+ * stop being silent.
+ *
+ * Emits SQL rather than writing, because that is how changes are applied here.
+ *
+ *   npx tsx --tsconfig scripts/tsconfig.json scripts/publish-wm-new-patient-rules.ts
+ */
+
+import { readFileSync, writeFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import postgres from 'postgres';
+import type { RulesetDefinition } from '../src/lib/rules/engine';
+
+const root = join(dirname(fileURLToPath(import.meta.url)), '..');
+
+/*
+ * Named explicitly rather than filtered by a coverage check.
+ *
+ * A check would pass any rule whose `derived.*` values merely EXIST as a
+ * concept — `weeksOnDose` is a legitimate path that is simply null for someone
+ * with no previous supply — so it would let through rules that then skip at
+ * runtime. More importantly this is a clinical decision about which rules
+ * govern a new patient, and a decision like that should be written down rather
+ * than recomputed from whichever form happens to be published today.
+ */
+const NEW_PATIENT_RULES = [
+  'pregnancy',
+  'age-wegovy',
+  'age-mounjaro',
+  'bmi-low-not-decreasing',
+  'bmi-low-tapering',
+  'bmi-borderline',
+] as const;
+
+function databaseUrl(): string {
+  const env = readFileSync(join(root, '.env.local'), 'utf8');
+  const match = env.match(/^DATABASE_URL="?([^"\n\r]+)"?/m);
+  if (!match?.[1]) throw new Error('DATABASE_URL not found in .env.local');
+  return match[1];
+}
+
+const outputName = process.argv[2] ?? '26_wm_new_patient_rules.sql';
+
+async function main() {
+  const sql = postgres(databaseUrl(), { prepare: false, max: 1, connect_timeout: 15 });
+
+  try {
+    const [source] = await sql<{ definition: RulesetDefinition }[]>`
+      select rv.definition
+        from public.service s
+        join public.ruleset_version rv on rv.id = s.published_ruleset_version_id
+       where s.slug = 'weight-management-repeat'
+    `;
+
+    if (!source) throw new Error('The repeat service has no published ruleset to copy from.');
+
+    const [target] = await sql<{ id: string; organisation_id: string; name: string }[]>`
+      select id, organisation_id, name
+        from public.service
+       where slug = 'weight-management-first'
+    `;
+
+    if (!target) throw new Error('No weight-management-first service.');
+
+    const chosen = NEW_PATIENT_RULES.map((id) => {
+      const rule = source.definition.rules.find((r) => r.id === id);
+      if (!rule) throw new Error(`Rule "${id}" is not in the repeat ruleset any more.`);
+      return rule;
+    });
+
+    const definition: RulesetDefinition = {
+      schemaVersion: 1,
+      // Unchanged from the repeat ruleset, and for the same reason: anything
+      // uncertain goes to a pharmacist rather than being waved through.
+      defaultOutcome: source.definition.defaultOutcome,
+      rules: chosen,
+    };
+
+    const json = JSON.stringify(definition);
+    if (json.includes('$json$')) throw new Error('Definition contains the dollar-quote delimiter.');
+
+    const out = `-- ============================================================
+-- ${outputName.replace(/\.sql$/, '').replace(/_/g, ' ')}
+--
+-- Generated by scripts/publish-wm-new-patient-rules.ts. Regenerate rather
+-- than edit.
+--
+-- Gives "${target.name}" its own ruleset: the ${chosen.length} ELIGIBILITY rules from the
+-- repeat ruleset, and none of the ones about ongoing treatment.
+--
+-- Copied rather than shared because ruleset_version belongs to one service.
+-- That is also the better shape — a new-patient threshold and a repeat
+-- threshold are separate decisions and should be tunable separately.
+--
+-- Filtered because 18 of the repeat ruleset's 24 rules ask about treatment so
+-- far: adverse effects, doses missed, weeks on the current strength, weight
+-- lost since starting, fluid intake, appetite suppression. A patient who has
+-- not started answers none of those, so those rules skip and decide nothing.
+-- Copying them would put 18 rules on the screen that can never fire.
+--
+-- Included:
+${chosen.map((r) => `--   ${r.outcome.padEnd(5)} p${String(r.priority).padEnd(4)} ${r.label}`).join('\n')}
+--
+-- What changes for a patient: today every new-patient request comes back AMBER
+-- with no reason attached, because the service has no ruleset. After this,
+-- pregnancy, an out-of-range age and a BMI under 23 come back RED with the
+-- rule named, and a BMI of 23–24.9 comes back AMBER for the same reason.
+--
+-- Safe to run more than once? NO. Each run publishes another version.
+-- ============================================================
+
+begin;
+
+with next as (
+  select coalesce(max(version), 0) + 1 as v
+    from public.ruleset_version
+   where service_id = '${target.id}'::uuid
+),
+inserted as (
+  insert into public.ruleset_version
+    (organisation_id, service_id, version, definition, published_at)
+  select '${target.organisation_id}'::uuid,
+         '${target.id}'::uuid,
+         next.v,
+         $json$${json}$json$::jsonb,
+         now()
+    from next
+  returning id, version
+)
+update public.service
+   set published_ruleset_version_id = inserted.id
+  from inserted
+ where public.service.id = '${target.id}'::uuid;
+
+commit;
+`;
+
+    const verify = `-- ── Verify ──────────────────────────────────────────────────
+-- Run SEPARATELY, after the migration above has come back.
+-- Expect: version 1, ${chosen.length} rules, default AMBER.
+select s.slug,
+       rv.version,
+       jsonb_array_length(rv.definition->'rules')      as rules,
+       rv.definition->>'defaultOutcome'                as default_outcome
+  from public.service s
+  join public.ruleset_version rv on rv.id = s.published_ruleset_version_id
+ where s.slug = 'weight-management-first';
+`;
+
+    const dir = join(root, '..', 'docs', 'pending-migrations');
+    writeFileSync(join(dir, outputName), out, 'utf8');
+
+    const verifyName = outputName.replace(/\.sql$/, '_verify.sql');
+    writeFileSync(join(dir, verifyName), verify, 'utf8');
+
+    console.log(`Wrote docs/pending-migrations/${outputName}`);
+    console.log(`Wrote docs/pending-migrations/${verifyName} — run after, on its own`);
+    console.log(`  ${chosen.length} rules for ${target.name}`);
+    for (const r of chosen) console.log(`    ${r.outcome.padEnd(5)} p${r.priority} ${r.label}`);
+  } finally {
+    await sql.end();
+  }
+}
+
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
