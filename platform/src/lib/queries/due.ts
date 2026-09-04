@@ -1,25 +1,47 @@
 /**
  * The enrolments behind the due list.
  *
- * One read. The supply length lives in the answers of each patient's most
- * recent request, so that is fetched alongside rather than per row — a query
- * per patient against a database in Seoul turns a 30-patient list into six
- * seconds of round trips.
+ * One query, deliberately.
+ *
+ * The obvious shape is two: fetch the active enrolments, then fetch their
+ * submissions to learn how long each last supply was meant to last. Against a
+ * database in Seoul that second round trip cost roughly 180ms on a screen two
+ * different pages load — and once the rest of the Today snapshot was made
+ * parallel, this was the leg bounding the whole page.
+ *
+ * So the supply length and the "already came back" flag are gathered by
+ * correlated subqueries instead. Postgres does work it was going to do anyway;
+ * the difference is that the answer crosses the world once rather than twice.
  */
 
-import { and, desc, eq, inArray, isNotNull } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
-import { patient, repeatEnrolment, service, submission } from '@/lib/db/schema';
+import { patient, repeatEnrolment, submission } from '@/lib/db/schema';
 import { dueList, type DueEnrolment, type DueRow } from '@/lib/repeat-care/due';
 
 /** Statuses that mean the patient has already come back and is waiting on us. */
-const OPEN = ['SUBMITTED', 'IN_REVIEW', 'INFO_REQUESTED', 'RESUBMITTED'] as const;
+const OPEN = ['SUBMITTED', 'IN_REVIEW', 'INFO_REQUESTED', 'RESUBMITTED'];
 
 export async function getDueList(
   organisationId: string,
   now = new Date(),
 ): Promise<DueRow[]> {
-  const enrolments = await db
+  /*
+   * Two keys off the latest non-draft request, rather than the whole answers
+   * document. A weight-management questionnaire is fifty-odd answers plus
+   * uploads; this needs one of them, and dragging the rest across the wire for
+   * every enrolled patient was pure waste.
+   */
+  const latest = (key: string) => sql<string | null>`(
+    select s.answers->>${sql.raw(`'${key}'`)}
+      from ${submission} s
+     where s.patient_id = ${repeatEnrolment.patientId}
+       and s.status <> 'DRAFT'
+     order by s.created_at desc
+     limit 1
+  )`;
+
+  const rows = await db
     .select({
       patientId: repeatEnrolment.patientId,
       firstName: patient.firstName,
@@ -28,7 +50,16 @@ export async function getDueList(
       medicine: repeatEnrolment.medicine,
       strength: repeatEnrolment.strength,
       lastSuppliedAt: repeatEnrolment.lastSuppliedAt,
-      serviceId: repeatEnrolment.serviceId,
+
+      supplyQuantity: latest('supplyQuantity'),
+      supplyDuration: latest('supplyDuration'),
+
+      /* Already in the queue, so not somebody to chase. */
+      hasOpenRequest: sql<boolean>`exists (
+        select 1 from ${submission} s
+         where s.patient_id = ${repeatEnrolment.patientId}
+           and s.status::text in ${sql.raw(`('${OPEN.join("','")}')`)}
+      )`,
     })
     .from(repeatEnrolment)
     .innerJoin(patient, eq(repeatEnrolment.patientId, patient.id))
@@ -37,55 +68,18 @@ export async function getDueList(
       eq(repeatEnrolment.status, 'ACTIVE'),
     ));
 
-  if (enrolments.length === 0) return [];
-
-  const patientIds = enrolments.map((e) => e.patientId);
-
-  /*
-   * Every non-draft submission for these patients, newest first. The most
-   * recent one gives the supply length; any OPEN one means they are already in
-   * the queue and must not be chased.
-   */
-  const rows = await db
-    .select({
-      patientId: submission.patientId,
-      answers: submission.answers,
-      status: submission.status,
-      submittedAt: submission.createdAt,
-      serviceKind: service.kind,
-    })
-    .from(submission)
-    .innerJoin(service, eq(submission.serviceId, service.id))
-    .where(and(
-      eq(submission.organisationId, organisationId),
-      inArray(submission.patientId, patientIds),
-      isNotNull(submission.patientId),
-    ))
-    .orderBy(desc(submission.createdAt));
-
-  const latestAnswers = new Map<string, Record<string, unknown>>();
-  const openRequest = new Set<string>();
-
-  for (const row of rows) {
-    if (!row.patientId) continue;
-
-    // Newest first, so the first one seen for a patient is their latest.
-    if (!latestAnswers.has(row.patientId) && row.status !== 'DRAFT') {
-      latestAnswers.set(row.patientId, (row.answers ?? {}) as Record<string, unknown>);
-    }
-
-    if ((OPEN as readonly string[]).includes(row.status)) openRequest.add(row.patientId);
-  }
-
-  const input: DueEnrolment[] = enrolments.map((e) => ({
-    patientId: e.patientId,
-    patientName: `${e.firstName} ${e.lastName}`.trim(),
-    externalRef: e.externalRef,
-    medicine: e.medicine,
-    strength: e.strength,
-    lastSuppliedAt: e.lastSuppliedAt,
-    lastAnswers: latestAnswers.get(e.patientId) ?? null,
-    hasOpenRequest: openRequest.has(e.patientId),
+  const input: DueEnrolment[] = rows.map((r) => ({
+    patientId: r.patientId,
+    patientName: `${r.firstName} ${r.lastName}`.trim(),
+    externalRef: r.externalRef,
+    medicine: r.medicine,
+    strength: r.strength,
+    lastSuppliedAt: r.lastSuppliedAt,
+    lastAnswers: {
+      supplyQuantity: r.supplyQuantity ?? undefined,
+      supplyDuration: r.supplyDuration ?? undefined,
+    },
+    hasOpenRequest: r.hasOpenRequest,
   }));
 
   return dueList(input, now);
