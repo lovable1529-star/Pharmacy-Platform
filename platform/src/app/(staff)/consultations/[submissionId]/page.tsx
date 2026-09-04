@@ -35,7 +35,22 @@ export default async function ConsultationPage({
   const { submissionId } = await params;
   const { branch: branchParam } = await searchParams;
 
-  const rows = await db
+  /*
+   * Three reads that need nothing from each other.
+   *
+   * The submission, the actor's branches and the clinician list were fetched
+   * one after another, which against a database in Seoul is three lots of
+   * ~180ms before this screen can start deciding anything. The pharmacist
+   * opens this page for every decision they make.
+   */
+  const cliniciansQ = db
+    .select({ id: clinician.id, fullName: clinician.fullName, gphcNumber: clinician.gphcNumber })
+    .from(clinician)
+    .where(eq(clinician.organisationId, actor.organisationId));
+
+  const branchesQ = getBranchesForActor(actor);
+
+  const rowsQ = db
     .select({
       submissionId: submission.id,
       answers: submission.answers,
@@ -68,10 +83,12 @@ export default async function ConsultationPage({
     .where(and(eq(submission.id, submissionId), eq(submission.organisationId, actor.organisationId)))
     .limit(1);
 
+  const [rows, allBranches, clinicians] = await Promise.all([
+    rowsQ, branchesQ, cliniciansQ,
+  ]);
+
   const row = rows[0];
   if (!row) notFound();
-
-  const allBranches = await getBranchesForActor(actor);
   const permitted = accessibleBranches(actor, allBranches);
   const activeBranch =
     allBranches.find((b) => b.id === branchParam && permitted.includes(b.id)) ??
@@ -167,13 +184,11 @@ export default async function ConsultationPage({
     );
   }
 
-  const clinicians = await db
-    .select({ id: clinician.id, fullName: clinician.fullName, gphcNumber: clinician.gphcNumber })
-    .from(clinician)
-    .where(eq(clinician.organisationId, actor.organisationId));
-
-  // Stock at THIS branch only, in stock, not recalled.
-  const stock = await db
+  /*
+   * Two more that depend on what the first wave produced - stock on the active
+   * branch, allergies on the matched patient - but not on each other.
+   */
+  const stockQ = db
     .select({
       id: batch.id,
       productName: product.name,
@@ -190,10 +205,12 @@ export default async function ConsultationPage({
 
   // What this patient is known to react to — from their record, which is the
   // list the product's allergens are checked against.
-  const recorded = await db
+  const recordedQ = db
     .select({ substance: allergy.substance })
     .from(allergy)
     .where(eq(allergy.patientId, patientRecord.id));
+
+  const [stock, recorded] = await Promise.all([stockQ, recordedQ]);
 
   return (
     <ConsultationClient
