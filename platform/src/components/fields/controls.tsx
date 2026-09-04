@@ -121,7 +121,15 @@ export function FieldWarning({
     >
       <Icon size={15} strokeWidth={2.1} className="mt-0.5 shrink-0" />
       <div className="min-w-0">
-        <span>{message}</span>
+        {/*
+          A block, not a span.
+
+          The action below is inline-flex, so against an inline message it
+          joined the last line box instead of starting a new one — the button
+          was drawn over the final words of the warning. `mt-2.5` cannot break
+          a line that the display type never ended.
+        */}
+        <p className="m-0">{message}</p>
 
         {action ? (
           <a
