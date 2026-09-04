@@ -148,6 +148,14 @@ export interface WizardProps {
    */
   referralUrl?: string | null;
   /**
+   * Where the thank-you screen sends them next.
+   *
+   * A patient who has just submitted hears nothing until somebody telephones,
+   * and rings the pharmacy to ask whether it arrived. This is the only moment
+   * they can be handed a way of checking for themselves.
+   */
+  completionHref?: string | null;
+  /**
    * Preview: explorable, but nothing is recorded.
    *
    * Controls stay ENABLED on purpose. The point of a preview is to see what the
@@ -171,6 +179,7 @@ export function FormWizard({
   submitLabel = 'Submit',
   resources = [],
   referralUrl = null,
+  completionHref = null,
   preview = false,
 }: WizardProps) {
   const schema = useMemo(
@@ -353,6 +362,20 @@ export function FormWizard({
             ?? 'Your answers have been sent to the pharmacy. There is nothing else to do — '
               + 'a pharmacist will review them and be in touch.'}
         </p>
+
+        {completionHref ? (
+          <>
+            <a
+              href={completionHref}
+              className="mt-6 inline-flex items-center gap-1.5 rounded-control bg-brand-600 px-4 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-brand-700"
+            >
+              Check the progress of your request
+            </a>
+            <p className="mt-2.5 text-[12.5px] text-ink-faint">
+              Bookmark that page — the link is the only way back to it.
+            </p>
+          </>
+        ) : null}
       </div>
     );
   }

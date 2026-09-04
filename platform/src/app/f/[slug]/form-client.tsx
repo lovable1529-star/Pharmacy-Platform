@@ -175,6 +175,13 @@ export function PublicForm({
           onSubmit={handleSubmit}
           resources={resources}
           referralUrl={referralUrl}
+          /*
+            The resume token doubles as the tracking credential — unguessable,
+            already issued, and the same model the payment link uses. Null only
+            for somebody who submitted without one ever being opened, who has
+            nothing to track with.
+          */
+          completionHref={liveToken ? `/track/${liveToken}` : null}
           submitLabel="Submit my answers"
         />
       </UploadTargetProvider>
