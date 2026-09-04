@@ -170,3 +170,27 @@ export function render(template: Template, values: Substitutions): string {
 export function hasUnfilled(rendered: string): boolean {
   return /\{\w+\}/.test(rendered);
 }
+
+/**
+ * The finished message body, with the leaflet block attached or withheld.
+ *
+ * Extracted from `queueFromTemplate` so the rule can be tested. It was one
+ * line inside a database-bound function, which meant the property it enforces
+ * — that a text message never carries a link naming somebody's weight-loss
+ * medication — had nothing pinning it. Flipping that ternary would have broken
+ * a disclosure rule and passed every test in the suite.
+ *
+ * The appendix is held to exactly the same standard as a clinical
+ * substitution, and for the same reason: a link reading "How to inject your
+ * Mounjaro" names the medicine as surely as a `{medicine}` token would. A
+ * template not permitted clinical detail never receives it, whatever the
+ * caller passes in.
+ */
+export function composeBody(
+  rendered: string,
+  appendix: string | null | undefined,
+  clinicalDetailAllowed: boolean,
+): string {
+  const trimmed = clinicalDetailAllowed ? appendix?.trim() : null;
+  return trimmed ? `${rendered}\n${trimmed}` : rendered;
+}

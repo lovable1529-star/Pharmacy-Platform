@@ -31,7 +31,7 @@ import { db } from '@/lib/db/client';
 import { notification } from '@/lib/db/schema';
 import { sendPatientEmail } from '@/lib/email/patient';
 import {
-  loadTemplate, render, hasUnfilled,
+  loadTemplate, render, hasUnfilled, composeBody,
   type Substitutions, type Channel as TemplateChannel,
 } from './templates';
 
@@ -87,9 +87,7 @@ export async function queueFromTemplate(input: {
   const template = await loadTemplate(db, input.organisationId, input.templateKey, channel);
   const rendered = render(template, input.values);
 
-  const appendix = template.clinicalDetailAllowed ? input.clinicalAppendix?.trim() : null;
-  const body = appendix ? `${rendered}
-${appendix}` : rendered;
+  const body = composeBody(rendered, input.clinicalAppendix, template.clinicalDetailAllowed);
 
   // Checked against the wording alone. The appendix is generated, not
   // authored, so a brace in a leaflet title is not an unfilled placeholder.

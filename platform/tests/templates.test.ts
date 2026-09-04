@@ -7,7 +7,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { render, hasUnfilled, type Template } from '../src/lib/notifications/templates';
+import {
+  render, hasUnfilled, composeBody, type Template,
+} from '../src/lib/notifications/templates';
 
 const emailTemplate: Template = {
   key: 'prescription.ready', channel: 'EMAIL',
@@ -65,5 +67,49 @@ describe('substitution', () => {
   it('replaces every occurrence, not just the first', () => {
     const t: Template = { ...emailTemplate, body: '{firstName}, {firstName}.' };
     expect(render(t, values)).toBe('Bridget, Bridget.');
+  });
+});
+
+describe('attaching the leaflet block', () => {
+  const BODY = 'Your prescription is ready to collect.';
+  const LEAFLET = 'How to inject your Mounjaro: https://karsons.im/inject';
+
+  it('attaches it to a template allowed clinical detail', () => {
+    expect(composeBody(BODY, LEAFLET, true)).toBe(`${BODY}\n${LEAFLET}`);
+  });
+
+  it('withholds it from one that is not', () => {
+    /*
+     * The disclosure this prevents. A link title names the medicine as surely
+     * as a {medicine} token would, and a text message sits unencrypted on a
+     * phone that other people pick up.
+     */
+    expect(composeBody(BODY, LEAFLET, false)).toBe(BODY);
+  });
+
+  it('withholds it however the caller passes it', () => {
+    // The caller does not get to decide. Whatever reaches this function, an
+    // SMS template comes back with the wording alone.
+    for (const passed of [LEAFLET, '  ' + LEAFLET + '  ', 'anything at all']) {
+      expect(composeBody(BODY, passed, false)).toBe(BODY);
+    }
+  });
+
+  it('leaves the body alone when there is no appendix', () => {
+    expect(composeBody(BODY, null, true)).toBe(BODY);
+    expect(composeBody(BODY, undefined, true)).toBe(BODY);
+  });
+
+  it('treats whitespace as no appendix rather than a blank line', () => {
+    expect(composeBody(BODY, '   \n  ', true)).toBe(BODY);
+  });
+
+  it('trims what it does attach', () => {
+    expect(composeBody(BODY, `\n  ${LEAFLET}  \n`, true)).toBe(`${BODY}\n${LEAFLET}`);
+  });
+
+  it('separates the two with exactly one newline', () => {
+    const composed = composeBody(BODY, LEAFLET, true);
+    expect(composed.split('\n')).toEqual([BODY, LEAFLET]);
   });
 });
