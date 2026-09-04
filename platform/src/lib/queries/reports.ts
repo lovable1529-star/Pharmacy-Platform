@@ -327,16 +327,27 @@ export async function revenue(range: ReportRange): Promise<Revenue> {
     .from(payment)
     .where(scoped(undefined));
 
+  /*
+   * Left joins, not inner ones.
+   *
+   * A payment reaches a service through its submission, and not every payment
+   * has one — a counter sale, or anything raised outside a questionnaire.
+   * Joined inwards those rows vanished from the breakdown while still counting
+   * towards the total, so the figures on the screen did not add up to the
+   * figure above them. They are now gathered under their own heading instead:
+   * money the pharmacy took is money the pharmacy took, and a report that
+   * quietly loses some of it is worse than one that cannot attribute it.
+   */
   const rows = await db
     .select({
-      label: service.name,
+      label: sql<string>`coalesce(${service.name}, 'Not linked to a service')`,
       total: sql<number>`coalesce(sum(${payment.amountMinor}), 0)::int`,
     })
     .from(payment)
-    .innerJoin(submission, eq(payment.submissionId, submission.id))
-    .innerJoin(service, eq(submission.serviceId, service.id))
+    .leftJoin(submission, eq(payment.submissionId, submission.id))
+    .leftJoin(service, eq(submission.serviceId, service.id))
     .where(scoped(eq(payment.status, 'PAID')))
-    .groupBy(service.name)
+    .groupBy(sql`coalesce(${service.name}, 'Not linked to a service')`)
     .orderBy(desc(sql`coalesce(sum(${payment.amountMinor}), 0)`));
 
   return {
