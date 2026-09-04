@@ -12,11 +12,11 @@
  * being quietly short by a few hundred matters.
  */
 
-import { and, asc, count, desc, eq, gte, isNotNull, lte, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, isNotNull, lte, sql, type SQL } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   consultation, submission, service, patient, branch, clinician, product, batch,
-  prescription, stockMovement, reviewEvent, vaccineAdministration,
+  prescription, stockMovement, reviewEvent, vaccineAdministration, payment,
 } from '@/lib/db/schema';
 
 export interface ReportRange {
@@ -283,8 +283,72 @@ export async function vaccinationsGiven(range: ReportRange): Promise<Counted[]> 
   return rows.map((r) => ({ label: r.label, total: r.total }));
 }
 
+export interface Revenue {
+  /** Pence taken in the period. */
+  totalMinor: number;
+  /** Pence raised but not yet settled — what is owed. */
+  outstandingMinor: number;
+  byService: Counted[];
+}
+
+/**
+ * What the period earned.
+ *
+ * Reports counted consultations, prescriptions and stock and never once
+ * mentioned money, which is the first question an owner asks. Read from
+ * `payment` rather than from the service's current price, because a price
+ * edited in June must not retrospectively change what March took.
+ *
+ * Outstanding is shown beside it deliberately: a service with no price used to
+ * strand its prescriptions awaiting a payment that could never be made, and a
+ * revenue figure alone would hide that.
+ */
+export async function revenue(range: ReportRange): Promise<Revenue> {
+  const scoped = (extra: SQL | undefined) => (range.branchId
+    ? and(
+      eq(payment.organisationId, range.organisationId),
+      eq(payment.branchId, range.branchId),
+      gte(payment.createdAt, range.from),
+      lte(payment.createdAt, range.to),
+      extra,
+    )
+    : and(
+      eq(payment.organisationId, range.organisationId),
+      gte(payment.createdAt, range.from),
+      lte(payment.createdAt, range.to),
+      extra,
+    ));
+
+  const [totals] = await db
+    .select({
+      paid: sql<number>`coalesce(sum(${payment.amountMinor}) filter (where ${payment.status} = 'PAID'), 0)::int`,
+      outstanding: sql<number>`coalesce(sum(${payment.amountMinor}) filter (where ${payment.status} = 'PENDING'), 0)::int`,
+    })
+    .from(payment)
+    .where(scoped(undefined));
+
+  const rows = await db
+    .select({
+      label: service.name,
+      total: sql<number>`coalesce(sum(${payment.amountMinor}), 0)::int`,
+    })
+    .from(payment)
+    .innerJoin(submission, eq(payment.submissionId, submission.id))
+    .innerJoin(service, eq(submission.serviceId, service.id))
+    .where(scoped(eq(payment.status, 'PAID')))
+    .groupBy(service.name)
+    .orderBy(desc(sql`coalesce(sum(${payment.amountMinor}), 0)`));
+
+  return {
+    totalMinor: totals?.paid ?? 0,
+    outstandingMinor: totals?.outstanding ?? 0,
+    byService: rows.map((r) => ({ label: r.label, total: r.total })),
+  };
+}
+
 export interface ReportBundle {
   total: number;
+  revenue: Revenue;
   byStatus: Counted[];
   byService: Counted[];
   byDay: Counted[];
@@ -302,6 +366,7 @@ export async function buildReports(range: ReportRange): Promise<ReportBundle> {
   const [
     total, byStatus, byService, byDay, byPharmacist,
     prescriptions, medicines, stock, vaccinations, rejected, progress,
+    money,
   ] = await Promise.all([
     totalConsultations(range),
     consultationsByStatus(range),
@@ -314,10 +379,12 @@ export async function buildReports(range: ReportRange): Promise<ReportBundle> {
     vaccinationsGiven(range),
     rejectedCases(range),
     weightProgress(range),
+    revenue(range),
   ]);
 
   return {
     total, byStatus, byService, byDay, byPharmacist,
     prescriptions, medicines, stock, vaccinations, rejected, progress,
+    revenue: money,
   };
 }

@@ -15,12 +15,20 @@ import { CalendarRange, TrendingDown } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { DataTable, type Column } from '@/components/ui/data-table';
 import { EmptyState, PageHeader, Panel, Tag } from '@/components/ui/primitives';
-import { formatDate, formatDateTime } from '@/lib/units';
+import { formatDate, formatDateTime, formatMoney } from '@/lib/units';
 import type { ConsultationRow } from '@/lib/queries/clinical';
 import type { ReportBundle, Counted } from '@/lib/queries/reports';
 
 /** A count list, shown as bars so relative size reads without arithmetic. */
-function Breakdown({ title, rows, empty }: { title: string; rows: Counted[]; empty: string }) {
+function Breakdown({
+  title, rows, empty, format,
+}: {
+  title: string;
+  rows: Counted[];
+  empty: string;
+  /** How to render the figure. Counts are bare; money needs its currency. */
+  format?: (total: number) => string;
+}) {
   const max = Math.max(1, ...rows.map((r) => r.total));
 
   return (
@@ -44,7 +52,7 @@ function Breakdown({ title, rows, empty }: { title: string; rows: Counted[]; emp
                 </div>
               </div>
               <span className="tabular font-mono text-[13px] font-medium text-ink">
-                {row.total}
+                {format ? format(row.total) : row.total}
               </span>
             </div>
           ))}
@@ -138,6 +146,44 @@ export function ReportsView({
         </div>
       </Panel>
 
+      {/*
+        Money first.
+
+        This screen counted consultations, prescriptions, vaccinations and
+        stock movements and never once mentioned cash, which is the first
+        question the person who owns the pharmacy asks of it.
+
+        Taken and outstanding sit together deliberately. A revenue figure on
+        its own hides the failure mode that actually happened here: a service
+        with no price stranded its prescriptions awaiting a payment that could
+        never be made, and the takings looked merely quiet.
+      */}
+      <div className="mb-5 grid gap-3 sm:grid-cols-2">
+        <Panel className="px-5 py-4">
+          <div className="tabular font-mono text-[30px] font-semibold leading-none text-ink">
+            {formatMoney(reports.revenue.totalMinor)}
+          </div>
+          <div className="mt-1.5 text-[12.5px] text-ink-faint">Taken in this period</div>
+        </Panel>
+
+        <Panel
+          className={`px-5 py-4 ${
+            reports.revenue.outstandingMinor > 0 ? 'border-review-200 bg-review-50/40' : ''
+          }`}
+        >
+          <div
+            className={`tabular font-mono text-[30px] font-semibold leading-none ${
+              reports.revenue.outstandingMinor > 0 ? 'text-review-700' : 'text-ink'
+            }`}
+          >
+            {formatMoney(reports.revenue.outstandingMinor)}
+          </div>
+          <div className="mt-1.5 text-[12.5px] text-ink-faint">
+            Raised but not yet settled
+          </div>
+        </Panel>
+      </div>
+
       {/* Headline figures — counted by the database, not capped. */}
       <div className="mb-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {[
@@ -169,6 +215,15 @@ export function ReportsView({
       ) : null}
 
       <div className="mb-5 grid gap-3 lg:grid-cols-2">
+        <Breakdown
+          title="Revenue by service"
+          rows={reports.revenue.byService.map((r) => ({
+            label: r.label,
+            total: r.total,
+          }))}
+          format={formatMoney}
+          empty="Nothing settled in this period."
+        />
         <Breakdown title="By status" rows={reports.byStatus} empty="Nothing in this period." />
         <Breakdown title="By service" rows={reports.byService} empty="Nothing in this period." />
         <Breakdown title="Pharmacist activity" rows={reports.byPharmacist} empty="No consultations attributed to a pharmacist." />

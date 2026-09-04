@@ -12,6 +12,7 @@ import {
   patient, gpSurgery, consultation, service, clinician, branch, submission, stockLevel, batch, product, auditEvent, appUser, prescriptionFulfilment,
 } from '@/lib/db/schema';
 import { dayBounds } from './notifications';
+import { getDueList } from './due';
 
 // ─────────────────────────────────────────────────────────────
 // Patients
@@ -321,6 +322,8 @@ export interface TodaySnapshot {
   repeatsStopped: number;
   /** Prescriptions issued but not yet in the patient hands. */
   awaitingSupply: number;
+  /** Enrolled patients whose supply has run out, or is about to. */
+  dueForRepeat: number;
   lowStock: StockRow[];
   expiringSoon: StockRow[];
   recentConsultations: ConsultationRow[];
@@ -400,6 +403,15 @@ export async function getTodaySnapshot(
       ),
     );
 
+  /*
+   * Enrolled patients nobody has heard from.
+   *
+   * The other counters on Today are work that arrived. This is the one that
+   * never arrives on its own — a patient who ran out three weeks ago appears
+   * on no screen until somebody goes looking.
+   */
+  const due = await getDueList(organisationId);
+
   /* Approved, paid for or not, but the medicine has not gone out. */
   const [toSupply] = await db
     .select({ count: sql<number>`count(*)::int` })
@@ -416,6 +428,7 @@ export async function getTodaySnapshot(
   return {
     completedToday: todays.filter((c) => c.status === 'COMPLETED').length,
     submissionsAwaiting: awaiting[0]?.count ?? 0,
+    dueForRepeat: due.length,
     newPatientsAwaiting: newPatients?.total ?? 0,
     callsOwed: newPatients?.toCall ?? 0,
     repeatsStopped: reds?.count ?? 0,

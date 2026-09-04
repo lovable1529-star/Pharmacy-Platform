@@ -9,7 +9,9 @@ import { redirect } from 'next/navigation';
 import { getActorOrNull } from '@/lib/auth/actor';
 import { can } from '@/lib/tenancy/scope';
 import { getReviewQueue, getUrgentTasks, getQueueSchemas } from '@/lib/queries/reviews';
+import { getDueList } from '@/lib/queries/due';
 import { ReviewQueue } from './queue-client';
+import { DueList } from './due-list';
 
 export const dynamic = 'force-dynamic';
 
@@ -30,9 +32,11 @@ export default async function RepeatCarePage() {
   }
 
   // Independent reads — the urgent list is not a slice of the review queue.
-  const [items, urgent] = await Promise.all([
+  const [items, urgent, due] = await Promise.all([
     getReviewQueue(actor.organisationId),
     getUrgentTasks(actor.organisationId),
+    // Independent of the queue: this is who has NOT come back.
+    getDueList(actor.organisationId),
   ]);
 
   /*
@@ -45,5 +49,13 @@ export default async function RepeatCarePage() {
     items.map((i) => i.formVersionId),
   );
 
-  return <ReviewQueue items={items} urgent={urgent} schemas={schemas} />;
+  return (
+    <ReviewQueue
+      items={items}
+      urgent={urgent}
+      schemas={schemas}
+      dueCount={due.length}
+      due={<DueList rows={due} />}
+    />
+  );
 }

@@ -69,11 +69,22 @@ export function ReviewQueue({
   items,
   urgent = [],
   schemas = {},
+  dueCount = 0,
+  due = null,
 }: {
   items: QueueItem[];
   urgent?: UrgentItem[];
   /** Questionnaire schemas by form version id, for labelling the answers. */
   schemas?: Record<string, unknown>;
+  /** How many enrolled patients need chasing, for the tab badge. */
+  dueCount?: number;
+  /**
+   * The due list, rendered on the server.
+   *
+   * Passed as an element rather than as data because it needs no interaction
+   * and there is no reason to ship a second list renderer to the browser.
+   */
+  due?: React.ReactNode;
 }) {
   const [openId, setOpenId] = useState<string | null>(null);
   const [queue, setQueue] = useState<Queue>('ALL');
@@ -101,7 +112,7 @@ export function ReviewQueue({
   );
 
   /* Opens on whichever lane has work, new patients first - they age worst. */
-  const [lane, setLane] = useState<'new' | 'repeat'>(
+  const [lane, setLane] = useState<'new' | 'repeat' | 'due'>(
     newPatients.length > 0 ? 'new' : 'repeat',
   );
 
@@ -165,8 +176,11 @@ export function ReviewQueue({
           lane === 'new'
             ? `${newPatients.length} new patient${newPatients.length === 1 ? '' : 's'} awaiting `
               + `review${callsOwed > 0 ? `, ${callsOwed} still to call` : ''}.`
-            : `${repeats.length} repeat request${repeats.length === 1 ? '' : 's'} awaiting a `
-              + 'decision, worst first.'
+            : lane === 'due'
+              ? `${dueCount} enrolled patient${dueCount === 1 ? '' : 's'} to chase — nobody `
+                + 'here has asked us for anything.'
+              : `${repeats.length} repeat request${repeats.length === 1 ? '' : 's'} awaiting a `
+                + 'decision, worst first.'
         }
         actions={
           <div className="flex flex-wrap gap-2">
@@ -177,19 +191,21 @@ export function ReviewQueue({
               <Plus size={13} strokeWidth={2.4} />
               On their behalf
             </Link>
-            <button
-              type="button"
-              onClick={() => setQueue('ALL')}
-              aria-pressed={queue === 'ALL'}
-              className={cn(
-                'tabular rounded-control border px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.05em] transition-colors',
-                queue === 'ALL'
-                  ? 'border-ink bg-ink text-white'
-                  : 'border-line text-ink-soft hover:border-brand-300',
-              )}
-            >
-              {laneItems.length} all
-            </button>
+            {lane === 'due' ? null : (
+              <button
+                type="button"
+                onClick={() => setQueue('ALL')}
+                aria-pressed={queue === 'ALL'}
+                className={cn(
+                  'tabular rounded-control border px-3 py-1.5 font-mono text-[11.5px] uppercase tracking-[0.05em] transition-colors',
+                  queue === 'ALL'
+                    ? 'border-ink bg-ink text-white'
+                    : 'border-line text-ink-soft hover:border-brand-300',
+                )}
+              >
+                {laneItems.length} all
+              </button>
+            )}
             {/*
               RAG belongs to the repeat service, which is the only one with a
               published ruleset. Showing three zeroes beside a list of new
@@ -254,6 +270,12 @@ export function ReviewQueue({
         {([
           ['new', 'New patients', newPatients.length, callsOwed],
           ['repeat', 'Repeat requests', repeats.length, 0],
+          /*
+            The third lane is the opposite of the other two. Those hold people
+            who came to us; this holds people who did not, and would otherwise
+            never appear on any screen.
+          */
+          ['due', 'Due a repeat', dueCount, 0],
         ] as const).map(([key, label, count, owed]) => (
           <button
             key={key}
@@ -323,7 +345,7 @@ export function ReviewQueue({
         </div>
       ) : null}
 
-      {shown.length === 0 ? (
+      {lane === 'due' ? due : shown.length === 0 ? (
         <Panel>
           <div className="pt-14">
             <CircleCheck size={28} strokeWidth={1.7} className="mx-auto text-safe-600" />

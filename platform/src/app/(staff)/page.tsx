@@ -184,12 +184,18 @@ export default async function TodayPage() {
           href="/prescriptions"
           footnote={snapshot.awaitingSupply > 0 ? 'Assemble, batch and hand over' : undefined}
         />
+        {/*
+          The only counter here that is not work somebody sent us. A patient
+          who ran out three weeks ago appears on no other screen until
+          somebody goes looking, which is precisely why it belongs on the one
+          screen everybody opens.
+        */}
         <StatCard
-          label="Batches expiring"
-          value={snapshot.expiringSoon.length}
-          tone={snapshot.expiringSoon.length > 0 ? 'review' : 'neutral'}
-          href="/inventory"
-          footnote="Within 60 days"
+          label="Due a repeat"
+          value={snapshot.dueForRepeat}
+          tone={snapshot.dueForRepeat > 0 ? 'review' : 'neutral'}
+          href="/repeat-care"
+          footnote={snapshot.dueForRepeat > 0 ? 'Nobody here has asked us' : undefined}
         />
       </div>
 
@@ -206,6 +212,10 @@ export default async function TodayPage() {
         <span>
           <strong className="tabular font-semibold text-ink">{snapshot.submissionsAwaiting}</strong>
           {' '}awaiting a decision across all services
+        </span>
+        <span>
+          <strong className="tabular font-semibold text-ink">{snapshot.expiringSoon.length}</strong>
+          {' '}batches expiring within 60 days
         </span>
       </div>
 
