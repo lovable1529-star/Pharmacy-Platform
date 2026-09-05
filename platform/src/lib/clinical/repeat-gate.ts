@@ -33,6 +33,13 @@ export interface RepeatAuthorisation {
   note: string;
   /** Contacts recorded against this request, if any. */
   calls: VerificationCall[];
+  /**
+   * Whether the measurements the engine judged this on could have come from a
+   * person.
+   *
+   * Optional, defaulting to true, so a caller that does not know is unchanged.
+   */
+  measurementsUsable?: boolean;
 }
 
 /**
@@ -84,6 +91,28 @@ export function repeatAuthorisationBlockers(input: RepeatAuthorisation): string[
   if (input.outcome === 'AMBER' && input.note.trim().length === 0) {
     blockers.push(
       'This request was flagged for review. Record why you are content to supply it.',
+    );
+  }
+
+  /*
+   * A colour computed from measurements that cannot be real is not a colour.
+   *
+   * A height typed in metres used to produce a BMI near 290,000, which did not
+   * trip a safety rule — it cleared the eligibility floor and came back GREEN.
+   * `calculateBmi` now refuses figures like that, so the BMI rules skip; but
+   * skipping is not enough on its own, because an unrelated green rule (good
+   * fluid intake, say) still matches and the request is still GREEN. Verified
+   * against the live ruleset, not assumed.
+   *
+   * So the gate refuses it here. This is the last thing between a colour and a
+   * supply, and it is the right place to say "whatever the engine concluded, it
+   * was working from a number nobody could weigh".
+   */
+  if (input.measurementsUsable === false) {
+    blockers.push(
+      'The height or weight on this request could not be read as a real measurement, '
+      + 'so the BMI checks did not run. Confirm the figures with the patient and '
+      + 'record what you checked.',
     );
   }
 

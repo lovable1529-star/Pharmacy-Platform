@@ -23,6 +23,8 @@ import {
 import { db } from '@/lib/db/client';
 import { requestPayment } from '@/lib/payments/lifecycle';
 import { changeSubmissionStatus } from '@/lib/workflow/history';
+import { measurementsUsable } from '@/lib/clinical/plausibility';
+import { siValue } from '@/lib/forms/present';
 import { raisePrescription } from '@/lib/prescriptions/issue';
 import { registerDocument } from '@/lib/documents/register';
 import { approvalBlocker } from '@/lib/prescriptions/approval';
@@ -95,6 +97,7 @@ const decide = action<DecideInput>('repeat_care:edit')
           patientId: submission.patientId,
           branchId: submission.branchId,
           answers: submission.answers,
+          derived: submission.derived,
           serviceKind: service.kind,
           serviceId: submission.serviceId,
         })
@@ -185,11 +188,26 @@ const decide = action<DecideInput>('repeat_care:edit')
               .limit(1)
             : [];
 
+          /*
+           * Whether the engine was working from figures a person could have.
+           *
+           * Read from the stored derived values rather than recomputed, so this
+           * asks what the evaluation actually saw. A null BMI beside a height
+           * and a weight that were both answered means calculateBmi refused
+           * them — see lib/clinical/plausibility.
+           */
+          const derivedValues = (subject.derived ?? {}) as Record<string, unknown>;
+
           const blockers = repeatAuthorisationBlockers({
             outcome: (evaluation?.outcome ?? null) as RepeatOutcome,
             enrolmentStatus: enrolment?.status ?? null,
             note: input.note,
             calls: [],
+            measurementsUsable: measurementsUsable(
+              siValue(answers, 'height'),
+              siValue(answers, 'weight'),
+              typeof derivedValues.bmi === 'number' ? derivedValues.bmi : null,
+            ),
           });
 
           if (blockers.length > 0) throw new CannotApproveError(blockers.join(' '));

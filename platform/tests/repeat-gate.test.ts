@@ -137,3 +137,51 @@ describe('showing whether anybody rang', () => {
     expect(repeatHasContact([])).toBe(false);
   });
 });
+
+describe('measurements that could not have come from a person', () => {
+  const clear = {
+    outcome: 'GREEN' as const,
+    enrolmentStatus: 'ACTIVE',
+    note: '',
+    calls: [],
+  };
+
+  it('lets a normal GREEN through', () => {
+    expect(repeatAuthorisationBlockers(clear)).toEqual([]);
+  });
+
+  it('is unchanged for a caller that does not say', () => {
+    // The field is optional so existing callers keep working.
+    expect(repeatAuthorisationBlockers({ ...clear, measurementsUsable: undefined })).toEqual([]);
+  });
+
+  it('blocks a GREEN judged on an unusable measurement', () => {
+    /*
+     * The failure this closes. A height typed in metres gave a BMI near
+     * 290,000, which cleared the "bmi is at least 25" floor rather than
+     * tripping anything. calculateBmi now refuses it — but the request still
+     * came back GREEN off an unrelated rule, so skipping was not enough.
+     */
+    const blockers = repeatAuthorisationBlockers({ ...clear, measurementsUsable: false });
+
+    expect(blockers).toHaveLength(1);
+    expect(blockers[0]).toContain('could not be read as a real measurement');
+  });
+
+  it('blocks it whatever colour the engine reached', () => {
+    for (const outcome of ['GREEN', 'AMBER', 'RED', null] as const) {
+      const blockers = repeatAuthorisationBlockers({
+        ...clear, outcome, note: 'Checked and content.', measurementsUsable: false,
+      });
+      expect(blockers.some((b) => b.includes('real measurement'))).toBe(true);
+    }
+  });
+
+  it('is not silenced by a note alone', () => {
+    // A note explains a judgement; it does not make the number readable.
+    const blockers = repeatAuthorisationBlockers({
+      ...clear, note: 'Spoke to the patient, happy to supply.', measurementsUsable: false,
+    });
+    expect(blockers.some((b) => b.includes('real measurement'))).toBe(true);
+  });
+});

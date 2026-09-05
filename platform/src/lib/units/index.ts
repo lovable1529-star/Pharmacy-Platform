@@ -7,6 +7,10 @@
  * something has leaked.
  */
 
+import {
+  bmiInputsPlausible, within, BMI as BMI_RANGE,
+} from '@/lib/clinical/plausibility';
+
 const KG_PER_STONE = 6.35029318;
 const KG_PER_POUND = 0.45359237;
 const CM_PER_INCH = 2.54;
@@ -57,8 +61,30 @@ export function cmToFeetAndInches(cm: number): FeetAndInches {
 export function calculateBmi(weightKg: number, heightCm: number): number | null {
   if (!Number.isFinite(weightKg) || !Number.isFinite(heightCm)) return null;
   if (weightKg <= 0 || heightCm <= 0) return null;
+
+  /*
+   * Refused rather than computed, when the figures could not have come from a
+   * person.
+   *
+   * A height typed in metres — 1.7 rather than 170 — yields a BMI near
+   * 290,000, and that does not fail the clinical rules. It SATISFIES them: the
+   * rule authorising a routine repeat wants `bmi >= 25`. So the worst typo on
+   * the form came back GREEN and the patient was supplied without a pharmacist
+   * looking.
+   *
+   * Returning null makes the rules that read it skip instead, and a request
+   * where nothing matched falls to the AMBER default — a pharmacist reads it.
+   * That is the right answer when the data is wrong, and it is emphatically
+   * better than guessing that 1.7 meant metres.
+   */
+  if (!bmiInputsPlausible(weightKg, heightCm)) return null;
+
   const metres = heightCm / 100;
-  return round(weightKg / (metres * metres), 1);
+  const bmi = round(weightKg / (metres * metres), 1);
+
+  // Bounding the inputs still admits absurd pairs; checking the answer closes
+  // that without a rule about which of the two was wrong.
+  return within(bmi, BMI_RANGE) ? bmi : null;
 }
 
 /** Positive means weight was lost. Null when the comparison is meaningless. */
