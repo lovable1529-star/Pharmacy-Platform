@@ -10,10 +10,12 @@
 import { describe, it, expect } from 'vitest';
 import {
   BMI, HEIGHT_CM, WAIST_CM, WEIGHT_KG,
-  bmiInputsPlausible, judgedOnUsableFigures, measurementProblem, measurementsUsable,
+  bmiInputsPlausible, judgedOnUsableFigures, measurementKindProblem,
+  measurementProblem, measurementsUsable,
   weightChangePlausible, within,
 } from '../src/lib/clinical/plausibility';
 import { calculateBmi, percentageWeightLoss } from '../src/lib/units';
+import { validateStep } from '../src/lib/forms/runtime';
 
 describe('range checking', () => {
   it('accepts what is inside, including the edges', () => {
@@ -263,5 +265,97 @@ describe('one question for the gate', () => {
       heightCm: 1.7, weightKg: 84, previousWeightKg: 880,
       bmi: null, weightLossPercent: null,
     })).toBe(false);
+  });
+});
+
+describe('checking a measurement by what it measures', () => {
+  it('accepts real figures', () => {
+    expect(measurementKindProblem('height', 170)).toBeNull();
+    expect(measurementKindProblem('weight', 84)).toBeNull();
+    expect(measurementKindProblem('length', 95)).toBeNull();
+  });
+
+  it('catches the typo at entry, in the patient own words', () => {
+    const problem = measurementKindProblem('height', 1.7);
+    expect(problem).toContain('does not look right');
+    expect(problem).toContain('centimetres');
+  });
+
+  it('names kilograms for a weight and centimetres for a length', () => {
+    expect(measurementKindProblem('weight', 8.4)).toContain('kilograms');
+    expect(measurementKindProblem('length', 37)).toContain('centimetres');
+  });
+
+  it('says nothing when there is nothing to check', () => {
+    expect(measurementKindProblem('height', null)).toBeNull();
+    expect(measurementKindProblem('height', undefined)).toBeNull();
+    expect(measurementKindProblem(null, 1.7)).toBeNull();
+    expect(measurementKindProblem(undefined, 1.7)).toBeNull();
+  });
+
+  it('passes a kind it does not recognise rather than blocking the form', () => {
+    // A validator that refuses what it does not understand would break the
+    // form the moment somebody adds a new measurement kind.
+    expect(measurementKindProblem('temperature', 9999)).toBeNull();
+  });
+});
+
+describe('the form actually applies it', () => {
+  /*
+   * measurementKindProblem being correct is not the same as the wizard calling
+   * it. This checks the wiring: a real step, through the real validator.
+   */
+  const step = {
+    id: 'measurements',
+    title: 'Your measurements',
+    fields: [
+      { id: 'height', type: 'measurement' as const, label: 'Height', measurementKind: 'height' as const, required: true },
+      { id: 'weight', type: 'measurement' as const, label: 'Current weight', measurementKind: 'weight' as const, required: true },
+      { id: 'waist', type: 'measurement' as const, label: 'Waist', measurementKind: 'length' as const, required: true },
+    ],
+  };
+
+  it('accepts a real set of measurements', () => {
+    const result = validateStep(step, { height: 170, weight: 84, waist: 95 });
+    expect(result.valid).toBe(true);
+  });
+
+  it('refuses a height typed in metres, naming the field', () => {
+    const result = validateStep(step, { height: 1.7, weight: 84, waist: 95 });
+
+    expect(result.valid).toBe(false);
+    expect(result.issues[0]!.fieldId).toBe('height');
+    expect(result.issues[0]!.message).toContain('does not look right');
+  });
+
+  it('refuses a weight in stones', () => {
+    const result = validateStep(step, { height: 170, weight: 13, waist: 95 });
+    expect(result.issues.map((i) => i.fieldId)).toContain('weight');
+  });
+
+  it('refuses a waist in inches', () => {
+    const result = validateStep(step, { height: 170, weight: 84, waist: 34 });
+    expect(result.issues.map((i) => i.fieldId)).toContain('waist');
+  });
+
+  it('reads the SI value out of a measurement the patient gave in their own units', () => {
+    // The control stores { unit, raw, si }; the check must read `si`, not `raw`.
+    const result = validateStep(step, {
+      height: { unit: 'ftin', raw: '5 7', si: 170 },
+      weight: { unit: 'st', raw: '13 3', si: 84 },
+      waist: { unit: 'in', raw: '37', si: 94 },
+    });
+
+    expect(result.valid).toBe(true);
+  });
+
+  it('catches an implausible figure given in imperial too', () => {
+    const result = validateStep(step, {
+      height: { unit: 'cm', raw: '1.7', si: 1.7 },
+      weight: 84,
+      waist: 95,
+    });
+
+    expect(result.valid).toBe(false);
   });
 });

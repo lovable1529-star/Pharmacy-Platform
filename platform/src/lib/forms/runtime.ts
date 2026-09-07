@@ -9,6 +9,8 @@
  * what makes every conditional rule exhaustively testable.
  */
 
+import { measurementKindProblem } from '@/lib/clinical/plausibility';
+import { siValue } from '@/lib/forms/present';
 import type {
   Answers, ConsentClause, FormField, FormSchema, FormStep, ValidationIssue,
   ValidationResult, VisibilityRule,
@@ -148,6 +150,25 @@ function validateField(field: FormField, answers: Answers): ValidationIssue | nu
   }
 
   if (!isPresent(value)) return null;
+
+  /*
+   * Measurements are checked against what a person could be, by kind.
+   *
+   * Done here rather than as `validation: { min, max }` on each field for two
+   * reasons. It applies to the three form versions already published without
+   * republishing any of them, and it cannot be forgotten on the next form
+   * somebody builds in the designer.
+   *
+   * This is the entry-side half of the guard in lib/clinical/plausibility. The
+   * other half refuses to compute a BMI from figures like these, because a
+   * form is not the only way answers arrive.
+   */
+  if (field.type === 'measurement') {
+    const problem = measurementKindProblem(field.measurementKind, siValue(answers, field.id));
+    if (problem) {
+      return { fieldId: field.id, fieldLabel: field.label, message: problem };
+    }
+  }
 
   if (typeof value === 'number' || (typeof value === 'string' && value !== '' && !Number.isNaN(Number(value)))) {
     const numeric = Number(value);

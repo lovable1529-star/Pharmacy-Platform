@@ -185,3 +185,44 @@ export function judgedOnUsableFigures(input: {
 
   return true;
 }
+
+/**
+ * The plausible range for a measurement, by what it measures.
+ *
+ * Keyed by the schema's own `measurementKind`, so the form wizard can check
+ * every height, weight and waist on every questionnaire without anybody
+ * having to add `validation: { min, max }` to a field — and without
+ * republishing the three form versions already in the database.
+ *
+ * `length` is the waist. It is the only length the questionnaires ask for; if
+ * that stops being true this needs to become more specific rather than
+ * quietly applying a waist range to something else.
+ */
+export const RANGE_BY_KIND: Record<string, Range> = {
+  height: HEIGHT_CM,
+  weight: WEIGHT_KG,
+  length: WAIST_CM,
+};
+
+/**
+ * What is wrong with a single measurement, in the units it is stored in.
+ *
+ * Returns null when it is fine, when the kind is unknown, or when there is
+ * nothing to check — a validator that refuses what it does not understand
+ * would block a form the moment somebody adds a new measurement kind.
+ */
+export function measurementKindProblem(
+  kind: string | null | undefined,
+  siValue: number | null | undefined,
+): string | null {
+  if (!kind) return null;
+
+  const range = RANGE_BY_KIND[kind];
+  if (!range) return null;
+
+  if (siValue === null || siValue === undefined) return null;
+  if (within(siValue, range)) return null;
+
+  const unit = kind === 'weight' ? 'kilograms' : 'centimetres';
+  return `That does not look right. Check the figure — we expect ${range.min} to ${range.max} ${unit}.`;
+}
