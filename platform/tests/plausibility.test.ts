@@ -10,9 +10,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   BMI, HEIGHT_CM, WAIST_CM, WEIGHT_KG,
-  bmiInputsPlausible, measurementProblem, measurementsUsable, within,
+  bmiInputsPlausible, judgedOnUsableFigures, measurementProblem, measurementsUsable,
+  weightChangePlausible, within,
 } from '../src/lib/clinical/plausibility';
-import { calculateBmi } from '../src/lib/units';
+import { calculateBmi, percentageWeightLoss } from '../src/lib/units';
 
 describe('range checking', () => {
   it('accepts what is inside, including the edges', () => {
@@ -172,5 +173,95 @@ describe('deciding whether a request was judged on real figures', () => {
     expect(measurementsUsable(1.7, 84, null)).toBe(false);
     expect(measurementsUsable(17, 84, null)).toBe(false);
     expect(measurementsUsable(170, 8.4, null)).toBe(false);
+  });
+});
+
+describe('weight change that nobody could have done', () => {
+  it('accepts a real month of progress', () => {
+    expect(percentageWeightLoss(88, 84)).toBe(4.55);
+  });
+
+  it('accepts no change at all', () => {
+    expect(percentageWeightLoss(84, 84)).toBe(0);
+  });
+
+  it('accepts a gain, because gains are real and want looking at', () => {
+    // Somebody who stopped for three months genuinely puts it back on. That
+    // belongs in front of a pharmacist, not suppressed as implausible.
+    expect(percentageWeightLoss(60, 84)).toBe(-40);
+    expect(percentageWeightLoss(50, 95)).toBe(-90);
+  });
+
+  it('refuses a previous weight with an extra zero', () => {
+    /*
+     * The failure. 880 rather than 88 gives a 90.45% loss, and 90.45 does not
+     * fail "at least 2% lost" on the rule authorising a routine repeat — it
+     * clears it. The request came back GREEN.
+     */
+    expect(percentageWeightLoss(880, 84)).toBeNull();
+  });
+
+  it('refuses a previous weight given in stones', () => {
+    expect(percentageWeightLoss(13, 84)).toBeNull();
+  });
+
+  it('refuses a loss that is individually plausible and jointly absurd', () => {
+    // 500kg and 84kg are each inside the human range; 83% is not a month.
+    expect(percentageWeightLoss(500, 84)).toBeNull();
+  });
+
+  it('still refuses what it always refused', () => {
+    expect(percentageWeightLoss(0, 84)).toBeNull();
+    expect(percentageWeightLoss(-88, 84)).toBeNull();
+    expect(percentageWeightLoss(Number.NaN, 84)).toBeNull();
+  });
+
+  it('no longer produces a number that satisfies "at least 2% lost"', () => {
+    const loss = percentageWeightLoss(880, 84);
+
+    expect(loss).toBeNull();
+    expect(loss !== null && loss >= 2).toBe(false);
+  });
+
+  it('leaves the boundary of a hard but real month alone', () => {
+    // 40% is the edge; a genuine 10% month is nowhere near it.
+    expect(percentageWeightLoss(100, 90)).toBe(10);
+    expect(weightChangePlausible(100, 60, 40)).toBe(true);
+    expect(weightChangePlausible(100, 59, 41)).toBe(false);
+  });
+});
+
+describe('one question for the gate', () => {
+  const good = {
+    heightCm: 170, weightKg: 84, previousWeightKg: 88,
+    bmi: 29.1, weightLossPercent: 4.55,
+  };
+
+  it('passes a request judged on real figures', () => {
+    expect(judgedOnUsableFigures(good)).toBe(true);
+  });
+
+  it('fails one whose BMI was refused', () => {
+    expect(judgedOnUsableFigures({ ...good, heightCm: 1.7, bmi: null })).toBe(false);
+  });
+
+  it('fails one whose weight change was refused', () => {
+    expect(judgedOnUsableFigures({
+      ...good, previousWeightKg: 880, weightLossPercent: null,
+    })).toBe(false);
+  });
+
+  it('passes when a figure was never asked for', () => {
+    // A repeat form with no previous weight has no percentage, and that is
+    // correct rather than suspicious.
+    expect(judgedOnUsableFigures({ heightCm: 170, weightKg: 84, bmi: 29.1 })).toBe(true);
+    expect(judgedOnUsableFigures({})).toBe(true);
+  });
+
+  it('fails if either half fails', () => {
+    expect(judgedOnUsableFigures({
+      heightCm: 1.7, weightKg: 84, previousWeightKg: 880,
+      bmi: null, weightLossPercent: null,
+    })).toBe(false);
   });
 });

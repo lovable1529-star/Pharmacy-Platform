@@ -8,7 +8,7 @@
  */
 
 import {
-  bmiInputsPlausible, within, BMI as BMI_RANGE,
+  bmiInputsPlausible, weightChangePlausible, within, BMI as BMI_RANGE,
 } from '@/lib/clinical/plausibility';
 
 const KG_PER_STONE = 6.35029318;
@@ -91,7 +91,23 @@ export function calculateBmi(weightKg: number, heightCm: number): number | null 
 export function percentageWeightLoss(previousKg: number, currentKg: number): number | null {
   if (!Number.isFinite(previousKg) || !Number.isFinite(currentKg)) return null;
   if (previousKg <= 0) return null;
-  return round(((previousKg - currentKg) / previousKg) * 100, 2);
+
+  const loss = round(((previousKg - currentKg) / previousKg) * 100, 2);
+
+  /*
+   * Refused when it describes something nobody did.
+   *
+   * The same shape as the BMI guard above, and found by going looking for it.
+   * A previous weight typed as 880 rather than 88 gives a 90% loss — and 90%
+   * does not fail the "at least 2% lost" condition on the rule that authorises
+   * a routine repeat, it clears it. An apparent catastrophic weight loss came
+   * back GREEN.
+   *
+   * Null instead, so the rules reading it skip and the request falls to a
+   * pharmacist. Large GAINS are left alone: those are real, and they are
+   * exactly what somebody should be looking at.
+   */
+  return weightChangePlausible(previousKg, currentKg, loss) ? loss : null;
 }
 
 /** Money is always integer pence. Never floats. */

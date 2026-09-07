@@ -23,7 +23,7 @@ import {
 import { db } from '@/lib/db/client';
 import { requestPayment } from '@/lib/payments/lifecycle';
 import { changeSubmissionStatus } from '@/lib/workflow/history';
-import { measurementsUsable } from '@/lib/clinical/plausibility';
+import { judgedOnUsableFigures } from '@/lib/clinical/plausibility';
 import { siValue } from '@/lib/forms/present';
 import { raisePrescription } from '@/lib/prescriptions/issue';
 import { registerDocument } from '@/lib/documents/register';
@@ -177,7 +177,11 @@ const decide = action<DecideInput>('repeat_care:edit')
 
           const [enrolment] = subject.patientId
             ? await tx
-              .select({ status: repeatEnrolment.status })
+              .select({
+                status: repeatEnrolment.status,
+                // The weight the percentage was computed against.
+                lastWeightKg: repeatEnrolment.lastWeightKg,
+              })
               .from(repeatEnrolment)
               .where(
                 and(
@@ -203,11 +207,20 @@ const decide = action<DecideInput>('repeat_care:edit')
             enrolmentStatus: enrolment?.status ?? null,
             note: input.note,
             calls: [],
-            measurementsUsable: measurementsUsable(
-              siValue(answers, 'height'),
-              siValue(answers, 'weight'),
-              typeof derivedValues.bmi === 'number' ? derivedValues.bmi : null,
-            ),
+            measurementsUsable: judgedOnUsableFigures({
+              heightCm: siValue(answers, 'height'),
+              weightKg: siValue(answers, 'weight'),
+              /*
+               * A numeric column arrives as a string. Parsed rather than
+               * coerced, because Number('') is 0 and a zero previous weight
+               * would compute a 100% loss out of nothing.
+               */
+              previousWeightKg: previousWeightKg(enrolment?.lastWeightKg),
+              bmi: typeof derivedValues.bmi === 'number' ? derivedValues.bmi : null,
+              weightLossPercent: typeof derivedValues.weightLossPercent === 'number'
+                ? derivedValues.weightLossPercent
+                : null,
+            }),
           });
 
           if (blockers.length > 0) throw new CannotApproveError(blockers.join(' '));
@@ -434,6 +447,13 @@ async function raisePendingPayment(submissionId: string): Promise<string | null>
     console.error('raisePendingPayment failed', error);
     return null;
   }
+}
+
+/** A numeric column, as a number, or null when it is absent or unparseable. */
+function previousWeightKg(raw: string | number | null | undefined): number | null {
+  if (raw === null || raw === undefined) return null;
+  const value = typeof raw === 'number' ? raw : Number(raw);
+  return Number.isFinite(value) && value > 0 ? value : null;
 }
 
 export async function reviewSubmission(input: DecideInput & { outcome?: string | null }) {

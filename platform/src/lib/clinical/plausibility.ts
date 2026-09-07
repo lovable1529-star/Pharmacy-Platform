@@ -55,6 +55,18 @@ export const WAIST_CM: Range = { min: 50, max: 200 };
  */
 export const BMI: Range = { min: 8, max: 100 };
 
+/**
+ * Change between two weighings, as a percentage lost.
+ *
+ * Deliberately asymmetric. A large GAIN is real — somebody who stopped
+ * treatment for three months genuinely puts weight back on — and it is exactly
+ * the case a pharmacist should see, so it is left to the rules. A loss beyond
+ * 40% is not a reading, it is a typo in the earlier weight, and the direction
+ * matters because that is the one that satisfies an eligibility floor rather
+ * than tripping a safety rule.
+ */
+export const WEIGHT_LOSS_PERCENT: Range = { min: -100, max: 40 };
+
 export function within(value: number | null | undefined, range: Range): boolean {
   if (value === null || value === undefined) return false;
   if (!Number.isFinite(value)) return false;
@@ -118,4 +130,58 @@ export function measurementsUsable(
   if (!bothGiven) return true;
 
   return bmi !== null && bmi !== undefined;
+}
+
+/**
+ * Is this weight change something a person could have done?
+ *
+ * The second instance of the BMI bug, found by looking for it. A previous
+ * weight typed as 880 rather than 88 yields a 90% loss, and 90% does not fail
+ * the "at least 2% lost" condition on the rule that authorises a routine
+ * repeat — it clears it. So an apparent catastrophic weight loss came back
+ * GREEN and would have been supplied without a pharmacist.
+ */
+export function weightChangePlausible(
+  previousKg: number,
+  currentKg: number,
+  lossPercent: number | null,
+): boolean {
+  if (!within(previousKg, WEIGHT_KG) || !within(currentKg, WEIGHT_KG)) return false;
+
+  // Both weighings inside the human range can still describe an impossible
+  // change — 500kg down to 84kg is 83% — so the result is checked too.
+  return within(lossPercent, WEIGHT_LOSS_PERCENT);
+}
+
+/**
+ * Was this request judged on figures a person could have produced?
+ *
+ * One question for the authorisation gate, covering every derived value that
+ * has turned out to be able to SATISFY a rule rather than trip one. Both cases
+ * found so far behave identically: the guard nulls the value, the rules
+ * reading it skip, and the request still comes back GREEN off some unrelated
+ * rule. The colour is not the problem; concluding anything from bad figures is.
+ *
+ * Each part asks the same thing — the figure was asked for, an answer was
+ * given, and the derived value still came out null, meaning it was refused
+ * rather than absent.
+ */
+export function judgedOnUsableFigures(input: {
+  heightCm?: number | null;
+  weightKg?: number | null;
+  previousWeightKg?: number | null;
+  bmi?: number | null;
+  weightLossPercent?: number | null;
+}): boolean {
+  if (!measurementsUsable(input.heightCm, input.weightKg, input.bmi)) return false;
+
+  const bothWeights = input.previousWeightKg !== null && input.previousWeightKg !== undefined
+    && input.weightKg !== null && input.weightKg !== undefined;
+
+  if (bothWeights && (input.weightLossPercent === null
+    || input.weightLossPercent === undefined)) {
+    return false;
+  }
+
+  return true;
 }
