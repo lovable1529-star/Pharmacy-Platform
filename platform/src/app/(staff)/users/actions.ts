@@ -514,6 +514,13 @@ export async function inviteUser(input: InviteInput) {
     });
 
     if (error || !data.user) {
+      /*
+       * Logged as well as returned. An invitation that fails to send is
+       * indistinguishable on screen from one that sent and was never opened,
+       * and the difference matters when somebody says "I never got it".
+       */
+      if (error) console.error('[users] invitation failed:', error.message, { email });
+
       return {
         ok: false as const,
         error: error?.message.includes('already registered')

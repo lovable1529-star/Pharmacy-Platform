@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+import { asEmailOtpType, describeLinkFailure, landingFor } from '@/lib/auth/link-errors';
 
 /**
  * Magic-link landing.
@@ -25,18 +26,18 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const tokenHash = searchParams.get('token_hash');
   const type = searchParams.get('type');
-  let next = searchParams.get('next') ?? '/';
-
   // A recovery or invitation link must land on the page where a password is
   // chosen, not on the dashboard — otherwise an invited colleague ends up
-  // signed in with no password and no way to get back next time.
-  if (type === 'recovery' || type === 'invite') next = '/reset-password';
+  // signed in with no password and no way to get back next time. The helper
+  // also refuses to be redirected off-site by a crafted `next`.
+  const next = landingFor(type, searchParams.get('next'));
 
   // Supabase reports its own failures here — an expired or reused link, mostly.
   const providerError = searchParams.get('error_description') ?? searchParams.get('error');
   if (providerError) {
+    console.error('[auth/callback] provider reported:', providerError);
     return NextResponse.redirect(
-      `${origin}/sign-in?error=${encodeURIComponent(providerError)}`,
+      `${origin}/sign-in?error=${encodeURIComponent(describeLinkFailure(providerError).message)}`,
     );
   }
 
@@ -76,13 +77,20 @@ export async function GET(request: NextRequest) {
     ? await supabase.auth.exchangeCodeForSession(code)
     : await supabase.auth.verifyOtp({
         token_hash: tokenHash!,
-        type: (type as 'magiclink' | 'email' | 'signup' | 'recovery') ?? 'magiclink',
+        type: asEmailOtpType(type),
       });
 
   if (error) {
-    console.error('[auth/callback] exchange failed:', error.message);
+    /*
+     * The raw message goes to the log; the person gets one they can act on.
+     *
+     * Supabase's PKCE failure reached a pharmacist's screen verbatim, complete
+     * with an instruction to install a library on both the server and the
+     * client. See lib/auth/link-errors.
+     */
+    console.error('[auth/callback] exchange failed:', error.message, { type, hasCode: Boolean(code) });
     return NextResponse.redirect(
-      `${origin}/sign-in?error=${encodeURIComponent(error.message)}`,
+      `${origin}/sign-in?error=${encodeURIComponent(describeLinkFailure(error.message).message)}`,
     );
   }
 

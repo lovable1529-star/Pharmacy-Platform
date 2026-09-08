@@ -12,32 +12,35 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Mail } from 'lucide-react';
-import { createBrowserClient } from '@supabase/ssr';
+import { requestPasswordReset } from './actions';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
+    setError(null);
 
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (url && anonKey) {
-      try {
-        const supabase = createBrowserClient(url, anonKey);
-        await supabase.auth.resetPasswordForEmail(email.trim(), {
-          redirectTo: `${window.location.origin}/auth/callback?next=/reset-password`,
-        });
-      } catch {
-        // Deliberately swallowed — see the note above.
-      }
-    }
+    /*
+     * Asked for on the server rather than here.
+     *
+     * The real failure then reaches a log instead of being swallowed, and the
+     * verifier is written to a cookie rather than to browser storage. What the
+     * person sees is unchanged: the same message whether or not the address
+     * exists.
+     */
+    const result = await requestPasswordReset(email);
 
     setBusy(false);
+
+    // Only a malformed address comes back as a failure. Everything else
+    // reports success, deliberately.
+    if (!result.ok) { setError(result.error ?? 'Please check the address.'); return; }
+
     setSent(true);
   }
 
@@ -93,6 +96,15 @@ export default function ForgotPasswordPage() {
                 placeholder="you@karsonspharmacy.co.uk"
                 className="mb-4 w-full rounded-control border border-line bg-surface px-3 py-2.5 text-[15px] text-ink placeholder:text-ink-faint transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none"
               />
+
+              {error ? (
+                <p
+                  role="alert"
+                  className="mb-4 rounded-control border border-stop-200 bg-stop-50 px-3 py-2.5 text-[13.5px] text-stop-700"
+                >
+                  {error}
+                </p>
+              ) : null}
 
               <button
                 type="submit"
