@@ -1,121 +1,119 @@
-# Invitations and password resets — the Supabase side
+# Invitations and password resets
 
-Both flows failed with the same error on the sign-in screen:
+Fixed in code. **No Supabase dashboard changes are needed** — no custom email
+templates, no custom SMTP, no cost.
 
-> PKCE code verifier not found in storage. This can happen if the auth flow was
-> initiated in a different browser or device, or if the storage was cleared. For
-> SSR frameworks (Next.js, SvelteKit, etc.), use `@supabase/ssr` on both the
-> server and client to store the code verifier in cookies.
+An earlier version of this document said the email templates had to be rewritten
+to emit `{{ .TokenHash }}`. That was wrong, and it was written before anyone had
+looked at what Supabase actually sends. Ignore it if you saw it.
 
-## What is actually wrong
+## What was wrong
 
-The emailed links carry a **PKCE `code`**. Exchanging a `code` requires a
-**code verifier** that was generated and stored when the flow *started*. That
-works for a login the user began in the browser they are sitting at. It does not
-work for either of these:
-
-**An invitation.** The person being invited never started anything — an
-administrator did, on a different machine. There is no verifier anywhere in the
-world that matches. This flow cannot work with a `code` link, at all, ever.
-
-**A password reset opened on another device.** The verifier is written by the
-browser that asked. People read email on their phone and request the reset on a
-desktop, or the email client opens links in its own embedded browser. The
-verifier is not there, and the exchange fails.
-
-So this is not a bug that a retry fixes. The link shape is wrong for email.
-
-## The fix: send a token hash, not a code
-
-`verifyOtp` needs no verifier. It works from any device, any browser, at any
-time until the link expires — which is what an emailed link has to do.
-
-The application already handles this shape: `/auth/callback` accepts
-`token_hash` and `type` and calls `verifyOtp` with them. **Nothing in the code
-needs changing.** What needs changing is what Supabase puts in the email.
-
-### 1 · Email templates
-
-Supabase dashboard → **Authentication → Email Templates**.
-
-For **Reset Password**, replace the link with:
-
-```html
-<a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=recovery&next=/reset-password">
-  Reset password
-</a>
-```
-
-For **Invite user**:
-
-```html
-<a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=invite&next=/reset-password">
-  Accept your invitation
-</a>
-```
-
-For **Magic Link**, if it is used:
-
-```html
-<a href="{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=magiclink">
-  Sign in
-</a>
-```
-
-The important part is `{{ .TokenHash }}` in place of `{{ .ConfirmationURL }}`.
-`.ConfirmationURL` is what produces the `code` link.
-
-### 2 · URL configuration
-
-Supabase dashboard → **Authentication → URL Configuration**.
-
-- **Site URL** — the application's address. This is what `{{ .SiteURL }}`
-  expands to, so if it is wrong every link in every email is wrong.
-- **Redirect URLs** — must include the callback for every environment:
+Supabase does not put a token in the email link. It puts a link to **its own
+verify endpoint**:
 
 ```
-http://localhost:3100/auth/callback
-https://<the production domain>/auth/callback
+https://<project>.supabase.co/auth/v1/verify?token=…&type=invite&redirect_to=…
 ```
 
-A redirect that is not on this list is rejected, and the user is bounced to
-sign-in with an error that does not say why.
+That endpoint checks the token itself, then redirects to `redirect_to`. Measured
+against this project, for both an invitation and a recovery:
 
-### 3 · Check the sender
+```
+303 -> https://karsons.vercel.app/auth/callback?next=/reset-password
+       #access_token=…&refresh_token=…&type=invite
+```
 
-Supabase's built-in SMTP is rate-limited and is not meant for production. If
-invitations arrive slowly, arrive in spam, or stop arrying after a handful,
-that is the cause rather than anything in this application. **Authentication →
-Emails → SMTP Settings** is where a real sender is configured.
+**The session comes back in the URL fragment** — everything after the `#`.
 
-## Verifying it worked
+A fragment is never sent to the server. The browser strips it before the request
+leaves. So `/auth/callback`, which was a **server route**, received a bare
+`?next=/reset-password` and nothing else. It correctly concluded the link had no
+token and bounced to sign-in.
 
-1. Invite a colleague to an address you can read.
-2. Look at the link in the email before clicking it. It must contain
-   `token_hash=` and **not** `code=`.
-3. Open it in a **different browser** from the one you sent it from — that is
-   the case that used to fail.
-4. It should land on `/reset-password` with a password form, not on sign-in
-   with an error.
-5. Repeat for **Forgot password**, requesting on a desktop and opening on a
-   phone.
+No amount of server code can read those tokens. The handler had to move to the
+browser.
 
-If it still fails, the server log now carries the real reason — the application
-prints it at `[auth/callback] exchange failed:` along with the link type. The
-message shown to the person is deliberately not that text.
+## The fix
 
-## What changed in the application
+`/auth/callback` is now a client page. It reads the fragment, calls
+`setSession`, and moves on. It handles all three shapes a link can arrive in:
 
-Nothing that alters the flow — the template change above is the fix. What
-changed is what happens when it goes wrong:
+| Arrives as | Comes from | Handled with |
+| --- | --- | --- |
+| `#access_token` + `#refresh_token` | Supabase's verify endpoint — invitations and resets | `setSession` |
+| `?code=` | a flow started in this browser | `exchangeCodeForSession`, where the PKCE verifier actually lives |
+| `?token_hash=` + `?type=` | a link built from `{{ .TokenHash }}` | `verifyOtp` |
 
-- Supabase's developer-facing errors are translated before they reach a screen.
-  A pharmacist should never be told to install `@supabase/ssr`.
-- The password reset is requested from the server rather than the browser, so
-  the real failure reaches a log instead of being swallowed by the
-  don't-reveal-whether-the-account-exists rule. That rule is unchanged: the
-  person still sees the same message either way.
-- A failed invitation is logged, so "I never got it" can be distinguished from
-  "it never sent".
-- `invite` is now handled explicitly as a link type rather than being cast past
-  a list that did not include it.
+The third is kept so that changing the templates remains an option, not a
+requirement.
+
+`createBrowserClient` writes the session to **cookies**, so once it is set the
+server sees it on the next request. That is what `@supabase/ssr` is for.
+
+### Why it could not stay on the server
+
+`@supabase/ssr` forces `flowType: "pkce"` on both its clients — the option is
+applied *after* anything the caller passes, so it cannot be overridden. PKCE
+needs a verifier that only the browser that *started* a flow has. An invitation
+is started by an administrator on a different machine, so no such verifier
+exists anywhere. Client-side handling sidesteps that entirely.
+
+## URL configuration
+
+**Authentication → URL Configuration.**
+
+- **Site URL** — `https://karsons.vercel.app`, no trailing slash. This is the
+  fallback Supabase redirects to when a `redirect_to` is not on the allow-list,
+  so it is also where a misconfigured link quietly ends up.
+- **Redirect URLs** — `https://karsons.vercel.app/**` covers the callback.
+
+Add `http://localhost:3100/**` if you want the flow to work locally. Without it,
+a localhost `redirect_to` is rejected and the user is silently sent to the Site
+URL root instead — verified, that is exactly what happens.
+
+## Verifying it
+
+1. Invite somebody at an address you can read.
+2. Open the link **in a different browser** from the one you sent it from. That
+   was the case that failed.
+3. It should show "Signing you in…" briefly, then land on the password form.
+4. Repeat for Forgot password, requesting on a desktop and opening on a phone.
+
+If it fails, the message on screen is now plain English rather than Supabase's
+developer text. The browser console carries the underlying reason.
+
+## Still worth doing, separately
+
+Supabase's built-in email sender is rate-limited to a handful of messages an
+hour and is not intended for production. With a tester and real staff about to
+use this, that limit will be reached.
+
+This project already sends through **Resend** (GP notifications, patient email)
+from `clinic@karsonspharmacy.co.uk`, so the account and the verified domain
+already exist. Pointing Supabase's SMTP at the same Resend key is a
+dashboard-only change with no new cost:
+
+```
+Host      smtp.resend.com
+Port      587
+Username  resend
+Password  <the existing RESEND_API_KEY>
+Sender    clinic@karsonspharmacy.co.uk
+```
+
+Confirm those against Resend's own SMTP page. This is about deliverability, not
+about the bug above — invitations work without it.
+
+## What else changed
+
+- Supabase's developer-facing errors are translated before reaching a screen. A
+  pharmacist was shown "use `@supabase/ssr` on both the server and client"; a
+  test now asserts no branch can produce a message naming a library.
+- The reset request runs on the server, so a genuine failure reaches a log
+  instead of being swallowed by the rule that hides whether an account exists.
+  That rule is unchanged.
+- Failed invitations are logged, so "I never got it" can be told apart from "it
+  never sent".
+- The tokens are stripped from the address bar once used, so they are not left
+  in browser history.
