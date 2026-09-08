@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karsons Platform — System Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  :root {
+    --paper:   #FBFAFC;
+    --raised:  #FFFFFF;
+    --sunk:    #F3F1F6;
+    --ink:     #171423;
+    --ink-soft:#3D3652;
+    --muted:   #6B6480;
+    --line:    #E4E0EC;
+    --line-soft:#EFECF4;
+    --brand:   #5B3FA8;
+    --brand-deep:#432D80;
+    --brand-wash:#F1EDFA;
+    --red:     #B42318;  --red-wash:  #FEF3F2;  --red-line:  #FDA29B;
+    --amber:   #B54708;  --amber-wash:#FFFAEB;  --amber-line:#FEC84B;
+    --green:   #067647;  --green-wash:#ECFDF3;  --green-line:#75E0A7;
+    --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+    --sans: 'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#131019; --raised:#1B1724; --sunk:#221D2E;
+      --ink:#EFECF5; --ink-soft:#C7C0D6; --muted:#948CA8;
+      --line:#332C44; --line-soft:#292235;
+      --brand:#B9A5EE; --brand-deep:#D3C6F6; --brand-wash:#241C38;
+      --red:#FDA29B;   --red-wash:#2C1512;   --red-line:#7A271A;
+      --amber:#FEC84B; --amber-wash:#2A1C09; --amber-line:#7A4708;
+      --green:#75E0A7; --green-wash:#0A2C1D; --green-line:#075D3B;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#131019; --raised:#1B1724; --sunk:#221D2E;
+    --ink:#EFECF5; --ink-soft:#C7C0D6; --muted:#948CA8;
+    --line:#332C44; --line-soft:#292235;
+    --brand:#B9A5EE; --brand-deep:#D3C6F6; --brand-wash:#241C38;
+    --red:#FDA29B;   --red-wash:#2C1512;   --red-line:#7A271A;
+    --amber:#FEC84B; --amber-wash:#2A1C09; --amber-line:#7A4708;
+    --green:#75E0A7; --green-wash:#0A2C1D; --green-line:#075D3B;
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: var(--sans); font-size: 16px; line-height: 1.62;
+    font-feature-settings: 'kern' 1;
+  }
+
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 24px 120px; }
+
+  /* ── Masthead ─────────────────────────────────────── */
+  .masthead { border-bottom: 1px solid var(--line); margin-bottom: 52px; padding: 56px 0 30px; }
+  .eyebrow {
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 14px;
+  }
+  h1 {
+    font-family: var(--serif); font-weight: 600; font-size: clamp(34px, 6vw, 52px);
+    line-height: 1.08; letter-spacing: -.015em; margin: 0 0 16px; text-wrap: balance;
+  }
+  .standfirst {
+    font-family: var(--serif); font-size: clamp(17px, 2.4vw, 21px); line-height: 1.55;
+    color: var(--ink-soft); margin: 0; max-width: 60ch;
+  }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 8px 22px; margin-top: 26px;
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+  }
+
+  /* ── Structure ────────────────────────────────────── */
+  h2 {
+    font-family: var(--serif); font-weight: 600; font-size: clamp(25px, 3.6vw, 33px);
+    line-height: 1.18; letter-spacing: -.01em; margin: 68px 0 6px; text-wrap: balance;
+    padding-top: 22px; border-top: 1px solid var(--line);
+  }
+  h2 .num {
+    display: block; font-family: var(--mono); font-size: 11.5px; font-weight: 500;
+    letter-spacing: .12em; color: var(--brand); margin-bottom: 10px; text-transform: uppercase;
+  }
+  h3 {
+    font-family: var(--sans); font-weight: 600; font-size: 17.5px;
+    margin: 38px 0 4px; letter-spacing: -.005em;
+  }
+  h4 {
+    font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); margin: 30px 0 8px;
+  }
+  p { margin: 0 0 16px; max-width: 68ch; }
+  ul, ol { margin: 0 0 16px; padding-left: 22px; max-width: 66ch; }
+  li { margin-bottom: 7px; }
+  li::marker { color: var(--muted); }
+  strong { font-weight: 600; }
+  a { color: var(--brand); text-underline-offset: 2px; }
+
+  code, .mono { font-family: var(--mono); font-size: .88em; }
+  p code, li code, td code {
+    background: var(--sunk); padding: 1px 5px; border-radius: 4px;
+    border: 1px solid var(--line-soft);
+  }
+
+  /* ── Contents ─────────────────────────────────────── */
+  .toc {
+    background: var(--sunk); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px 26px; margin: 0 0 8px;
+  }
+  .toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 34px; }
+  .toc li { margin-bottom: 5px; break-inside: avoid; }
+  .toc a { text-decoration: none; color: var(--ink-soft); }
+  .toc a:hover { color: var(--brand); text-decoration: underline; }
+  @media (max-width: 620px) { .toc ol { columns: 1; } }
+
+  /* ── Panels ───────────────────────────────────────── */
+  .note {
+    border: 1px solid var(--line); border-left: 3px solid var(--brand);
+    background: var(--raised); border-radius: 0 10px 10px 0;
+    padding: 16px 20px; margin: 24px 0;
+  }
+  .note p:last-child, .card p:last-child { margin-bottom: 0; }
+  .note.warn { border-left-color: var(--amber); background: var(--amber-wash); }
+  .note.stop { border-left-color: var(--red); background: var(--red-wash); }
+  .note .label {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 6px;
+  }
+
+  .card {
+    background: var(--raised); border: 1px solid var(--line);
+    border-radius: 12px; padding: 22px 24px; margin: 20px 0;
+  }
+  .grid { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); margin: 22px 0; }
+  .grid .card { margin: 0; }
+  .card h3 { margin-top: 0; }
+
+  /* ── Flow ─────────────────────────────────────────── */
+  .flow { margin: 26px 0; display: grid; gap: 0; }
+  .step {
+    display: grid; grid-template-columns: 34px 1fr; gap: 0 18px;
+  }
+  .step .rail { display: flex; flex-direction: column; align-items: center; }
+  .step .dot {
+    width: 27px; height: 27px; border-radius: 50%; flex: none;
+    background: var(--brand-wash); border: 1px solid var(--brand);
+    color: var(--brand); font-family: var(--mono); font-size: 12px; font-weight: 500;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .step .line { width: 1px; flex: 1; background: var(--line); min-height: 14px; }
+  .step:last-child .line { display: none; }
+  .step .body { padding-bottom: 22px; }
+  .step .body h3 { margin: 2px 0 4px; }
+  .step .body p { margin-bottom: 0; }
+  .step .who {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .07em;
+    text-transform: uppercase; color: var(--muted); margin-bottom: 3px;
+  }
+
+  /* ── Tables ───────────────────────────────────────── */
+  .scroll { overflow-x: auto; margin: 22px 0; border: 1px solid var(--line); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 520px; }
+  th, td { text-align: left; padding: 11px 16px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+  th {
+    font-family: var(--mono); font-size: 11px; letter-spacing: .09em; text-transform: uppercase;
+    color: var(--muted); font-weight: 500; background: var(--sunk); white-space: nowrap;
+  }
+  tr:last-child td { border-bottom: none; }
+  td.num, th.num { font-family: var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ── RAG ──────────────────────────────────────────── */
+  .pill {
+    display: inline-block; font-family: var(--mono); font-size: 11px; font-weight: 500;
+    letter-spacing: .08em; text-transform: uppercase; padding: 2px 9px;
+    border-radius: 999px; border: 1px solid;
+  }
+  .pill.red   { color: var(--red);   background: var(--red-wash);   border-color: var(--red-line); }
+  .pill.amber { color: var(--amber); background: var(--amber-wash); border-color: var(--amber-line); }
+  .pill.green { color: var(--green); background: var(--green-wash); border-color: var(--green-line); }
+  .pill.grey  { color: var(--muted); background: var(--sunk);       border-color: var(--line); }
+
+  .demo {
+    border: 1px solid var(--line); border-radius: 12px; overflow: hidden; margin: 22px 0;
+    background: var(--raised);
+  }
+  .demo > header {
+    background: var(--sunk); padding: 13px 20px; border-bottom: 1px solid var(--line);
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline;
+  }
+  .demo > header .title { font-weight: 600; font-size: 15px; }
+  .demo > header .sub { font-family: var(--mono); font-size: 11.5px; color: var(--muted); }
+  .demo > .inner { padding: 18px 20px 6px; }
+
+  .kv { display: grid; grid-template-columns: max-content 1fr; gap: 5px 18px; margin: 0 0 16px; font-size: 14.5px; }
+  .kv dt { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+  .kv dd { margin: 0; }
+
+  footer.doc {
+    margin-top: 78px; padding-top: 26px; border-top: 1px solid var(--line);
+    font-size: 13.5px; color: var(--muted);
+  }
+  @media print {
+    body { background: #fff; font-size: 11pt; }
+    h2 { break-after: avoid; } .card, .demo, .note { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Karsons Pharmacy Group · Isle of Man</p>
+  <h1>The Karsons Clinical Platform</h1>
+  <p class="standfirst">
+    What the system does, who does what in it, and how a patient gets from a
+    web form to a medicine in their hand — with worked examples you can open
+    and follow.
+  </p>
+  <div class="meta">
+    <span>Prepared for the client and the test team</span>
+    <span>Covers Flu Vaccination and both Weight Management services</span>
+  </div>
+</header>
+
+<nav class="toc" aria-label="Contents">
+  <ol>
+    <li><a href="#what">What the platform is</a></li>
+    <li><a href="#services">The three services</a></li>
+    <li><a href="#new-patient">Journey A — new patient</a></li>
+    <li><a href="#repeat">Journey B — repeat request</a></li>
+    <li><a href="#rag">How green, amber and red are decided</a></li>
+    <li><a href="#gates">What a colour is <em>not</em> allowed to do</a></li>
+    <li><a href="#staff">The staff screens</a></li>
+    <li><a href="#config">What the pharmacy can change itself</a></li>
+    <li><a href="#safety">Safety and record-keeping</a></li>
+    <li><a href="#demos">Worked demonstrations</a></li>
+    <li><a href="#notdone">What is deliberately not built yet</a></li>
+  </ol>
+</nav>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="what"><span class="num">Section 01</span>What the platform is</h2>
+
+<p>
+  A single system for running Karsons' clinical services end to end: the patient
+  fills in a questionnaire online, the answers are triaged automatically, a
+  pharmacist makes the decision, and the platform carries it through to a
+  prescription, a payment, a dispatch and a note to the patient's GP.
+</p>
+
+<p>
+  It replaces paper and spreadsheets for three things at once — <strong>capturing</strong>
+  the clinical information, <strong>deciding</strong> what is safe, and
+  <strong>recording</strong> what happened and why. The third is the part that
+  matters most under inspection, and it is why nothing clinical in this system
+  can be deleted or quietly edited.
+</p>
+
+<div class="grid">
+  <div class="card">
+    <h3>Two branches</h3>
+    <p>Onchan (ONC) and Kirk Michael (KMI). Staff are granted access per branch and per date range, so a locum can hold Pharmacist at one branch for a fortnight.</p>
+  </div>
+  <div class="card">
+    <h3>Five roles</h3>
+    <p>Admin, Pharmacist, Technician, Reception, Viewer. Permissions are a grid of module × action, editable by an administrator without a deployment.</p>
+  </div>
+  <div class="card">
+    <h3>Remote by default</h3>
+    <p>Weight management is delivered online: the patient never routinely comes in. Flu vaccination is the opposite — booked and given in person.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="services"><span class="num">Section 02</span>The three services</h2>
+
+<p>
+  Everything the platform does is driven by a <em>service</em>. A service owns a
+  questionnaire, optionally a rulebook, a price, its leaflets and its public
+  branding. Adding a fourth service is configuration, not development.
+</p>
+
+<div class="scroll">
+<table>
+  <thead>
+    <tr>
+      <th>Service</th><th>Kind</th><th class="num">Price</th>
+      <th class="num">Form</th><th class="num">Rules</th><th>Patient reaches it at</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Flu Vaccination</strong></td><td>Vaccination</td><td class="num">£20.00</td>
+      <td class="num">v4 · 3 steps</td><td class="num">—</td>
+      <td><code>/book</code> then <code>/f/flu-vaccination</code></td>
+    </tr>
+    <tr>
+      <td><strong>Weight Management — New Patient</strong></td><td>Consultation</td><td class="num">£190.00</td>
+      <td class="num">v3 · 10 steps</td><td class="num">v1 · 6 rules</td>
+      <td><code>/f/weight-management-first</code></td>
+    </tr>
+    <tr>
+      <td><strong>Weight Management — Repeat Request</strong></td><td>Repeat supply</td><td class="num">£100.00</td>
+      <td class="num">v2 · 6 steps</td><td class="num">v1 · 24 rules</td>
+      <td><code>/repeat/weight-management-repeat</code></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+  <span class="label">Why versions matter</span>
+  <p>
+    A published questionnaire is never edited. Changing it publishes a new
+    version, and every submission stays bound to the version it was answered
+    against. So a request from March still shows the questions that patient was
+    actually asked, even after the form has moved on twice. The same is true of
+    the rulebook.
+  </p>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="new-patient"><span class="num">Section 03</span>Journey A — a new weight-management patient</h2>
+
+<p>
+  Ten steps, about ten minutes, entirely online. The patient has no account and
+  never creates one.
+</p>
+
+<div class="flow">
+  <div class="step">
+    <div class="rail"><div class="dot">1</div><div class="line"></div></div>
+    <div class="body">
+      <p class="who">Patient</p>
+      <h3>Chooses the pathway</h3>
+      <p>The form opens by explaining that this is an online service. If they would rather be seen in person it stops there and offers them the face-to-face programme instead — a button, not just a sentence. Nothing further is asked.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="rail"><div class="dot">2</div><div class="line"></div></div>
+    <div class="body">
+      <p class="who">Patient</p>
+      <h3>Answers 52 questions across nine more steps</h3>
+      <p>Identity and contact, measurements, medical history, habits and safety, what they are asking for, evidence uploads, how they want it delivered, and consent. Answers save as they type, so they can close the page and come back.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="rail"><div class="dot">3</div><div class="line"></div></div>
+    <div class="body">
+      <p class="who">Patient</p>
+      <h3>Uploads photo ID, a photo of themselves and their scales</h3>
+      <p>Three required attachments. A transfer patient from another clinic also uploads their current prescription or medicine box.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="rail"><div class="dot">4</div><div class="line"></div></div>
+    <div class="body">
+      <p class="who">Patient</p>
+      <h3>Reads the leaflets, signs, submits</h3>
+      <p>Anything the pharmacy has marked as required must be ticked before the step will advance. They are then given a link to track the request.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="rail"><div class="dot">5</div><div class="line"></div></div>
+    <div class="body">
+      <p class="who">Pharmacist</p>
+      <h3>Reads it, and telephones the patient</h3>
+      <p>The request appears on <strong>Weight Management → New patients</strong> with a badge showing how many are still to call. The call is recorded against the request: who spoke to them, when, whether identity was verified, and what was established.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="rail"><div class="dot">6</div><div class="line"></div></div>
+    <div class="body">
+      <p class="who">Pharmacist</p>
+      <h3>Approves, defers, declines or escalates</h3>
+      <p>Approval is refused by the server until a completed, identity-verified call exists. This is a gate, not a disabled button.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="rail"><div class="dot">7</div><div class="line"></div></div>
+    <div class="body">
+      <p class="who">System</p>
+      <h3>Prescription, payment, GP note, enrolment</h3>
+      <p>A numbered prescription is raised, a payment is created at the service price, the patient's GP is notified, and the patient is enrolled in repeat care with a Repeat Care ID of the form <code>RC-XXXX-XXXX</code>.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="rail"><div class="dot">8</div></div>
+    <div class="body">
+      <p class="who">Technician</p>
+      <h3>Assembles, batches and sends</h3>
+      <p>Fulfilment moves through pending → assembling → ready → dispatched or collected. A batch number and expiry are required before it can reach ready, enforced by the database rather than the screen.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="repeat"><span class="num">Section 04</span>Journey B — a repeat request</h2>
+
+<p>
+  Shorter, and the one the automatic triage was built for. The patient must
+  already be enrolled: they cannot enrol themselves.
+</p>
+
+<div class="flow">
+  <div class="step">
+    <div class="rail"><div class="dot">1</div><div class="line"></div></div>
+    <div class="body">
+      <p class="who">Patient</p>
+      <h3>Enters their Repeat Care ID and email</h3>
+      <p>Both must match an <em>active</em> enrolment. A failure gives one message whatever went wrong — telling a caller which half they got right would turn this into a tool for finding valid IDs.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="rail"><div class="dot">2</div><div class="line"></div></div>
+    <div class="body">
+      <p class="who">Patient</p>
+      <h3>Answers six steps about how they are getting on</h3>
+      <p>The form already knows their medicine and current strength, so the dose options are personalised to them rather than being a free choice.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="rail"><div class="dot">3</div><div class="line"></div></div>
+    <div class="body">
+      <p class="who">System</p>
+      <h3>All 24 rules run, and a colour comes out</h3>
+      <p>Explained in the next section. Every rule that ran is recorded, including the ones that did not fire and why.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="rail"><div class="dot">4</div><div class="line"></div></div>
+    <div class="body">
+      <p class="who">Pharmacist</p>
+      <h3>Authorises — with different amounts of work per colour</h3>
+      <p><span class="pill green">Green</span> a compact authorisation, no phone call needed. <span class="pill amber">Amber</span> the pharmacist must record <em>why</em> they are content. <span class="pill red">Red</span> cannot be supplied from this screen at all.</p>
+    </div>
+  </div>
+  <div class="step">
+    <div class="rail"><div class="dot">5</div></div>
+    <div class="body">
+      <p class="who">System</p>
+      <h3>Same tail as a new patient</h3>
+      <p>Prescription, payment, dispatch — and the enrolment's last-supplied date moves, which is what the due list reads.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="rag"><span class="num">Section 05</span>How green, amber and red are decided</h2>
+
+<p>
+  Every rule runs on every request. There is no early exit, and the order rules
+  are written in does not change the answer.
+</p>
+
+<div class="grid">
+  <div class="card">
+    <h3><span class="pill red">Red</span> wins</h3>
+    <p>If any red rule matched, the request is red — whatever else also matched.</p>
+  </div>
+  <div class="card">
+    <h3>Otherwise <span class="pill amber">amber</span></h3>
+    <p>If no red matched but an amber did, the request is amber.</p>
+  </div>
+  <div class="card">
+    <h3>Otherwise <span class="pill green">green</span></h3>
+    <p>Only when nothing more severe matched at all.</p>
+  </div>
+  <div class="card">
+    <h3>Nothing matched? <span class="pill amber">Amber</span></h3>
+    <p>Silence is not treated as evidence of safety. The default is deliberately cautious.</p>
+  </div>
+</div>
+
+<p>
+  A rule whose question the patient did not answer is recorded as
+  <strong>skipped</strong> — never as passed. That distinction is the whole
+  safety model: a missing answer can never earn a green.
+</p>
+
+<h3>The 24 repeat rules, in short</h3>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Outcome</th><th class="num">Count</th><th>What they look for</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><span class="pill red">Red</span></td><td class="num">7</td>
+      <td>Pregnancy or breastfeeding · two or more missed doses · severe or red-flag side effects · a dose jump skipping a strength · BMI under 23 while not reducing · Wegovy outside 18–74 · Mounjaro outside 18–84</td>
+    </tr>
+    <tr>
+      <td><span class="pill amber">Amber</span></td><td class="num">11</td>
+      <td>One missed dose · moderate side effects · medicines or conditions changed · weight loss below the 2% monthly target · appetite suppression wearing off or frequent snacking · a dose change before three weeks · two pens without six weeks stable · more than two months requested · BMI 23–24.9 · the patient asked a question · the patient asked to come in</td>
+    </tr>
+    <tr>
+      <td><span class="pill green">Green</span></td><td class="num">6</td>
+      <td>Stable on the same dose and meeting target · an increase supported by the answers and eligible on timing · BMI under 23 <em>with</em> a taper request · mild side effects · good fluid intake · low fluid intake</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note">
+  <span class="label">The new-patient rulebook is different on purpose</span>
+  <p>
+    It has 6 rules, not 24 — the eligibility ones only. The other 18 ask about
+    treatment <em>so far</em>: side effects, doses missed, weeks on the current
+    strength, weight lost since starting. A patient who has not started has no
+    answer to any of them, so copying those across would have put eighteen rules
+    on screen that could never fire.
+  </p>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="gates"><span class="num">Section 06</span>What a colour is <em>not</em> allowed to do</h2>
+
+<p>
+  A rules engine can say a request looks routine. It cannot prescribe. Several
+  checks sit between a colour and a supply, and each one is enforced on the
+  server rather than by hiding a button.
+</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Gate</th><th>Refuses when</th></tr></thead>
+  <tbody>
+    <tr><td>New-patient approval</td><td>No completed, identity-verified telephone call is recorded against the request.</td></tr>
+    <tr><td>Repeat authorisation</td><td>The outcome is red; or the patient is not actively enrolled; or an amber is being approved with no reasoning written down; or nothing triaged it and nothing was recorded.</td></tr>
+    <tr><td>Measurement sanity</td><td>The height or weight could not have come from a person, so the BMI and weight-change checks never ran. Blocked whatever colour the engine reached, and a note does not clear it.</td></tr>
+    <tr><td>Fulfilment</td><td>A batch number and expiry are missing, or the expiry is not later than the supply date. Enforced by a database trigger.</td></tr>
+    <tr><td>Deletion</td><td>Always, for clinical records. Patients, submissions, evaluations and acknowledgements cannot be deleted — only archived or superseded.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="staff"><span class="num">Section 07</span>The staff screens</h2>
+
+<h4>Clinical</h4>
+<div class="scroll">
+<table>
+  <thead><tr><th>Screen</th><th>What it answers</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Today</strong></td><td>What should I pick up? Four counters — new patients to call, stopped on safety, waiting to be supplied, due a repeat — each linking to the list it counts.</td></tr>
+    <tr><td><strong>Patients</strong></td><td>One person's whole history: submissions, consultations, prescriptions, allergies, enrolment.</td></tr>
+    <tr><td><strong>Consultations</strong></td><td>The clinical decision screen. Answers, RAG trace, allergy check against the batch, declarations.</td></tr>
+    <tr><td><strong>Appointments</strong></td><td>Booked slots and the calendar. Used by flu, not by remote weight management.</td></tr>
+    <tr><td><strong>Weight Management</strong></td><td>Three lanes: new patients, repeat requests, and <em>due a repeat</em> — the last being people who have <em>not</em> come back.</td></tr>
+    <tr><td><strong>Vaccinations</strong></td><td>Recording a jab: batch, site, consent, clinician declaration.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h4>Operations</h4>
+<div class="scroll">
+<table>
+  <thead><tr><th>Screen</th><th>What it answers</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Inventory</strong></td><td>Stock by batch and expiry, with movements. Feeds the expiring-soon warning.</td></tr>
+    <tr><td><strong>Services</strong></td><td>The configuration hub — see the next section.</td></tr>
+    <tr><td><strong>Prescriptions</strong></td><td>Everything raised, and where each one has got to.</td></tr>
+    <tr><td><strong>Payments</strong></td><td>What is owed and what has settled. Payment is currently a tickbox, by design.</td></tr>
+    <tr><td><strong>Documents</strong></td><td>Generated PDFs and patient uploads.</td></tr>
+    <tr><td><strong>Communications</strong></td><td>Messages queued and sent, including GP notifications.</td></tr>
+    <tr><td><strong>Reports</strong></td><td>Revenue taken and outstanding, then activity by service, pharmacist, medicine and stock.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="config"><span class="num">Section 08</span>What the pharmacy can change itself</h2>
+
+<p>
+  The point of the design: almost everything a pharmacy wants to change month to
+  month is configuration, reachable from <strong>Services</strong>, with no
+  developer involved.
+</p>
+
+<div class="grid">
+  <div class="card">
+    <h3>Edit form</h3>
+    <p>The designer. 21 question types, conditional follow-ups, step gating, warnings. Publishing creates a new version and leaves everything already answered untouched.</p>
+  </div>
+  <div class="card">
+    <h3>Links and leaflets</h3>
+    <p>What a patient must read, where it appears on the form, and whether they must tick to confirm. Edits are live immediately — no republish.</p>
+  </div>
+  <div class="card">
+    <h3>Clinical rules</h3>
+    <p>Read every rule as a sentence, and tune outcomes, priorities, thresholds and messages. Publishing mints a new rules version; the old one stays.</p>
+  </div>
+  <div class="card">
+    <h3>Settings</h3>
+    <p>Price, and the public branding — clinic name, colours, support email and phone, privacy and terms links.</p>
+  </div>
+</div>
+
+<div class="note">
+  <span class="label">A check worth knowing about</span>
+  <p>
+    The rules screen warns if a rule reads a question the current form no longer
+    asks. Renaming a field in the designer would otherwise break that rule
+    silently — it would simply stop matching, and the request would come back
+    amber looking like an ordinary cautious result.
+  </p>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="safety"><span class="num">Section 09</span>Safety and record-keeping</h2>
+
+<ul>
+  <li><strong>Nothing clinical is deleted.</strong> A database trigger refuses it on twelve tables. Records are archived, closed or superseded.</li>
+  <li><strong>Consent is snapshotted.</strong> The exact wording the patient was shown is copied into the record, so a later rewording cannot change what they agreed to.</li>
+  <li><strong>Leaflet acknowledgements are snapshotted too</strong> — the title, the link and the version as they stood that day.</li>
+  <li><strong>The audit log is hash-chained.</strong> Each entry carries the hash of the one before it, so a removed or altered entry is detectable.</li>
+  <li><strong>Text messages never carry clinical detail.</strong> A template not permitted it never receives it, whatever the caller passes in — including leaflet links, because a link title names the medicine.</li>
+  <li><strong>Implausible measurements are refused.</strong> A height typed in metres cannot produce a BMI, and cannot be authorised on.</li>
+</ul>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="demos"><span class="num">Section 10</span>Worked demonstrations</h2>
+
+<p>
+  Five patients are loaded so every screen has something true to show. Their
+  colours were produced by the real engine, so opening the decision trace shows
+  genuine reasoning rather than a label.
+</p>
+
+<div class="demo">
+  <header>
+    <span class="title">Ruth Kelly</span>
+    <span class="sub">RC-K6N3-96WK · Mounjaro 5mg</span>
+    <span class="pill green" style="margin-left:auto">Green</span>
+  </header>
+  <div class="inner">
+    <dl class="kv">
+      <dt>Asked for</dt><dd>Same dose, one pen</dd>
+      <dt>Answers</dt><dd>No side effects, no missed doses, 8 weeks on the dose, good fluid intake, appetite fully suppressed</dd>
+      <dt>Decided by</dt><dd><em>Stable on the same dose and meeting target</em></dd>
+    </dl>
+    <p><strong>Try this:</strong> open her request from <strong>Weight Management → Repeat requests</strong> and read the trace. Every one of the 24 rules is listed with whether it fired.</p>
+  </div>
+</div>
+
+<div class="demo">
+  <header>
+    <span class="title">Peter Cregeen</span>
+    <span class="sub">RC-3RNK-DDWP · Mounjaro 5mg</span>
+    <span class="pill amber" style="margin-left:auto">Amber</span>
+  </header>
+  <div class="inner">
+    <dl class="kv">
+      <dt>Asked for</dt><dd>An increase to 7.5mg</dd>
+      <dt>Why amber</dt><dd>Only two weeks on his current strength — the rule wants three</dd>
+      <dt>Decided by</dt><dd><em>Dose change requested before 3 weeks on the current strength</em></dd>
+    </dl>
+    <p><strong>Try this:</strong> approve him without writing anything in the note. The server refuses it and says why. That refusal is the gate, not the button.</p>
+  </div>
+</div>
+
+<div class="demo">
+  <header>
+    <span class="title">Sinead Corlett</span>
+    <span class="sub">RC-X7RD-RBBE · Wegovy 1mg</span>
+    <span class="pill red" style="margin-left:auto">Red</span>
+  </header>
+  <div class="inner">
+    <dl class="kv">
+      <dt>Reported</dt><dd>Severe side effects, two or more missed doses, poor appetite control</dd>
+      <dt>Decided by</dt><dd><em>Severe adverse effects or red-flag symptoms</em></dd>
+    </dl>
+    <p><strong>Try this:</strong> attempt to approve. A red cannot be supplied from this screen however the note is worded — it has to go through the urgent list or be declined.</p>
+  </div>
+</div>
+
+<div class="demo">
+  <header>
+    <span class="title">Alan Quayle &amp; Maureen Faragher</span>
+    <span class="sub">Nobody has heard from either of them</span>
+    <span class="pill grey" style="margin-left:auto">Due list</span>
+  </header>
+  <div class="inner">
+    <dl class="kv">
+      <dt>Alan</dt><dd>Ran out about a week ago — <span class="pill amber">due</span></dd>
+      <dt>Maureen</dt><dd>Ran out about six weeks ago — <span class="pill red">lapsed</span></dd>
+    </dl>
+    <p><strong>Try this:</strong> open <strong>Weight Management → Due a repeat</strong>. These two are the whole point of that lane — they have not asked for anything, so they appear on no other screen in the system.</p>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="notdone"><span class="num">Section 11</span>What is deliberately not built yet</h2>
+
+<p>Listed so nobody reports these as faults.</p>
+
+<ul>
+  <li><strong>No card payments.</strong> Payment is a "received" tickbox, at the client's request. Nothing takes money.</li>
+  <li><strong>Rules can be tuned but not added or removed.</strong> Thresholds, outcomes, priorities and messages are editable; creating a brand-new rule or changing the <em>shape</em> of a condition is not.</li>
+  <li><strong>Branding is placeholder.</strong> The clinic name, colours and support details are stand-ins until the client supplies real ones.</li>
+  <li><strong>The face-to-face page is a placeholder</strong> and says so on itself. It is replaced by pointing the referral link at the pharmacy's own page.</li>
+  <li><strong>No paging on long lists.</strong> Fine at present volumes; owed before the lists get long.</li>
+  <li><strong>Demo patients are permanent.</strong> Clinical records cannot be deleted, so the five above can be archived and closed but never removed.</li>
+</ul>
+
+<footer class="doc">
+  <p>
+    Karsons Clinical Platform · system overview. Figures in this document were
+    read from the live database rather than written from memory; where a version
+    number or price is quoted it was true when this was produced.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Karsons Platform — Test Plan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper:#FBFAFC; --raised:#FFFFFF; --sunk:#F3F1F6;
+    --ink:#171423; --ink-soft:#3D3652; --muted:#6B6480;
+    --line:#E4E0EC; --line-soft:#EFECF4;
+    --brand:#5B3FA8; --brand-wash:#F1EDFA;
+    --red:#B42318;   --red-wash:#FEF3F2;   --red-line:#FDA29B;
+    --amber:#B54708; --amber-wash:#FFFAEB; --amber-line:#FEC84B;
+    --green:#067647; --green-wash:#ECFDF3; --green-line:#75E0A7;
+    --serif:'Newsreader', Georgia, serif;
+    --sans:'Public Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --mono:'IBM Plex Mono', ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#131019; --raised:#1B1724; --sunk:#221D2E;
+      --ink:#EFECF5; --ink-soft:#C7C0D6; --muted:#948CA8;
+      --line:#332C44; --line-soft:#292235;
+      --brand:#B9A5EE; --brand-wash:#241C38;
+      --red:#FDA29B; --red-wash:#2C1512; --red-line:#7A271A;
+      --amber:#FEC84B; --amber-wash:#2A1C09; --amber-line:#7A4708;
+      --green:#75E0A7; --green-wash:#0A2C1D; --green-line:#075D3B;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#131019; --raised:#1B1724; --sunk:#221D2E;
+    --ink:#EFECF5; --ink-soft:#C7C0D6; --muted:#948CA8;
+    --line:#332C44; --line-soft:#292235;
+    --brand:#B9A5EE; --brand-wash:#241C38;
+    --red:#FDA29B; --red-wash:#2C1512; --red-line:#7A271A;
+    --amber:#FEC84B; --amber-wash:#2A1C09; --amber-line:#7A4708;
+    --green:#75E0A7; --green-wash:#0A2C1D; --green-line:#075D3B;
+  }
+
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:var(--sans); font-size:16px; line-height:1.6;
+  }
+  .wrap { max-width:920px; margin:0 auto; padding:0 24px 120px; }
+
+  .masthead { border-bottom:1px solid var(--line); margin-bottom:44px; padding:56px 0 30px; }
+  .eyebrow { font-family:var(--mono); font-size:11.5px; letter-spacing:.12em;
+    text-transform:uppercase; color:var(--muted); margin:0 0 14px; }
+  h1 { font-family:var(--serif); font-weight:600; font-size:clamp(33px,6vw,50px);
+    line-height:1.08; letter-spacing:-.015em; margin:0 0 16px; text-wrap:balance; }
+  .standfirst { font-family:var(--serif); font-size:clamp(17px,2.4vw,20px);
+    line-height:1.55; color:var(--ink-soft); margin:0; max-width:60ch; }
+
+  h2 { font-family:var(--serif); font-weight:600; font-size:clamp(24px,3.4vw,31px);
+    line-height:1.18; margin:64px 0 6px; padding-top:22px; border-top:1px solid var(--line);
+    text-wrap:balance; }
+  h2 .num { display:block; font-family:var(--mono); font-size:11.5px; font-weight:500;
+    letter-spacing:.12em; color:var(--brand); margin-bottom:10px; text-transform:uppercase; }
+  h3 { font-family:var(--sans); font-weight:600; font-size:17px; margin:34px 0 6px; }
+  h4 { font-family:var(--mono); font-weight:500; font-size:12px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--muted); margin:28px 0 8px; }
+  p { margin:0 0 15px; max-width:70ch; }
+  ul, ol { margin:0 0 15px; padding-left:22px; max-width:68ch; }
+  li { margin-bottom:6px; } li::marker { color:var(--muted); }
+  a { color:var(--brand); text-underline-offset:2px; }
+  code { font-family:var(--mono); font-size:.88em; background:var(--sunk);
+    padding:1px 5px; border-radius:4px; border:1px solid var(--line-soft); }
+
+  .toc { background:var(--sunk); border:1px solid var(--line); border-radius:12px;
+    padding:22px 26px; }
+  .toc ol { margin:0; padding-left:20px; columns:2; column-gap:34px; }
+  .toc li { margin-bottom:5px; break-inside:avoid; }
+  .toc a { text-decoration:none; color:var(--ink-soft); }
+  .toc a:hover { color:var(--brand); text-decoration:underline; }
+  @media (max-width:640px){ .toc ol { columns:1; } }
+
+  .note { border:1px solid var(--line); border-left:3px solid var(--brand);
+    background:var(--raised); border-radius:0 10px 10px 0; padding:16px 20px; margin:22px 0; }
+  .note.warn { border-left-color:var(--amber); background:var(--amber-wash); }
+  .note.stop { border-left-color:var(--red); background:var(--red-wash); }
+  .note .label { font-family:var(--mono); font-size:11px; letter-spacing:.1em;
+    text-transform:uppercase; color:var(--muted); display:block; margin-bottom:6px; }
+  .note p:last-child { margin-bottom:0; }
+
+  .scroll { overflow-x:auto; margin:20px 0; border:1px solid var(--line); border-radius:12px; }
+  table { border-collapse:collapse; width:100%; font-size:14.5px; min-width:560px; }
+  th, td { text-align:left; padding:11px 15px; border-bottom:1px solid var(--line-soft);
+    vertical-align:top; }
+  th { font-family:var(--mono); font-size:11px; letter-spacing:.09em; text-transform:uppercase;
+    color:var(--muted); font-weight:500; background:var(--sunk); white-space:nowrap; }
+  tr:last-child td { border-bottom:none; }
+  td.mono, th.mono { font-family:var(--mono); white-space:nowrap; }
+
+  /* ── Test case ─────────────────────────────────────── */
+  .tc { border:1px solid var(--line); border-radius:12px; margin:16px 0;
+    background:var(--raised); overflow:hidden; break-inside:avoid; }
+  .tc > header { display:flex; flex-wrap:wrap; gap:10px; align-items:baseline;
+    padding:12px 18px; background:var(--sunk); border-bottom:1px solid var(--line); }
+  .tc .id { font-family:var(--mono); font-size:12.5px; font-weight:600; color:var(--brand); }
+  .tc .title { font-weight:600; font-size:15px; flex:1 1 260px; }
+  .tc > .inner { padding:16px 18px 6px; }
+  .tc h5 { font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+    color:var(--muted); margin:14px 0 5px; font-weight:500; }
+  .tc h5:first-child { margin-top:0; }
+  .tc ol, .tc ul { margin:0 0 10px; padding-left:20px; }
+  .tc p { margin:0 0 10px; }
+  .expect { border-left:2px solid var(--green); background:var(--green-wash);
+    padding:9px 14px; border-radius:0 8px 8px 0; margin:0 0 12px; }
+  .expect strong { color:var(--green); }
+
+  .prio { font-family:var(--mono); font-size:10.5px; font-weight:600; letter-spacing:.08em;
+    text-transform:uppercase; padding:2px 8px; border-radius:999px; border:1px solid; }
+  .prio.p1 { color:var(--red); background:var(--red-wash); border-color:var(--red-line); }
+  .prio.p2 { color:var(--amber); background:var(--amber-wash); border-color:var(--amber-line); }
+  .prio.p3 { color:var(--muted); background:var(--sunk); border-color:var(--line); }
+
+  .pill { display:inline-block; font-family:var(--mono); font-size:11px; font-weight:500;
+    letter-spacing:.08em; text-transform:uppercase; padding:2px 9px; border-radius:999px;
+    border:1px solid; }
+  .pill.red{color:var(--red);background:var(--red-wash);border-color:var(--red-line);}
+  .pill.amber{color:var(--amber);background:var(--amber-wash);border-color:var(--amber-line);}
+  .pill.green{color:var(--green);background:var(--green-wash);border-color:var(--green-line);}
+
+  .tmpl { background:var(--sunk); border:1px solid var(--line); border-radius:12px;
+    padding:20px 24px; font-family:var(--mono); font-size:13px; line-height:1.75;
+    white-space:pre-wrap; overflow-x:auto; }
+
+  footer.doc { margin-top:74px; padding-top:26px; border-top:1px solid var(--line);
+    font-size:13.5px; color:var(--muted); }
+
+  @media print {
+    body { background:#fff; font-size:10.5pt; }
+    .tc, .note, table { break-inside:avoid; } h2 { break-after:avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="masthead">
+  <p class="eyebrow">Karsons Pharmacy Group · Test plan for the engaged tester</p>
+  <h1>Test Plan &amp; Cases</h1>
+  <p class="standfirst">
+    What to test, how to test it, and — most importantly — how to write up what
+    you find so it can be fixed without a conversation.
+  </p>
+</header>
+
+<div class="note stop">
+  <span class="label">Read this before you start</span>
+  <p>
+    This is a <strong>clinical</strong> system. A bug here can mean a patient is
+    supplied a medicine they should not have had, or refused one they needed.
+    Anything touching the red / amber / green decision, the approval gates, or
+    what a patient is told about their own treatment is <span class="prio p1">P1</span>
+    by default — report it even if you are not certain it is wrong.
+  </p>
+</div>
+
+<nav class="toc" aria-label="Contents">
+  <ol>
+    <li><a href="#how">How to report a finding</a></li>
+    <li><a href="#severity">Severity, and what it means</a></li>
+    <li><a href="#env">Environment and test data</a></li>
+    <li><a href="#known">Known limitations — not bugs</a></li>
+    <li><a href="#A">A · Access and permissions</a></li>
+    <li><a href="#B">B · New-patient form</a></li>
+    <li><a href="#C">C · Repeat access and request</a></li>
+    <li><a href="#D">D · Triage and decision gates</a></li>
+    <li><a href="#E">E · Prescription, payment, dispatch</a></li>
+    <li><a href="#F">F · Due list and chasing</a></li>
+    <li><a href="#G">G · Configuration screens</a></li>
+    <li><a href="#H">H · Patient tracking and referral</a></li>
+    <li><a href="#I">I · Reports and records</a></li>
+    <li><a href="#J">J · Security and abuse</a></li>
+    <li><a href="#K">K · Devices, browsers, accessibility</a></li>
+    <li><a href="#exploratory">Exploratory charters</a></li>
+    <li><a href="#template">Bug report template</a></li>
+  </ol>
+</nav>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="how"><span class="num">Part 01</span>How to report a finding</h2>
+
+<p>
+  A report that cannot be reproduced cannot be fixed, and one without a
+  screenshot usually starts an argument about what was actually on screen.
+  Every finding needs all six of these.
+</p>
+
+<ol>
+  <li><strong>Reproduce it a second time before writing it up.</strong> If it only happened once, say so explicitly — that is useful information, not a reason to stay quiet.</li>
+  <li><strong>Screenshot the failure</strong>, showing the whole browser window including the URL bar. If the layout is wrong, include a second shot at a different window width.</li>
+  <li><strong>Write the exact steps</strong>, starting from a signed-out browser. Include the data you typed, verbatim — "a bad height" is not reproducible; <code>1.7</code> is.</li>
+  <li><strong>Say what you expected and what happened.</strong> Both. "It didn't work" tells the developer nothing about which of the two is wrong.</li>
+  <li><strong>Open the browser console</strong> (F12 → Console) and paste any red errors. Do the same for the Network tab if a request failed.</li>
+  <li><strong>Note the time</strong>, to the minute, and the branch you were working in. Server logs are searchable by time.</li>
+</ol>
+
+<div class="note warn">
+  <span class="label">Video beats prose for anything intermittent</span>
+  <p>
+    If something only fails sometimes, or depends on timing, record a short
+    screen capture instead of describing it. Intermittent faults are the ones
+    most often closed as "cannot reproduce" — a recording prevents that.
+  </p>
+</div>
+
+<h3>What counts as a finding</h3>
+<p>
+  Anything that is wrong, confusing, or that you had to think twice about.
+  Wording that misleads a patient is a defect in a clinical system, not a
+  nitpick. So is a button that looks disabled but is not.
+</p>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="severity"><span class="num">Part 02</span>Severity, and what it means</h2>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Level</th><th>Means</th><th>Examples in this system</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><span class="prio p1">P1</span></td>
+      <td>Patient safety, or data that cannot be recovered</td>
+      <td>A red request can be approved · a green is produced from figures nobody could have · a medicine name reaches an SMS · one patient's data appears on another's record · an audit entry is missing</td>
+    </tr>
+    <tr>
+      <td><span class="prio p2">P2</span></td>
+      <td>A journey cannot be completed, or money is wrong</td>
+      <td>The form cannot be submitted · a prescription strands with no way forward · the wrong price is charged · a required leaflet can be skipped</td>
+    </tr>
+    <tr>
+      <td><span class="prio p3">P3</span></td>
+      <td>Wrong but workable, or cosmetic</td>
+      <td>Misaligned layout · a count that is out by one · unclear wording that does not mislead · a slow page</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>
+  If you are unsure between two levels, choose the higher one and say you were
+  unsure. Triage is cheap; a missed P1 is not.
+</p>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="env"><span class="num">Part 03</span>Environment and test data</h2>
+
+<h4>Getting in</h4>
+<p>
+  Ask Mukunda for a staff account and for the application URL. There is no public
+  sign-up. For permission testing you will need <strong>at least two accounts
+  with different roles</strong> — ideally a Pharmacist and a Reception or Viewer
+  account — so ask for both up front.
+</p>
+
+<h4>Seeded patients</h4>
+<p>
+  These five exist so every screen has something in it. Their colours were
+  produced by the real rules engine.
+</p>
+
+<div class="scroll">
+<table>
+  <thead>
+    <tr><th>Patient</th><th class="mono">Repeat Care ID</th><th class="mono">Date of birth</th>
+    <th>Medicine</th><th>Use them for</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Ruth Kelly</strong> <span class="pill green">Green</span></td>
+      <td class="mono">RC-K6N3-96WK</td><td class="mono">1979-06-11</td><td>Mounjaro 5mg</td>
+      <td>A routine approval that should go through</td></tr>
+    <tr><td><strong>Peter Cregeen</strong> <span class="pill amber">Amber</span></td>
+      <td class="mono">RC-3RNK-DDWP</td><td class="mono">1968-02-23</td><td>Mounjaro 5mg</td>
+      <td>The "record why you are content" gate</td></tr>
+    <tr><td><strong>Sinead Corlett</strong> <span class="pill red">Red</span></td>
+      <td class="mono">RC-X7RD-RBBE</td><td class="mono">1991-09-30</td><td>Wegovy 1mg</td>
+      <td>The red stop, which must not be overridable</td></tr>
+    <tr><td><strong>Alan Quayle</strong></td>
+      <td class="mono">RC-RWPB-TEQJ</td><td class="mono">1974-11-05</td><td>Mounjaro 7.5mg</td>
+      <td>Due a repeat — about a week overdue</td></tr>
+    <tr><td><strong>Maureen Faragher</strong></td>
+      <td class="mono">RC-EC97-PFE2</td><td class="mono">1962-04-18</td><td>Wegovy 1.7mg</td>
+      <td>Lapsed — about six weeks overdue</td></tr>
+    <tr><td><strong>Eleanor Quirk</strong></td>
+      <td class="mono">RC-XKT6-KCGY</td><td class="mono">1979-03-14</td><td>Mounjaro 2.5mg</td>
+      <td>An enrolment created through the real journey</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="note warn">
+  <span class="label">Their email addresses</span>
+  <p>
+    The seeded five use <code>firstname.lastname@demo.invalid</code> — for example
+    <code>ruth.kelly@demo.invalid</code>. You will need the email to get through
+    the repeat-access gate. Eleanor's is <code>eleanor.quirk@example.im</code>.
+  </p>
+</div>
+
+<h4>Services under test</h4>
+<div class="scroll">
+<table>
+  <thead><tr><th>Service</th><th class="mono">Price</th><th class="mono">Form</th><th class="mono">Rules</th><th>Public URL</th></tr></thead>
+  <tbody>
+    <tr><td>Flu Vaccination</td><td class="mono">£20.00</td><td class="mono">v4</td><td class="mono">—</td><td><code>/f/flu-vaccination</code></td></tr>
+    <tr><td>WM — New Patient</td><td class="mono">£190.00</td><td class="mono">v3</td><td class="mono">v1 (6)</td><td><code>/f/weight-management-first</code></td></tr>
+    <tr><td>WM — Repeat Request</td><td class="mono">£100.00</td><td class="mono">v2</td><td class="mono">v1 (24)</td><td><code>/repeat/weight-management-repeat</code></td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="known"><span class="num">Part 04</span>Known limitations — please do not report these</h2>
+
+<ul>
+  <li><strong>Payment is a tickbox.</strong> Nothing takes card details. This is the client's decision, not an oversight.</li>
+  <li><strong>Rules can be tuned, not created or deleted.</strong> Changing a threshold, outcome, priority or message works; adding a new rule does not exist yet.</li>
+  <li><strong>The face-to-face page is a placeholder</strong> and says so on itself. Its opening hours and phone number are deliberately not real.</li>
+  <li><strong>Branding values are placeholders</strong> until the client supplies real ones.</li>
+  <li><strong>Long lists are not paged.</strong> Known, and owed.</li>
+  <li><strong>Demo patients cannot be deleted.</strong> Clinical records never can be — that is a design rule, not a missing feature.</li>
+  <li><strong>Prices apply from now on.</strong> Anything raised before a price was set will not retrospectively acquire one.</li>
+</ul>
+
+<p>
+  If one of these looks <em>differently</em> broken from how it is described
+  here — say, the placeholder page 404s rather than rendering — that <em>is</em>
+  a finding.
+</p>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="A"><span class="num">Suite A</span>Access and permissions</h2>
+
+<div class="tc">
+  <header><span class="id">A-01</span><span class="title">A signed-out visitor cannot reach any staff screen</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Sign out, or open a private window.</li>
+      <li>Visit each in turn: <code>/</code>, <code>/patients</code>, <code>/repeat-care</code>, <code>/services</code>, <code>/reports</code>, <code>/compliance</code>, <code>/users</code>, <code>/inventory</code>, <code>/payments</code>.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> every one redirects to <code>/sign-in</code>. None briefly renders content before redirecting.</div>
+    <p><em>Watch for:</em> a flash of real data before the redirect. Screenshot it if you see one — that is a P1.</p>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">A-02</span><span class="title">A lower-privileged role cannot do a pharmacist's job</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Sign in as Reception or Viewer.</li>
+      <li>Try to reach <code>/services/weight-management-repeat/rules</code> and press an edit control.</li>
+      <li>Try to approve a repeat request.</li>
+      <li>Try to remove a service.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> each is refused. A refusal that only hides a button is not enough — if you can reach the URL directly, the server must still say no.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">A-03</span><span class="title">Signing out actually ends the session</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Sign in, open a staff page, copy the URL.</li>
+      <li>Sign out.</li>
+      <li>Press the browser Back button, then paste the URL into the address bar.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> both attempts land on sign-in. Cached page content may flash from the browser's own history — note whether real patient data is visible if so.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="B"><span class="num">Suite B</span>New-patient form</h2>
+
+<div class="tc">
+  <header><span class="id">B-01</span><span class="title">Choosing "see someone in person" stops the form and offers a way out</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Open <code>/f/weight-management-first</code> signed out.</li>
+      <li>Choose <em>I would rather see someone in person</em>.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> a stop message appears with a <em>See the face-to-face programme</em> button below it — not overlapping the text. The remaining nine steps do not appear.</div>
+    <p><em>Then:</em> press the button. It should reach a page that openly identifies itself as a placeholder, with a link back to the form.</p>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">B-02</span><span class="title">An implausible measurement is refused at entry</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Choose <em>Continue online</em> and work to <strong>Your measurements</strong>.</li>
+      <li>Enter height <code>1.7</code>, weight <code>84</code>, waist <code>95</code>. Try to continue.</li>
+      <li>Repeat with height <code>170</code>, weight <code>13</code>.</li>
+      <li>Repeat with waist <code>34</code>.</li>
+      <li>Finally enter height <code>170</code>, weight <code>84</code>, waist <code>95</code>.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> each of the first three is refused with a message naming the field. The fourth is accepted.</div>
+    <p><em>Also try:</em> switch the units to feet/inches and stones, and enter a genuine value like 5 ft 7 and 13 st 3. That must be <strong>accepted</strong> — if imperial answers are rejected, that is a P1 regression.</p>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">B-03</span><span class="title">Required leaflets cannot be skipped</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Work through to the <strong>Consent</strong> step.</li>
+      <li>Without ticking "I have read this", try to submit.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> submission is refused and the unticked leaflet is highlighted. Ticking it allows submission.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">B-04</span><span class="title">Answers survive closing the browser</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Fill in the first three steps. Wait for "Answers saved".</li>
+      <li>Close the tab entirely. Reopen the same URL.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> the answers are still there. Note precisely what is lost if anything is.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">B-05</span><span class="title">Every required field is genuinely required</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>On each step, try to advance with everything blank.</li>
+      <li>Note any field marked with an asterisk that lets you past.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> every asterisked field blocks, and the message names the field rather than saying "check your answers".</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">B-06</span><span class="title">Uploads accept what they should and refuse what they should not</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>At <strong>Evidence and safety</strong>, upload a normal JPG and a PDF.</li>
+      <li>Try a very large file (over 20 MB) and an unusual type (<code>.exe</code>, <code>.svg</code>).</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> valid files attach and are listed. Refusals say why. Nothing fails silently, and nothing hangs with a spinner that never resolves.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">B-07</span><span class="title">The thank-you screen hands over a tracking link</span><span class="prio p3">P3</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Submit a complete form.</li>
+      <li>Read the confirmation. Follow the tracking link.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> the confirmation does not promise an appointment. The link opens a page showing the request as received.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="C"><span class="num">Suite C</span>Repeat access and request</h2>
+
+<div class="tc">
+  <header><span class="id">C-01</span><span class="title">The access gate refuses politely and tells you nothing</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <p>At <code>/repeat/weight-management-repeat</code>, try each in turn:</p>
+    <ol>
+      <li>A valid ID with the wrong email.</li>
+      <li>A made-up ID with a valid email.</li>
+      <li>Both wrong.</li>
+      <li>Valid ID and valid email (Ruth Kelly, above).</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> the first three give the <em>same</em> message. Any wording that reveals which half was right is a P1 — it turns the page into a tool for finding valid IDs.</div>
+    <p><em>Also try:</em> the ID in lower case and with the hyphens removed. Note whether it is accepted; either behaviour is defensible but it should be consistent.</p>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">C-02</span><span class="title">The repeat form is personalised to the patient</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Get in as Ruth Kelly (Mounjaro 5mg).</li>
+      <li>Look at the dose question.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> it reflects the medicine and strength she is actually on, rather than offering every product. A repeat patient should not be asked to tell us what we already know.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">C-03</span><span class="title">A red answer produces a red request</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Get in as any enrolled patient.</li>
+      <li>Answer that you are pregnant or breastfeeding. Submit.</li>
+      <li>As staff, open the request.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> <span class="pill red">Red</span>, decided by the pregnancy rule, and the trace names it.</div>
+    <p><em>Repeat with:</em> two or more missed doses; severe side effects. Each should also be red.</p>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">C-04</span><span class="title">Missing answers are skipped, never passed</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Submit a repeat request leaving as much optional detail blank as the form allows.</li>
+      <li>Open the decision trace as staff.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> rules with no answer are listed as <em>skipped</em> with a reason. None of them is shown as having passed. If a request comes back green with several skipped safety rules, report it.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="D"><span class="num">Suite D</span>Triage and decision gates</h2>
+
+<div class="note">
+  <span class="label">This suite is the heart of it</span>
+  <p>
+    Every case here is about the system refusing to do something. Test each one
+    by <em>trying to get past it</em>, including by editing the URL. A gate that
+    only hides a button is not a gate.
+  </p>
+</div>
+
+<div class="tc">
+  <header><span class="id">D-01</span><span class="title">A red request cannot be approved</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Open Sinead Corlett's red request.</li>
+      <li>Try to approve it with no note.</li>
+      <li>Try again with a long, confident note.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> refused both times, with a message saying it must go through the urgent list or be declined. No wording in the note may unlock it.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">D-02</span><span class="title">An amber cannot be approved without reasoning</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Open Peter Cregeen's amber request.</li>
+      <li>Approve with the note box empty.</li>
+      <li>Approve with only whitespace in the note.</li>
+      <li>Approve with a real sentence.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> the first two are refused; the third succeeds. Whitespace must not count as reasoning.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">D-03</span><span class="title">A new patient cannot be approved before the call</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Open a new-patient request with no recorded call.</li>
+      <li>Try to approve.</li>
+      <li>Record a call with outcome "no answer". Try again.</li>
+      <li>Record a completed call <em>without</em> ticking identity verified. Try again.</li>
+      <li>Record a completed, identity-verified call. Try again.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> only the last attempt succeeds. Steps 2–4 are each refused with a message explaining what is missing.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">D-04</span><span class="title">A nonsense measurement cannot be authorised on</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <p>Ask a developer to place a request whose stored height is 1.7 (the entry form now blocks this, so it has to be seeded). Then:</p>
+    <ol>
+      <li>Open it and read the RAG outcome and trace.</li>
+      <li>Try to approve it, with and without a note.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> the BMI rules show as skipped, and approval is refused with a message about the figures not reading as a real measurement — <em>whatever colour the engine reached</em>. A note does not clear it.</div>
+    <p><em>Why this matters:</em> before this was fixed, a height typed in metres produced a BMI of 290,000, which <em>satisfied</em> the "BMI at least 25" condition and came back green.</p>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">D-05</span><span class="title">Two people deciding the same request do not overwrite each other</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Open the same request in two browsers, signed in as two different staff.</li>
+      <li>Approve in the first.</li>
+      <li>Approve in the second.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> the second is refused or clearly reports that the request has already moved. It must not silently create a second prescription.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="E"><span class="num">Suite E</span>Prescription, payment and dispatch</h2>
+
+<div class="tc">
+  <header><span class="id">E-01</span><span class="title">An approval produces everything it should</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Approve Ruth Kelly's green request.</li>
+      <li>Check Prescriptions, Payments, Communications, and her patient record.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> a numbered prescription exists; a payment exists at <strong>£100.00</strong>; a GP notification is queued; her record shows the supply.</div>
+    <p><em>Check the number:</em> prescription numbers must be unique and must not skip in a way that suggests a lost record.</p>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">E-02</span><span class="title">The price charged is the service price</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Note the price on Services → Settings for each service.</li>
+      <li>Approve one request of each kind and compare the payment raised.</li>
+      <li>Change a price, then approve another. Check the first payment did <em>not</em> change.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> new payments use the new price; existing ones are untouched.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">E-03</span><span class="title">Fulfilment cannot skip its batch and expiry</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Take a prescription to fulfilment.</li>
+      <li>Try to mark it ready with no batch number.</li>
+      <li>Try with a batch but no expiry.</li>
+      <li>Try with an expiry <em>earlier</em> than today.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> all three refused. An expiry must be later than the supply date.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">E-04</span><span class="title">A delivery cannot be collected, and vice versa</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Create one request choosing delivery and one choosing collection.</li>
+      <li>On the delivery one, try to mark it collected. On the collection one, try to dispatch it.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> both refused.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">E-05</span><span class="title">Marking payment received settles the right thing</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Find a pending payment. Tick payment received.</li>
+      <li>Check Reports before and after.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> it moves from outstanding to taken, by the right amount, and who confirmed it is recorded.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="F"><span class="num">Suite F</span>Due list and chasing</h2>
+
+<div class="tc">
+  <header><span class="id">F-01</span><span class="title">The right people are on the due list</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Open <strong>Weight Management → Due a repeat</strong>.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> Alan Quayle appears as <em>due</em>, Maureen Faragher as <em>lapsed</em>. Ruth Kelly does not appear — she was supplied recently.</div>
+    <p><em>Then:</em> submit a repeat request as Alan. He should <strong>leave</strong> the due list, because chasing somebody whose request is already in the queue is worse than not chasing.</p>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">F-02</span><span class="title">Supply length is respected</span><span class="prio p3">P3</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <p>Have a developer set one patient's last request to two pens and another to one, with the same supply date about five weeks ago.</p>
+    <div class="expect"><strong>Expected:</strong> the one-pen patient is due; the two-pen patient is not (two pens covers eight weeks).</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">F-03</span><span class="title">Today's counter agrees with the list</span><span class="prio p3">P3</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Read the four counters on Today.</li>
+      <li>Click each one and count the rows on the page it opens.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> every counter matches the list it links to. Report any that disagree, with both numbers.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="G"><span class="num">Suite G</span>Configuration screens</h2>
+
+<div class="tc">
+  <header><span class="id">G-01</span><span class="title">Editing a form publishes a version and leaves history alone</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Note the current form version on Services.</li>
+      <li>Open the designer, change a question's wording, publish.</li>
+      <li>Open a submission made <em>before</em> the change.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> the version number increments; the old submission still shows the <em>old</em> wording. If historic answers relabel themselves, that is a P1.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">G-02</span><span class="title">The rules screen warns when a rule is orphaned</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Open <code>/services/weight-management-repeat/rules</code>. Note the banner — it should say every rule reads a question the form still asks.</li>
+      <li>In the designer, rename the field id <code>pregnancy</code> to something else and publish.</li>
+      <li>Return to the rules screen.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> a warning naming the pregnancy rule as one that can never match, and naming the missing question.</div>
+    <p><strong>Put the field id back afterwards</strong> — leaving it renamed disables a red safety rule.</p>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">G-03</span><span class="title">Tuning a rule changes what the engine decides</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>On the rules screen, expand <em>BMI between 23 and 24.9</em>.</li>
+      <li>Change the upper bound, publish, and note the new rules version.</li>
+      <li>Submit a repeat request with a BMI that now falls inside the new band.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> the new request is judged by the new version; the old version still exists and older evaluations still point at it.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">G-04</span><span class="title">A leaflet link cannot be something that runs code</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Services → Resources → Add a resource.</li>
+      <li>Try each link in turn: <code>javascript:alert(1)</code>, <code>data:text/html,&lt;script&gt;</code>, <code>karsons.im/x</code> (no scheme), then a real <code>https://</code> link.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> the first three are refused with a readable message. Only the last saves.</div>
+    <p><em>Also:</em> try the same values in the face-to-face referral box on the same screen.</p>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">G-05</span><span class="title">Removing a service is refused while work is outstanding</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Try to remove a service that has requests waiting.</li>
+      <li>Type the wrong name in the confirmation box, then a partial name, then the right one in different capitalisation.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> outstanding work blocks it and the dialog says what to clear first. The confirm button only enables on a genuine name match, and capitalisation does not matter.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">G-06</span><span class="title">Price and branding save, validate and take effect</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Services → Settings. Try a negative price, a price of <code>free</code>, and <code>100000</code>.</li>
+      <li>Set a valid price. Set a clinic name and a colour that is not a hex code.</li>
+      <li>Open the public form for that service.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> bad values are refused with a message. Valid ones save, and the clinic name appears on the public form header.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="H"><span class="num">Suite H</span>Patient tracking and referral</h2>
+
+<div class="tc">
+  <header><span class="id">H-01</span><span class="title">The tracking page shows stage and nothing clinical</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Submit a request and follow its tracking link.</li>
+      <li>Read every word on the page.</li>
+      <li>Have staff move the request forward (approve, prescribe, dispatch), refreshing the page after each.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> the stage advances. At no point does the page name a medicine, a dose, a BMI, or a red/amber/green colour. Anything clinical appearing here is a P1.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">H-02</span><span class="title">A tracking link cannot be guessed or probed</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Take a working tracking URL. Change one character. Load it.</li>
+      <li>Try <code>/track/test</code>, <code>/track/1</code>, <code>/track/</code>.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> all give the same not-found response. A near-miss must not behave differently from nonsense — a different error would confirm the token was nearly right.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">H-03</span><span class="title">A draft that was never sent says so</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Start a form, type enough for it to save, but do not submit.</li>
+      <li>Open its tracking link.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> it clearly says the form has not been sent yet. A patient waiting for a call on an unsent form is the worst version of this feature.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="I"><span class="num">Suite I</span>Reports and records</h2>
+
+<div class="tc">
+  <header><span class="id">I-01</span><span class="title">Revenue adds up</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Open Reports. Note taken, outstanding, and the revenue-by-service rows.</li>
+      <li>Add up the rows.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> the rows sum to the "taken" figure. If they do not, report both numbers — this exact fault existed before and was fixed.</div>
+    <p><em>Then:</em> change the date range and branch filter and check the figures move sensibly.</p>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">I-02</span><span class="title">The audit log records the decisions</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Perform: approve a request, change a price, edit a leaflet, publish a rules version, remove a service.</li>
+      <li>Open Compliance and find each one.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> every action appears, with who did it and when. A missing entry is a P1.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">I-03</span><span class="title">A patient record shows their whole history</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Open Ruth Kelly's record after approving her request.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> submissions, prescriptions, enrolment and supply dates all present and consistent with what you did. Cross-check the dates against what the due list says.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">I-04</span><span class="title">Generated PDFs are correct and complete</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Generate a prescription PDF and open it.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> the patient, medicine, dose, prescriber and number are right; nothing is cut off at a page edge; no placeholder text such as <code>{medicine}</code> remains.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="J"><span class="num">Suite J</span>Security and abuse</h2>
+
+<div class="tc">
+  <header><span class="id">J-01</span><span class="title">One patient's data never appears on another's screen</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Note the URL of one patient's record and of one submission.</li>
+      <li>Substitute another patient's identifier into each URL.</li>
+      <li>Get into the repeat form as Ruth, then change the resume token in the URL to another patient's.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> refused or not-found every time. Any leakage across patients is the highest-severity finding in this document.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">J-02</span><span class="title">Text typed by a patient cannot become markup</span><span class="prio p1">P1</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>In free-text answers, enter: <code>&lt;script&gt;alert(1)&lt;/script&gt;</code>, <code>&lt;img src=x onerror=alert(1)&gt;</code>, and <code>'; drop table patient; --</code>.</li>
+      <li>Submit, then view the answers as staff, in the drawer, in a PDF and in any message generated.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> shown as literal text everywhere. No dialog, no missing content, no broken layout.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">J-03</span><span class="title">An expired or reused link behaves</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>Submit a form, then reload the resume link you used to fill it in.</li>
+      <li>Ask a developer for an expired resume token and try it.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> an already-submitted link says so rather than opening a blank form — which would create a second submission for one patient. An expired link explains itself and points at what to do.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">J-04</span><span class="title">Repeated wrong attempts are not unlimited</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <ol>
+      <li>At the repeat access gate, submit twenty wrong ID/email combinations quickly.</li>
+      <li>Do the same at the sign-in screen.</li>
+    </ol>
+    <div class="expect"><strong>Expected:</strong> record exactly what happens. If there is no limit at all, that is a finding worth raising even though nothing visibly breaks.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="K"><span class="num">Suite K</span>Devices, browsers and accessibility</h2>
+
+<div class="tc">
+  <header><span class="id">K-01</span><span class="title">The patient journey works on a phone</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <p>On a real phone if possible, otherwise at 375 px wide, complete the whole new-patient form including an upload and the signature.</p>
+    <div class="expect"><strong>Expected:</strong> nothing scrolls sideways; every control is reachable and tappable; the signature pad accepts a finger; the camera opens for the photo step.</div>
+    <p><em>Cover:</em> iOS Safari and Android Chrome. Note the device and OS version in any finding.</p>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">K-02</span><span class="title">Staff screens survive a small laptop and a large monitor</span><span class="prio p3">P3</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <p>Open Today, Weight Management, Consultations, Reports and the rules screen at 1280×720 and again at 2560 px wide.</p>
+    <div class="expect"><strong>Expected:</strong> no clipped tables, no text sitting under other text, no horizontal scrollbar on the page itself. Tables may scroll inside their own box.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">K-03</span><span class="title">The form is usable by keyboard alone</span><span class="prio p2">P2</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <p>Complete a step using only Tab, Shift+Tab, arrow keys, Space and Enter.</p>
+    <div class="expect"><strong>Expected:</strong> focus is always visible, the order follows the visual order, and no control can only be operated by mouse.</div>
+  </div>
+</div>
+
+<div class="tc">
+  <header><span class="id">K-04</span><span class="title">Dark mode is legible</span><span class="prio p3">P3</span></header>
+  <div class="inner">
+    <h5>Steps</h5>
+    <p>Switch the OS or browser to dark mode and revisit the patient form, the tracking page and the main staff screens.</p>
+    <div class="expect"><strong>Expected:</strong> no dark text on a dark ground, no invisible borders, and the red/amber/green pills remain distinguishable.</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="exploratory"><span class="num">Part 05</span>Exploratory charters</h2>
+
+<p>
+  Scripted cases find the faults somebody thought of. These are for the ones
+  nobody did. Spend a fixed 45 minutes on each, take notes as you go, and report
+  anything surprising even if you cannot classify it.
+</p>
+
+<div class="scroll">
+<table>
+  <thead><tr><th>Charter</th><th>Explore</th><th>Looking for</th></tr></thead>
+  <tbody>
+    <tr><td><strong>The impatient patient</strong></td>
+      <td>Double-click every submit and Next. Press Back mid-form. Refresh during an upload. Open the same form in two tabs.</td>
+      <td>Duplicate submissions, lost answers, two prescriptions from one request</td></tr>
+    <tr><td><strong>The interrupted pharmacist</strong></td>
+      <td>Start an approval, leave it 20 minutes, come back and finish. Have somebody else act on the same request meanwhile.</td>
+      <td>Stale screens acting on old data; silent overwrites</td></tr>
+    <tr><td><strong>The wrong units</strong></td>
+      <td>Switch between metric and imperial repeatedly, mid-entry, on every measurement.</td>
+      <td>Values converted twice, or read as the wrong unit</td></tr>
+    <tr><td><strong>The edge of the calendar</strong></td>
+      <td>Dates of birth today, in the future, in 1900, on 29 February. Expiries today and yesterday.</td>
+      <td>Off-by-one errors, ages that go negative, expiries that pass</td></tr>
+    <tr><td><strong>The awkward name</strong></td>
+      <td>Names with apostrophes, hyphens, accents and non-Latin script. Very long addresses.</td>
+      <td>Broken display, truncation without warning, failed saves</td></tr>
+    <tr><td><strong>The slow connection</strong></td>
+      <td>Throttle the network to Slow 3G in devtools and use the form.</td>
+      <td>Lost autosaves, double submits, spinners that never end</td></tr>
+  </tbody>
+</table>
+</div>
+
+<!-- ══════════════════════════════════════════════════ -->
+<h2 id="template"><span class="num">Part 06</span>Bug report template</h2>
+
+<p>Copy this for every finding. The fields exist because each one has been missing from a report at some point.</p>
+
+<div class="tmpl">ID          BUG-001
+TITLE       One sentence: what is wrong, not what you were doing
+SEVERITY    P1 / P2 / P3   (if unsure, go higher and say so)
+TEST CASE   D-02, or "exploratory — the interrupted pharmacist"
+
+ENVIRONMENT
+  URL         https://...
+  Browser     Chrome 141 / Safari 18 on iPhone 14, iOS 18.2
+  Signed in as  role, and which branch
+  Date + time   1 Sep 2026, 14:32 (needed to find the server log)
+
+STEPS TO REPRODUCE      (from a signed-out browser)
+  1.
+  2.
+  3.
+
+EXPECTED
+  What should have happened, and why you believe that
+
+ACTUAL
+  What did happen
+
+REPRODUCIBLE
+  Yes, every time  /  Yes, N times in M  /  Only saw it once
+
+EVIDENCE
+  screenshot-001.png     full window, URL bar visible
+  console.txt            any red errors from F12 -> Console
+  recording.mp4          if intermittent or timing-related
+
+NOTES
+  Anything you tried that made it better or worse. A workaround if you
+  found one. Whether the data involved was seeded or one you created.</div>
+
+<h3>Naming your files</h3>
+<p>
+  <code>BUG-001-red-request-approved.png</code> beats
+  <code>Screenshot 2026-09-01 at 14.32.11.png</code>. If a finding has several
+  images, number them in the order they should be looked at.
+</p>
+
+<div class="note">
+  <span class="label">Before you file it</span>
+  <p>
+    Check it is not in <a href="#known">Part 04</a>. Then reproduce it once more
+    from a clean browser. Roughly one report in five turns out to be a stale
+    session or a half-completed earlier test — reproducing from scratch catches
+    those before they cost anybody a morning.
+  </p>
+</div>
+
+<footer class="doc">
+  <p>
+    Karsons Clinical Platform · test plan. Pair this with the
+    <strong>System Overview</strong> document, which explains the workflow each
+    of these suites is exercising. Patient identifiers and version numbers here
+    were read from the live database and are accurate as at the date issued.
+  </p>
+</footer>
+
+</div>
+</body>
+</html>
