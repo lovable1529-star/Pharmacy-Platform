@@ -339,77 +339,55 @@ export async function getTodaySnapshot(
     branchId: branchId ?? undefined, from, to,
   });
 
+  /*
+   * Three counts, one round trip.
+   *
+   * These were three separate queries over `submission` sharing an identical
+   * base filter — everything awaiting a decision. Read cold that cost three
+   * connections rather than one, and a new connection to Seoul is the
+   * expensive part: measured at roughly 230ms of handshake each, against about
+   * 50ms to actually run the count.
+   *
+   * `count(*) filter (where ...)` gives each figure its own predicate over one
+   * pass of the same rows, so the numbers are unchanged by construction — they
+   * are still counted over exactly the set the old base filter selected.
+   *
+   * The join to `service` is LEFT, not INNER as the new-patient count used to
+   * be. That matters: an INNER join here would drop any submission without a
+   * service from `awaiting` too, which is a different number from the one this
+   * used to report. `service.id` is the primary key, so at most one row joins
+   * and nothing can be double-counted.
+   */
   const awaitingQ = db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(submission)
-    .where(
-      and(
-        eq(submission.organisationId, organisationId),
-        inArray(submission.status, ['SUBMITTED', 'IN_REVIEW', 'INFO_REQUESTED']),
-      ),
-    );
-
-  /*
-   * "Awaiting a decision" is one number covering two different jobs.
-   *
-   * A new patient needs reading and telephoning; a repeat needs authorising
-   * and, per the client, no call at all. Somebody glancing at Today to decide
-   * what to pick up cannot tell those apart from a single figure — and the
-   * calls are the ones that age badly, because a patient is sitting waiting
-   * for the phone to ring.
-   *
-   * Split on service kind rather than name: the pharmacy renames its own
-   * services and a rename must not change what the dashboard counts.
-   */
-  const newPatientsQ = db
     .select({
-      total: sql<number>`count(*)::int`,
+      awaiting: sql<number>`count(*)::int`,
+      newTotal: sql<number>`count(*) filter (where ${service.kind} = 'CONSULTATION')::int`,
       toCall: sql<number>`count(*) filter (
-        where not exists (
-          select 1 from clinical_contact_event c
-          where c.submission_id = ${submission.id}
-            and c.outcome = 'COMPLETED'
-            and c.identity_verified = true
-        )
+        where ${service.kind} = 'CONSULTATION'
+          and not exists (
+            select 1 from clinical_contact_event c
+            where c.submission_id = ${submission.id}
+              and c.outcome = 'COMPLETED'
+              and c.identity_verified = true
+          )
       )::int`,
-    })
-    .from(submission)
-    .innerJoin(service, eq(submission.serviceId, service.id))
-    .where(
-      and(
-        eq(submission.organisationId, organisationId),
-        inArray(submission.status, ['SUBMITTED', 'IN_REVIEW', 'INFO_REQUESTED']),
-        eq(service.kind, 'CONSULTATION'),
-      ),
-    );
-
-  /*
-   * Repeats that a rule stopped. Read from the latest evaluation rather than
-   * from anything cached on the submission, because an amendment writes a
-   * fresh evaluation rather than overwriting the old one.
-   */
-  const redsQ = db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(submission)
-    .where(
-      and(
-        eq(submission.organisationId, organisationId),
-        inArray(submission.status, ['SUBMITTED', 'IN_REVIEW', 'INFO_REQUESTED']),
-        sql`(
+      reds: sql<number>`count(*) filter (
+        where (
           select r.outcome from rule_evaluation r
           where r.submission_id = ${submission.id}
           order by r.evaluated_at desc limit 1
-        ) = 'RED'`,
+        ) = 'RED'
+      )::int`,
+    })
+    .from(submission)
+    .leftJoin(service, eq(submission.serviceId, service.id))
+    .where(
+      and(
+        eq(submission.organisationId, organisationId),
+        inArray(submission.status, ['SUBMITTED', 'IN_REVIEW', 'INFO_REQUESTED']),
       ),
     );
 
-  /*
-   * Enrolled patients nobody has heard from.
-   *
-   * The other counters on Today are work that arrived. This is the one that
-   * never arrives on its own — a patient who ran out three weeks ago appears
-   * on no screen until somebody goes looking.
-   */
   const dueQ = getDueList(organisationId);
 
   /* Approved, paid for or not, but the medicine has not gone out. */
@@ -438,23 +416,20 @@ export async function getTodaySnapshot(
    * Awaited together the page waits for the slowest one instead of the sum of
    * all of them. Nothing else about them changes.
    */
-  const [
-    todays, awaiting, newPatientsRows, redsRows, due, toSupplyRows, stock,
-  ] = await Promise.all([
-    todaysQ, awaitingQ, newPatientsQ, redsQ, dueQ, toSupplyQ, stockQ,
+  const [todays, awaitingRows, due, toSupplyRows, stock] = await Promise.all([
+    todaysQ, awaitingQ, dueQ, toSupplyQ, stockQ,
   ]);
 
-  const [newPatients] = newPatientsRows;
-  const [reds] = redsRows;
+  const [counts] = awaitingRows;
   const [toSupply] = toSupplyRows;
 
   return {
     completedToday: todays.filter((c) => c.status === 'COMPLETED').length,
-    submissionsAwaiting: awaiting[0]?.count ?? 0,
+    submissionsAwaiting: counts?.awaiting ?? 0,
     dueForRepeat: due.length,
-    newPatientsAwaiting: newPatients?.total ?? 0,
-    callsOwed: newPatients?.toCall ?? 0,
-    repeatsStopped: reds?.count ?? 0,
+    newPatientsAwaiting: counts?.newTotal ?? 0,
+    callsOwed: counts?.toCall ?? 0,
+    repeatsStopped: counts?.reds ?? 0,
     awaitingSupply: toSupply?.count ?? 0,
     lowStock: stock.filter((s) => s.quantity > 0 && s.quantity <= 10),
     expiringSoon: stock.filter((s) => s.daysToExpiry <= 60 && s.quantity > 0),
