@@ -50,23 +50,56 @@ async function main(): Promise<number> {
     headers: { Authorization: `Bearer ${KEY}` },
   });
 
+  /*
+   * A sending-only key cannot list domains, and Resend reports that as a 401 —
+   * the same status as a key that is simply wrong.
+   *
+   * Reading only the status made this check call a perfectly good key invalid
+   * and send somebody off to re-copy it. Sending-only is the better kind of key
+   * to deploy: it can post a message and nothing else, so a leak cannot be used
+   * to read the account or mint more keys. The check has to work with it.
+   */
+  let restricted = false;
+
   if (res.status === 401) {
-    bad('Resend rejected the key. Check it was copied whole, with no quotes.');
-    return 1;
-  }
-  if (!res.ok) {
+    const detail = (await res.clone().json().catch(() => ({}))) as { name?: string };
+    if (detail.name === 'restricted_api_key') {
+      restricted = true;
+      ok('Resend accepted the key. It is a sending-only key — the safer kind.');
+    } else {
+      bad('Resend rejected the key. Check it was copied whole, with no quotes.');
+      return 1;
+    }
+  } else if (!res.ok) {
     bad(`Resend answered ${res.status}. Try again shortly.`);
     return 1;
+  } else {
+    ok('Resend accepted the key.');
   }
-  ok('Resend accepted the key.');
-
-  // The shape has moved between SDK versions; accept either.
-  const body = (await res.json()) as { data?: Domain[] | { data?: Domain[] } };
-  const list = Array.isArray(body.data) ? body.data : (body.data?.data ?? []);
 
   const domain = FROM.includes('<') ? FROM.split('<')[1]!.replace('>', '') : FROM;
   const host = domain.split('@')[1]?.trim().toLowerCase() ?? '';
   console.log(`\n  Sending as: ${FROM}`);
+
+  if (restricted) {
+    /*
+     * Nothing more can be checked without sending. That is not a gap worth
+     * closing by demanding a full-access key — a real send is stronger proof
+     * than a domain list anyway, because it exercises the whole path.
+     */
+    console.log(`  From domain: ${host}`);
+    warn('This key cannot list domains, so the domain is not checked here.');
+    if (!recipient) {
+      console.log('\n  Prove it by sending, which is the better test regardless:');
+      console.log('    pnpm check:email you@yourdomain.com\n');
+      return 0;
+    }
+    return sendTest(recipient);
+  }
+
+  // The shape has moved between SDK versions; accept either.
+  const body = (await res.json()) as { data?: Domain[] | { data?: Domain[] } };
+  const list = Array.isArray(body.data) ? body.data : (body.data?.data ?? []);
 
   if (list.length === 0) {
     bad('No domains are verified on this Resend account.');
@@ -102,6 +135,10 @@ async function main(): Promise<number> {
     return 0;
   }
 
+  return sendTest(recipient);
+}
+
+async function sendTest(recipient: string): Promise<number> {
   console.log(`\n  Sending a test message to ${recipient} ...`);
   const send = await fetch('https://api.resend.com/emails', {
     method: 'POST',
@@ -118,6 +155,15 @@ async function main(): Promise<number> {
   const sent = (await send.json()) as { id?: string; message?: string };
   if (!send.ok) {
     bad(`Resend refused it: ${sent.message ?? send.status}`);
+    const why = sent.message ?? '';
+    if (why.includes('domain is not verified')) {
+      console.log('\n  EMAIL_FROM is on a domain this account has not verified.');
+      console.log('  Point it at the verified one, or verify that domain.');
+    }
+    if (why.includes('only send testing emails')) {
+      console.log('\n  No domain is verified, so Resend will only deliver to the');
+      console.log('  address that owns the account.');
+    }
     console.log('');
     return 1;
   }
