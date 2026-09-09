@@ -13,18 +13,31 @@
  * verifier could not be found, and the screen that requested it had cheerfully
  * said "check your email".
  *
- * Run here instead, two things improve. The real error reaches the server log,
- * where somebody can see it. And the PKCE verifier is written to a cookie by
- * the SSR client rather than to browser storage, which is the half of the
- * problem that lives in this codebase.
+ * Run here instead, the real error reaches the server log where somebody can
+ * see it, and the anon key never has to be trusted to do this from a page.
  *
- * The other half does not: an emailed link is opened wherever the person reads
- * their email, which is often not the browser that asked. The durable fix is a
- * link carrying a token hash instead of a code, and that is an email-template
- * setting in the Supabase dashboard. See docs/auth-email-links.md.
+ * ── Why this does not use the @supabase/ssr client ──────────────────────
+ *
+ * It did, and that was a bug: the reset link only worked in the browser that
+ * asked for it. Opening it anywhere else gave "that link could not be opened on
+ * this device", which is not something an emailed link should ever say.
+ *
+ * `@supabase/ssr` forces `flowType: 'pkce'` and will not let it be overridden.
+ * PKCE makes the client generate a secret verifier, keep it, and send only a
+ * challenge; Supabase then answers the link with a `?code=` that is worthless
+ * without the verifier. The verifier lives in one browser. People read email on
+ * their phone.
+ *
+ * A plain `@supabase/supabase-js` client defaults to `flowType: 'implicit'`, so
+ * no challenge is registered, and Supabase answers the link the same way it
+ * answers an invitation — with the session in the URL fragment, which any
+ * browser can complete. Invitations already worked for exactly this reason.
+ *
+ * No session is being established here, so this client needs no cookie storage
+ * at all. It sends one email and is discarded.
  */
 
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
 import { resolveAppUrl } from '@/lib/app-url';
 
 export interface ResetRequestResult {
@@ -49,7 +62,17 @@ export async function requestPasswordReset(rawEmail: string): Promise<ResetReque
   }
 
   try {
-    const supabase = await createSupabaseServerClient();
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!url || !anonKey) {
+      console.error('[forgot-password] Supabase is not configured.');
+      return { ok: true };
+    }
+
+    const supabase = createClient(url, anonKey, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+    });
 
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${resolveAppUrl()}/auth/callback?next=/reset-password`,
