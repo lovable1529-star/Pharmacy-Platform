@@ -150,3 +150,82 @@ export function PageShellSkeleton({
     </div>
   );
 }
+
+/**
+ * The row of counters across the top of Today.
+ *
+ * Drawn at the real StatCard proportions. A placeholder that is the wrong
+ * height is worse than none: the numbers arrive and shove everything below them
+ * down the page, which is the exact jolt a skeleton exists to prevent.
+ */
+export function StatRowSkeleton({ cards = 4 }: { cards?: number }) {
+  return (
+    <div className="mt-[18px] grid gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
+      {Array.from({ length: cards }, (_, i) => (
+        <div key={i} className="rounded-panel border border-line bg-surface px-4 py-3.5">
+          <Skeleton className="h-[10px]" width="55%" delay={i * 60} />
+          <Skeleton className="mt-3 h-[26px]" width="38%" delay={i * 60 + 30} />
+          <Skeleton className="mt-2.5 h-[10px]" width="70%" delay={i * 60 + 60} />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The panel Today opens with — greeting, date, and the search box that is the
+ * point of the screen.
+ */
+export function HeroSkeleton() {
+  return (
+    <section className="rounded-[16px] border border-line bg-wash px-[26px] pb-[22px] pt-[26px] shadow-panel">
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <Skeleton className="h-[10px]" width={190} />
+          <Skeleton className="mt-3 h-[30px]" width={280} />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-[36px] rounded-control" width={132} delay={60} />
+          <Skeleton className="h-[36px] rounded-control" width={108} delay={90} />
+        </div>
+      </div>
+      <Skeleton className="mt-[22px] h-[44px] rounded-control" width="100%" delay={120} />
+    </section>
+  );
+}
+
+/** A stack of panels, for the screens built from them rather than from a table. */
+export function PanelStackSkeleton({
+  panels = 2,
+  rows = 4,
+  columns = 1,
+}: {
+  panels?: number;
+  rows?: number;
+  /**
+   * Match the real page. Today lays its two panels side by side on a wide
+   * screen; a skeleton that stacks them is the wrong height, so the content
+   * jumps when it arrives — the exact thing this is here to prevent.
+   */
+  columns?: 1 | 2;
+}) {
+  return (
+    <div className={`mt-[18px] grid gap-4 ${columns === 2 ? 'lg:grid-cols-2' : ''}`}>
+      {Array.from({ length: panels }, (_, p) => (
+        <div key={p} className="rounded-panel border border-line bg-surface">
+          <div className="border-b border-line px-4 py-3">
+            <Skeleton className="h-[13px]" width={160} delay={p * 80} />
+          </div>
+          <div className="space-y-3 px-4 py-4">
+            {Array.from({ length: rows }, (_, r) => (
+              <div key={r} className="flex items-center justify-between gap-4">
+                <Skeleton className="h-[12px]" width={`${45 + ((r * 13) % 30)}%`} delay={p * 80 + r * 40} />
+                <Skeleton className="h-[12px]" width={64} delay={p * 80 + r * 40 + 20} />
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
