@@ -52,10 +52,11 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import { signOut } from '@/lib/auth/sign-out';
 import {
   Search, LayoutDashboard, Users, Stethoscope, CalendarDays, RefreshCw, Syringe, Pill, FileText,
   Package, Sparkles, Send, BarChart3, ShieldCheck, Settings, ChevronsUpDown, UserCog,
-  Check, Building2, Banknote, Bell, ChevronLeft, ChevronRight,
+  Check, Building2, Banknote, Bell, ChevronLeft, ChevronRight, LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import type { Permission } from '@/lib/tenancy/scope';
@@ -383,6 +384,31 @@ export function AppShell({
               <div className="truncate text-[11px] text-ink-faint">{user.roleLabel}</div>
             </div>
           </div>
+
+          {/*
+            Its own row rather than an icon tucked beside the name.
+
+            This is a shared dispensary workstation: the next person to touch
+            the keyboard inherits whoever was signed in, including the ability
+            to authorise a supply in their name. A control that matters that
+            much should not be discovered by hovering, and it shapes itself the
+            same way the navigation items do when the rail is collapsed.
+          */}
+          <form action={signOut} className="mt-1">
+            <button
+              type="submit"
+              title="Sign out"
+              className={cn(
+                'flex w-full items-center gap-2.5 rounded-control px-2 py-[7px]',
+                'text-[13px] font-medium text-ink-faint transition-colors',
+                'hover:bg-stop-50 hover:text-stop-700',
+                'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600',
+              )}
+            >
+              <LogOut size={16} strokeWidth={1.9} className="ml-[5px] shrink-0" />
+              <span className={cn('truncate', labelFade)}>Sign out</span>
+            </button>
+          </form>
         </div>
       </aside>
 
@@ -437,6 +463,22 @@ export function AppShell({
                 /
               </kbd>
             </div>
+
+            {/*
+              The rail is `hidden md:flex`, so on a phone or a small tablet
+              there is no sidebar and therefore no sign-out. This is the same
+              action, shown only where the other one is not.
+            */}
+            <form action={signOut} className="md:hidden">
+              <button
+                type="submit"
+                aria-label="Sign out"
+                title="Sign out"
+                className="flex h-[34px] w-[34px] shrink-0 items-center justify-center rounded-control border border-line bg-surface text-ink-faint transition-colors hover:border-stop-200 hover:text-stop-700"
+              >
+                <LogOut size={16} strokeWidth={1.9} />
+              </button>
+            </form>
 
             <ThemeToggle />
 
