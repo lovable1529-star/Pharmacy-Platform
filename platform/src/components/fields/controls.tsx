@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/cn';
 import { carriesNoAnswer } from '@/lib/forms/runtime';
+import { within, HEIGHT_CM, WEIGHT_KG } from '@/lib/clinical/plausibility';
 import { DateOfBirthField } from '@/components/ui/date-of-birth';
 import { SearchSelect } from '@/components/ui/search-select';
 import { canUpload, uploadFile, useUploadTarget } from './upload-context';
@@ -672,22 +673,65 @@ export function MeasurementInput({ field, value, onChange, disabled }: FieldProp
 
 export function DerivedValue({ field, answers }: FieldProps) {
   let computed: number | null = null;
-  let suffix = '';
+  const suffix = '';
+
+  /*
+   * Why the BMI is blank is three different situations, and they were all
+   * getting the same sentence.
+   *
+   * "Fill in the measurements above" is right when the boxes are empty. It is
+   * wrong, and confusing, when they are full: a height typed as 1.75 in a field
+   * labelled cm is refused by calculateBmi, so the BMI stays blank and the
+   * patient is told to enter something they have just entered. They can only
+   * conclude the form is broken, and the likeliest next move is to type the
+   * same figure again.
+   *
+   * This is the typo that mattered most — a height in metres produced a BMI
+   * near 290,000 and cleared an eligibility floor — and this box sits directly
+   * underneath where it gets made. Saying which figure is being refused is the
+   * cheapest place in the whole system to catch it, because the patient is
+   * still looking at the field.
+   *
+   * The distinction is already drawn in the domain layer; see
+   * `judgedOnUsableFigures` in lib/clinical/plausibility, which reads a null
+   * BMI beside two present figures as "refused" rather than "missing".
+   */
+  let problem: string | null = null;
 
   if (field.calculation === 'bmi') {
     const [weightKey, heightKey] = field.calculationInputs ?? [];
     const weight = (answers[weightKey ?? ''] as { si?: number | null } | undefined)?.si;
     const height = (answers[heightKey ?? ''] as { si?: number | null } | undefined)?.si;
-    if (weight && height) computed = calculateBmi(weight, height);
+
+    if (weight && height) {
+      computed = calculateBmi(weight, height);
+
+      if (computed === null) {
+        // Name the figure at fault rather than both, so there is one thing to
+        // go and look at.
+        if (!within(height, HEIGHT_CM)) {
+          problem = `Check the height — we expect ${HEIGHT_CM.min} to ${HEIGHT_CM.max} cm`;
+        } else if (!within(weight, WEIGHT_KG)) {
+          problem = `Check the weight — we expect ${WEIGHT_KG.min} to ${WEIGHT_KG.max} kg`;
+        } else {
+          problem = 'Those measurements do not look right together';
+        }
+      }
+    }
   }
 
   return (
-    <div className="inline-flex items-baseline gap-2.5 rounded-control border border-line bg-sunk px-4 py-3">
+    <div
+      className={cn(
+        'inline-flex items-baseline gap-2.5 rounded-control border px-4 py-3',
+        problem ? 'border-review-200 bg-review-50' : 'border-line bg-sunk',
+      )}
+    >
       <span className="tabular font-display text-[24px] font-semibold text-ink">
         {computed ?? '—'}
       </span>
-      <span className="text-[13px] text-ink-faint">
-        {computed === null ? 'Fill in the measurements above' : suffix || 'calculated'}
+      <span className={cn('text-[13px]', problem ? 'text-review-700' : 'text-ink-faint')}>
+        {problem ?? (computed === null ? 'Fill in the measurements above' : suffix || 'calculated')}
       </span>
     </div>
   );
