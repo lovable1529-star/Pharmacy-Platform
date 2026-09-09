@@ -23,6 +23,7 @@ import {
 import { sendPatientEmail, bookingConfirmation } from '@/lib/email/patient';
 import { getStaffContext } from '@/lib/auth/context';
 import { createBooking } from '@/lib/scheduling/book';
+import { isBookable, notBookableMessage } from '@/lib/scheduling/booking-mode';
 import { buildFormUrl } from '@/lib/forms/draft';
 import { resolveAppUrl } from '@/lib/app-url';
 import { loadScheduleExclusions } from '@/lib/queries/schedule';
@@ -543,6 +544,14 @@ export async function getCounterBookingOptions(): Promise<{
         and(
           eq(service.organisationId, actor.organisationId),
           isNull(service.archivedAt),
+          /*
+           * Not every service takes appointments. Both Weight Management
+           * services are NONE — a repeat request is a form and a new patient is
+           * assessed on the telephone — so offering them at the counter books a
+           * slot no clinic session expects. The public page filtered nothing
+           * either until now.
+           */
+          ne(service.bookingMode, 'NONE'),
         ),
       )
       .orderBy(service.name);
@@ -633,6 +642,18 @@ const bookAtCounter = action<CounterBookingInput>('appointments:add')
     const startsAt = new Date(input.startsAt);
     if (Number.isNaN(startsAt.getTime())) throw new Error('That time is not valid.');
     if (!input.name.trim()) throw new Error('Please give a name for the booking.');
+
+    // The list above is presentation; this is the rule. The id arrives in the
+    // request, so a stale tab would otherwise book what the dropdown no longer
+    // offers.
+    const [chosen] = await tx
+      .select({ name: service.name, bookingMode: service.bookingMode })
+      .from(service)
+      .where(and(eq(service.id, input.serviceId), eq(service.organisationId, actor.organisationId)))
+      .limit(1);
+
+    if (!chosen) throw new Error('That service no longer exists.');
+    if (!isBookable(chosen.bookingMode)) throw new Error(notBookableMessage(chosen.name));
 
     const outcome = await createBooking(tx, {
       organisationId: actor.organisationId,

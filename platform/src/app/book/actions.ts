@@ -13,13 +13,14 @@
  * exactly the case that produces a double booking otherwise.
  */
 
-import { and, eq, gte, lte, isNull, desc } from 'drizzle-orm';
+import { and, eq, ne, gte, lte, isNull, desc } from 'drizzle-orm';
 import { db } from '@/lib/db/client';
 import {
   appointment, availability, branch, company, service, auditEvent,
 } from '@/lib/db/schema';
 import { buildFormUrl } from '@/lib/forms/draft';
 import { createBooking } from '@/lib/scheduling/book';
+import { isBookable, notBookableMessage } from '@/lib/scheduling/booking-mode';
 import { sealAuditEntry } from '@/lib/audit';
 import {
   generateSlotsForRange,
@@ -63,9 +64,10 @@ export async function getBookingOptions(): Promise<{
       serviceId: service.id,
       serviceName: service.name,
       serviceSlug: service.slug,
+      bookingMode: service.bookingMode,
     })
     .from(service)
-    .where(isNull(service.archivedAt));
+    .where(and(isNull(service.archivedAt), ne(service.bookingMode, 'NONE')));
 
   const branches = await db
     .select({
@@ -79,7 +81,7 @@ export async function getBookingOptions(): Promise<{
     .where(isNull(branch.archivedAt));
 
   return {
-    services: services.map((s) => ({ ...s, estimatedMinutes: null })),
+    services: services.map(({ bookingMode: _mode, ...s }) => ({ ...s, estimatedMinutes: null })),
     branches,
   };
 }
@@ -220,6 +222,7 @@ export async function bookAppointment(input: BookInput): Promise<BookResult> {
       .select({
         serviceName: service.name,
         serviceSlug: service.slug,
+        bookingMode: service.bookingMode,
         organisationId: service.organisationId,
         publishedFormVersionId: service.publishedFormVersionId,
         branchName: branch.name,
@@ -238,6 +241,19 @@ export async function bookAppointment(input: BookInput): Promise<BookResult> {
 
     const ctx = context[0];
     if (!ctx) return { ok: false, error: 'That service is not available at this branch.' };
+
+    /*
+     * Checked here as well as in the list above.
+     *
+     * Hiding a service from the dropdown is presentation; this is the rule. The
+     * service id arrives in the request body, so a stale tab, a bookmarked
+     * link, or anyone at all posting directly would otherwise create a real
+     * appointment against a service that does not run them — and be emailed a
+     * confirmation for a slot no pharmacist is expecting.
+     */
+    if (!isBookable(ctx.bookingMode)) {
+      return { ok: false, error: notBookableMessage(ctx.serviceName) };
+    }
 
     const result = await db.transaction(async (tx) => {
       // The shared booking core: slot re-check inside the transaction, the
