@@ -192,6 +192,57 @@ export function describeSendFailure(
     };
   }
 
+  /*
+   * Resend's own refusals, which reach us two ways: directly from the clinical
+   * send path, and relayed by Supabase now that its SMTP points at Resend.
+   *
+   * All three are configuration faults rather than anything about the person
+   * waiting. None of the raw text is echoed — it names our sending domain and
+   * the account holder's address, neither of which belongs on a login screen.
+   */
+  if (text.includes('domain is not verified')
+    || (text.includes('domain') && text.includes('verify'))) {
+    return {
+      message:
+        'Email is not finished being set up here — our sending domain has not '
+        + 'been verified yet. Tell an administrator; it is not a problem with '
+        + 'your account.',
+      transient: false,
+    };
+  }
+
+  /*
+   * An unverified Resend account can only send to the address that owns it, so
+   * every invitation to anybody else fails. Distinctive enough to name, because
+   * the fix is a specific one and otherwise this looks like a random outage.
+   */
+  if (text.includes('only send testing emails')) {
+    return {
+      message:
+        'Email is still in testing mode here and can only reach one address. '
+        + 'Ask an administrator to verify the sending domain.',
+      transient: false,
+    };
+  }
+
+  if (text.includes('api key is invalid') || text.includes('invalid api key') || status === 401) {
+    return {
+      message:
+        'Email is not configured correctly here. Tell an administrator — it is '
+        + 'not a problem with your account.',
+      transient: false,
+    };
+  }
+
+  if (text.includes('daily') && text.includes('quota')) {
+    return {
+      message:
+        'We have sent as many emails as we can today. Try again tomorrow, or '
+        + 'ask an administrator.',
+      transient: true,
+    };
+  }
+
   if (text.includes('error sending') || text.includes('smtp') || text.includes('mailer')) {
     return {
       message:

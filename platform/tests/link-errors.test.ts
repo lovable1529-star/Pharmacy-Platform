@@ -172,6 +172,39 @@ describe('describeSendFailure', () => {
     }
   });
 
+  it('recognises the Resend faults that follow a switch-over', () => {
+    const cases = [
+      'The karsonspharmacy.co.uk domain is not verified. Please, add and verify your domain',
+      'You can only send testing emails to your own email address (shahid@reputera.in)',
+      'API key is invalid',
+      'You have reached your daily sending quota',
+    ];
+    for (const raw of cases) {
+      expect(describeSendFailure(raw), raw).not.toBeNull();
+    }
+  });
+
+  // The branch for an unverified *domain* must not catch an unverified
+  // *account* — that is a fact about the person, and this screen hides those.
+  it('still hides an account that has not confirmed its email', () => {
+    expect(describeSendFailure('Email not confirmed')).toBeNull();
+    expect(describeSendFailure('email_not_confirmed')).toBeNull();
+    expect(describeSendFailure('User email not verified')).toBeNull();
+  });
+
+  it('never repeats the sending domain or the account holder back to the user', () => {
+    const leaky = describeSendFailure(
+      'You can only send testing emails to your own email address (shahid@reputera.in)',
+    );
+    expect(leaky!.message).not.toContain('reputera');
+    expect(leaky!.message).not.toContain('@');
+
+    const unverified = describeSendFailure(
+      'The karsonspharmacy.co.uk domain is not verified.',
+    );
+    expect(unverified!.message).not.toContain('karsonspharmacy');
+  });
+
   it('does not put a library or an HTTP status in front of a pharmacist', () => {
     const messages = [
       describeSendFailure('email rate limit exceeded'),
