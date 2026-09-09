@@ -18,7 +18,7 @@ import { revalidateStaffViews } from '@/lib/cache/revalidate';
 import { action } from '@/lib/actions';
 import {
   submission, reviewEvent, service, patient, clinician, clinicalContactEvent,
-  ruleEvaluation, repeatEnrolment,
+  ruleEvaluation, repeatEnrolment, urgentTask,
 } from '@/lib/db/schema';
 import { db } from '@/lib/db/client';
 import { requestPayment } from '@/lib/payments/lifecycle';
@@ -506,6 +506,82 @@ export async function reviewSubmission(input: DecideInput & { outcome?: string |
           : error instanceof Error && error.name === 'AuthorisationError'
             ? 'You do not have permission to review repeat requests.'
             : 'Could not save that decision. Please try again.',
+    };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Urgent tasks
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Close an urgent task.
+ *
+ * A RED submission raises one of these because a red is not just a status, it
+ * is work for somebody today. The list of them sat at the top of Repeat care
+ * and had no way to be cleared: `resolved_at`, `resolved_by` and
+ * `resolution_note` were on the table from the first migration and nothing in
+ * the application ever wrote them.
+ *
+ * The consequence is not a stuck row, it is a safety flag that stops working.
+ * Every red ever raised stayed on the screen, so the list only grew; a
+ * pharmacist who telephoned a patient this morning saw the same task tomorrow.
+ * A banner that is always red is a banner people stop reading, and the cases it
+ * carries are the most serious in the system.
+ *
+ * The note is optional but asked for. "Called, patient stopping treatment" is
+ * the difference between a record and a cleared alert, and the person who has
+ * just made the call is the only one who can write it.
+ */
+const resolveUrgent = action<{ taskId: string; note: string }>('repeat_care:edit')
+  .handler(async (input, { tx, actor }) => {
+    const [task] = await tx
+      .select({ id: urgentTask.id, reason: urgentTask.reason, resolvedAt: urgentTask.resolvedAt })
+      .from(urgentTask)
+      .where(
+        and(
+          eq(urgentTask.id, input.taskId),
+          eq(urgentTask.organisationId, actor.organisationId),
+        ),
+      )
+      .limit(1);
+
+    if (!task) throw new Error('That task no longer exists.');
+
+    // Already closed by somebody else while this screen was open. Not an error
+    // worth shouting about — the work is done either way.
+    if (task.resolvedAt) return { result: { id: task.id, alreadyDone: true } };
+
+    const note = input.note.trim();
+
+    await tx
+      .update(urgentTask)
+      .set({ resolvedAt: new Date(), resolvedBy: actor.userId, resolutionNote: note || null })
+      .where(eq(urgentTask.id, task.id));
+
+    return {
+      result: { id: task.id, alreadyDone: false },
+      audit: {
+        action: 'urgent_task.resolved',
+        entityType: 'urgent_task',
+        entityId: task.id,
+        after: { reason: task.reason, note: note || null },
+      },
+    };
+  });
+
+export async function resolveUrgentTask(taskId: string, note = '') {
+  try {
+    const result = await resolveUrgent({ taskId, note });
+    revalidateStaffViews();
+    return { ok: true as const, alreadyDone: result.alreadyDone };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : '';
+    return {
+      ok: false as const,
+      error: message.includes('NOT_AUTHORISED') || message.includes('permission')
+        ? 'You do not have permission to clear urgent tasks.'
+        : message || 'Could not clear that task. Please try again.',
     };
   }
 }

@@ -41,7 +41,7 @@ import { visibleSteps, visibleFieldsForStep } from '@/lib/forms/runtime';
 import type { Answers, FormSchema } from '@/types/form-schema';
 import { EmptyState, PageHeader, Panel } from '@/components/ui/primitives';
 import type { QueueItem, UrgentItem } from '@/lib/queries/reviews';
-import { reviewSubmission, type ReviewAction } from './actions';
+import { reviewSubmission, resolveUrgentTask, type ReviewAction } from './actions';
 import { CallPanel } from './call-panel';
 
 const OUTCOME_STYLES = {
@@ -318,29 +318,7 @@ export function ReviewQueue({
             </span>
           </div>
           {urgent.map((task) => (
-            <div
-              key={task.id}
-              className="flex items-center gap-4 border-b border-stop-200/60 px-4 py-3 last:border-b-0"
-            >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[14px] font-semibold text-ink">
-                  {task.patientName ?? 'Unmatched patient'}
-                </span>
-                <span className="block truncate text-[12.5px] text-stop-700">{task.reason}</span>
-              </span>
-              <span className="tabular hidden shrink-0 font-mono text-[11.5px] text-ink-faint sm:block">
-                {formatDateTime(task.createdAt)}
-              </span>
-              {task.submissionId ? (
-                <button
-                  type="button"
-                  onClick={() => setOpenId(task.submissionId!)}
-                  className="shrink-0 rounded-control border border-stop-200 bg-surface px-2.5 py-1.5 text-[12.5px] font-medium text-stop-700 transition-colors hover:border-stop-600"
-                >
-                  Open
-                </button>
-              ) : null}
-            </div>
+            <UrgentRow key={task.id} task={task} onOpen={setOpenId} />
           ))}
         </div>
       ) : null}
@@ -905,5 +883,107 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       </h3>
       {children}
     </section>
+  );
+}
+
+/**
+ * One urgent task, and the way to close it.
+ *
+ * These could not be cleared at all: the columns existed from the first
+ * migration and nothing ever wrote them, so every red ever raised stayed on
+ * this banner. A banner that is always red is one people stop reading, and
+ * these are the most serious cases in the system.
+ *
+ * The note is optional but offered before the confirm, because "called, patient
+ * stopping treatment" is the difference between a cleared alert and a record,
+ * and the person who has just made the call is the only one who can write it.
+ */
+function UrgentRow({
+  task,
+  onOpen,
+}: {
+  task: UrgentItem;
+  onOpen: (submissionId: string) => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function clear() {
+    setBusy(true);
+    setError(null);
+    const result = await resolveUrgentTask(task.id, note);
+    setBusy(false);
+    if (!result.ok) { setError(result.error); return; }
+    setConfirming(false);
+  }
+
+  return (
+    <div className="border-b border-stop-200/60 px-4 py-3 last:border-b-0">
+      <div className="flex items-center gap-4">
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-[14px] font-semibold text-ink">
+            {task.patientName ?? 'Unmatched patient'}
+          </span>
+          <span className="block truncate text-[12.5px] text-stop-700">{task.reason}</span>
+        </span>
+        <span className="tabular hidden shrink-0 font-mono text-[11.5px] text-ink-faint sm:block">
+          {formatDateTime(task.createdAt)}
+        </span>
+        {task.submissionId ? (
+          <button
+            type="button"
+            onClick={() => onOpen(task.submissionId!)}
+            className="shrink-0 rounded-control border border-stop-200 bg-surface px-2.5 py-1.5 text-[12.5px] font-medium text-stop-700 transition-colors hover:border-stop-600"
+          >
+            Open
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={() => setConfirming((c) => !c)}
+          className="shrink-0 rounded-control border border-stop-200 bg-surface px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-safe-600 hover:text-safe-700"
+        >
+          {confirming ? 'Cancel' : 'Done'}
+        </button>
+      </div>
+
+      {confirming ? (
+        <div className="mt-3 rounded-control border border-stop-200 bg-surface p-3">
+          <label
+            htmlFor={`note-${task.id}`}
+            className="mb-1.5 block text-[12.5px] font-medium text-ink"
+          >
+            What was done? <span className="font-normal text-ink-faint">(optional)</span>
+          </label>
+          <input
+            id={`note-${task.id}`}
+            type="text"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Called — patient stopping treatment, GP informed"
+            className="w-full rounded-control border border-line bg-surface px-3 py-2 text-[13.5px] text-ink placeholder:text-ink-faint focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none"
+          />
+          {error ? (
+            <p role="alert" className="mt-2 text-[12.5px] text-stop-700">{error}</p>
+          ) : null}
+          <div className="mt-2.5 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={clear}
+              disabled={busy}
+              className="inline-flex items-center gap-1.5 rounded-control bg-safe-700 px-3 py-1.5 text-[12.5px] font-semibold text-white transition-colors hover:bg-safe-900 disabled:opacity-60"
+            >
+              {busy ? <Loader2 size={12} className="animate-spin" /> : null}
+              Clear this task
+            </button>
+            <span className="text-[12px] text-ink-faint">
+              It leaves this list; the record stays.
+            </span>
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
