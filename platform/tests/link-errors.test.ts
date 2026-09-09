@@ -8,8 +8,7 @@
 
 import { describe, it, expect } from 'vitest';
 import {
-  asEmailOtpType, describeLinkFailure, landingFor, EMAIL_OTP_TYPES,
-} from '../src/lib/auth/link-errors';
+  asEmailOtpType, describeLinkFailure, landingFor, EMAIL_OTP_TYPES, describeSendFailure } from '../src/lib/auth/link-errors';
 
 describe('translating an auth failure', () => {
   it('replaces the PKCE message with something actionable', () => {
@@ -117,5 +116,74 @@ describe('where a link lands', () => {
 
   it('defaults to the dashboard', () => {
     expect(landingFor('magiclink', null)).toBe('/');
+  });
+});
+
+describe('describeSendFailure', () => {
+  it('says nothing about an unrecognised failure, so no secret leaks on a guess', () => {
+    expect(describeSendFailure('user not found')).toBeNull();
+    expect(describeSendFailure('signups not allowed for this instance')).toBeNull();
+    expect(describeSendFailure('')).toBeNull();
+    expect(describeSendFailure(null)).toBeNull();
+    expect(describeSendFailure(undefined)).toBeNull();
+  });
+
+  it('recognises the free-tier hourly cap, whichever way Supabase words it', () => {
+    for (const raw of [
+      'email rate limit exceeded',
+      'over_email_send_rate_limit',
+      'Email rate limit exceeded',
+    ]) {
+      const failure = describeSendFailure(raw);
+      expect(failure, raw).not.toBeNull();
+      expect(failure!.transient).toBe(true);
+    }
+  });
+
+  it('trusts a 429 even when the wording is unfamiliar', () => {
+    const failure = describeSendFailure('something we have never seen', 429);
+    expect(failure?.transient).toBe(true);
+  });
+
+  it('separates the per-address cooling-off from the hourly cap', () => {
+    const brief = describeSendFailure(
+      'For security purposes, you can only request this after 51 seconds.',
+    );
+    const hourly = describeSendFailure('email rate limit exceeded');
+    expect(brief).not.toBeNull();
+    expect(brief!.message).not.toBe(hourly!.message);
+  });
+
+  it('calls a broken mailer our problem rather than a wait', () => {
+    const failure = describeSendFailure('Error sending recovery email');
+    expect(failure?.transient).toBe(false);
+  });
+
+  // The reason this function exists: it must never become another way to ask
+  // whether an address belongs to somebody.
+  it('never describes anything that reveals whether an account exists', () => {
+    for (const raw of [
+      'User not found',
+      'user_not_found',
+      'Unable to validate email address: invalid format',
+      'User already registered',
+    ]) {
+      expect(describeSendFailure(raw), raw).toBeNull();
+    }
+  });
+
+  it('does not put a library or an HTTP status in front of a pharmacist', () => {
+    const messages = [
+      describeSendFailure('email rate limit exceeded'),
+      describeSendFailure('For security purposes, you can only request this after 9 seconds'),
+      describeSendFailure('Error sending invite email'),
+      describeSendFailure('gateway', 503),
+    ].map((f) => f!.message.toLowerCase());
+
+    for (const m of messages) {
+      for (const leak of ['supabase', 'smtp', '429', '500', 'null', 'undefined']) {
+        expect(m, m).not.toContain(leak);
+      }
+    }
   });
 });

@@ -41,6 +41,16 @@ export default function ForgotPasswordPage() {
     // reports success, deliberately.
     if (!result.ok) { setError(result.error ?? 'Please check the address.'); return; }
 
+    /*
+     * The email never left — a rate limit, or the mailer refusing it.
+     *
+     * Stay on the form and say so. Showing "check your email" here would be
+     * the specific failure this is meant to end: a person waiting on a link
+     * that was never sent, then asking again and pushing the limit further out.
+     * This says nothing about whether the address matched an account.
+     */
+    if (result.sendFailed) { setError(result.sendFailed); return; }
+
     setSent(true);
   }
 

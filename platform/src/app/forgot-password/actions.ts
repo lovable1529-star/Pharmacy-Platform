@@ -39,6 +39,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { resolveAppUrl } from '@/lib/app-url';
+import { describeSendFailure } from '@/lib/auth/link-errors';
 
 export interface ResetRequestResult {
   /**
@@ -50,6 +51,15 @@ export interface ResetRequestResult {
   ok: boolean;
   /** Only set for something the person can fix, like a malformed address. */
   error?: string;
+  /**
+   * Set when the email demonstrably never left — a rate limit, or a mailer
+   * that refused it.
+   *
+   * Separate from `error` because the request itself was fine. The caller must
+   * not show "check your email" when this is present; that is the whole point
+   * of it existing.
+   */
+  sendFailed?: string;
 }
 
 export async function requestPasswordReset(rawEmail: string): Promise<ResetRequestResult> {
@@ -79,13 +89,29 @@ export async function requestPasswordReset(rawEmail: string): Promise<ResetReque
     });
 
     if (error) {
-      /*
-       * Logged, not shown. A failure here is almost always configuration —
-       * a missing redirect allow-list entry, or SMTP not set up — and the
-       * person at the keyboard can do nothing about it. What they must not be
-       * told is whether the address matched an account.
-       */
       console.error('[forgot-password] reset request failed:', error.message);
+
+      /*
+       * Two kinds of failure arrive down this one path, and until now both were
+       * swallowed.
+       *
+       * One is anything touching the account — that stays hidden, because
+       * saying "no account with that email" turns this form into a way of
+       * discovering which staff addresses are real.
+       *
+       * The other is our own sender giving up. On the free tier Supabase allows
+       * a small number of messages an hour and then sends nothing, while this
+       * screen still said "check your email". Somebody waits for a link that
+       * was never going to arrive, asks again, and pushes the limit further
+       * out. Reporting that costs no secret: it is a fact about our mail
+       * service, not about their account.
+       *
+       * `describeSendFailure` returns null for anything it does not recognise
+       * as ours, so an unfamiliar message keeps the old silent behaviour rather
+       * than risking a leak on a guess.
+       */
+      const failure = describeSendFailure(error.message, error.status);
+      if (failure) return { ok: true, sendFailed: failure.message };
     }
   } catch (error) {
     console.error('[forgot-password] reset request threw:', error);

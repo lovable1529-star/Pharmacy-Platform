@@ -24,6 +24,7 @@ import { can } from '@/lib/tenancy/scope';
 import { normaliseGrid, type Permission } from '@/lib/tenancy/permissions';
 import { createSupabaseAdminClient, isInviteConfigured } from '@/lib/supabase/admin';
 import { resolveAppUrl } from '@/lib/app-url';
+import { describeSendFailure } from '@/lib/auth/link-errors';
 
 // ─────────────────────────────────────────────────────────────
 // Reading
@@ -521,11 +522,45 @@ export async function inviteUser(input: InviteInput) {
        */
       if (error) console.error('[users] invitation failed:', error.message, { email });
 
+      if (error?.message.includes('already registered')) {
+        return {
+          ok: false as const,
+          error: 'That email already has an account in Supabase Auth.',
+        };
+      }
+
+      /*
+       * Say plainly when the invitation did not go out.
+       *
+       * Nothing is hidden on this screen the way it is on the forgot-password
+       * form — an administrator typed the address, so they already know whether
+       * the person exists. Until now the raw text was passed through, so a
+       * exhausted email quota reached them as "email rate limit exceeded",
+       * which reads like a fault in the address they just typed.
+       *
+       * The warning about a second attempt is not padding. Supabase creates the
+       * auth account before it tries to send, so a send that fails can still
+       * leave the account behind; inviting the same person again then fails
+       * with "already registered", which looks like a different problem
+       * entirely and stops the administrator dead.
+       *
+       * There is no resend button to point them at, so this points at the route
+       * that does exist: the half-made account has no password, and Reset your
+       * password on the sign-in screen emails that person a working link.
+       */
+      const failure = describeSendFailure(error?.message, error?.status);
+      if (failure) {
+        return {
+          ok: false as const,
+          error: `${failure.message} Their account may still have been created. `
+            + 'If inviting them again says the email is already registered, ask '
+            + 'them to use "Reset your password" on the sign-in screen instead.',
+        };
+      }
+
       return {
         ok: false as const,
-        error: error?.message.includes('already registered')
-          ? 'That email already has an account in Supabase Auth.'
-          : (error?.message ?? 'Could not send that invitation.'),
+        error: error?.message ?? 'Could not send that invitation.',
       };
     }
 

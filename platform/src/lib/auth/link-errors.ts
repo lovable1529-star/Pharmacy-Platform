@@ -134,3 +134,80 @@ export function landingFor(type: string | null | undefined, requested: string | 
     ? requested
     : '/';
 }
+
+/* ── Emails that never left ──────────────────────────────────────────────── */
+
+export interface SendFailure {
+  /** Shown to whoever pressed the button. */
+  message: string;
+  /** True when waiting and trying again is the answer. */
+  transient: boolean;
+}
+
+/**
+ * Why an email did not go out — where that can be said safely.
+ *
+ * The forgot-password screen deliberately reports the same thing whether or not
+ * the address belongs to an account, because a form that says "no account with
+ * that email" is a way of discovering which staff addresses are real. That
+ * property is worth keeping.
+ *
+ * But it was hiding a different thing as well. On Supabase's free tier the
+ * built-in sender allows a handful of messages an hour, and once that is
+ * reached nothing is sent — while the screen still says "check your email".
+ * Somebody then waits for a link that was never going to arrive.
+ *
+ * A send failure says nothing about whether the account exists, so it is safe
+ * to report, and this is what distinguishes the two. Only failures recognised
+ * as OUR problem are described; anything unrecognised returns null and the
+ * caller keeps its generic success. Erring that way costs a clearer message and
+ * protects the property that matters.
+ */
+export function describeSendFailure(
+  raw: string | null | undefined,
+  status?: number | null,
+): SendFailure | null {
+  const text = (raw ?? '').toLowerCase();
+
+  // 429 is unambiguous whatever the wording says.
+  if (status === 429 || text.includes('rate limit') || text.includes('over_email_send')) {
+    return {
+      message:
+        'We could not send the email just now — too many have gone out in the '
+        + 'last hour. Wait a few minutes and try again.',
+      transient: true,
+    };
+  }
+
+  /*
+   * Supabase's wording when it is enforcing a per-address cooling-off period.
+   * Distinct from the hourly cap, and worth its own message because the wait is
+   * usually seconds rather than minutes.
+   */
+  if (text.includes('for security purposes') && text.includes('after')) {
+    return {
+      message:
+        'One was sent moments ago. Wait a short while before asking for another.',
+      transient: true,
+    };
+  }
+
+  if (text.includes('error sending') || text.includes('smtp') || text.includes('mailer')) {
+    return {
+      message:
+        'The email could not be sent. This is a problem at our end rather than '
+        + 'with your account — tell an administrator.',
+      transient: false,
+    };
+  }
+
+  if (status === 500 || status === 502 || status === 503) {
+    return {
+      message: 'The email service is not responding. Try again shortly.',
+      transient: true,
+    };
+  }
+
+  // Unrecognised: say nothing, so the caller keeps its generic success.
+  return null;
+}
