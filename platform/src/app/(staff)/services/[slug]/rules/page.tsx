@@ -30,6 +30,7 @@ import { db } from '@/lib/db/client';
 import { service, formVersion, rulesetVersion } from '@/lib/db/schema';
 import { checkRulesetCoverage } from '@/lib/rules/coverage';
 import { RulesClient } from './rules-client';
+import { RuleSimulator } from './rule-simulator';
 import type { RulesetDefinition } from '@/lib/rules/engine';
 import type { FormSchema } from '@/types/form-schema';
 import { EmptyState, Notice, PageHeader, Panel } from '@/components/ui/primitives';
@@ -165,6 +166,12 @@ export default async function ServiceRulesPage(
         version={row.rulesetVersion!}
         editable={can(actor, 'services:edit')}
       />
+
+      {/*
+        Below the rulebook, not above it: the question "what do these rules say"
+        comes before "what would they do to this patient".
+      */}
+      <RuleSimulator definition={definition} />
 
       <p className="mt-6 flex items-start gap-2 text-[12.5px] leading-[1.5] text-ink-faint">
         <PencilLine size={13} strokeWidth={2} className="mt-[2px] shrink-0" />
