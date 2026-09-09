@@ -25,6 +25,8 @@ import { normaliseGrid, type Permission } from '@/lib/tenancy/permissions';
 import { createSupabaseAdminClient, isInviteConfigured } from '@/lib/supabase/admin';
 import { resolveAppUrl } from '@/lib/app-url';
 import { describeSendFailure } from '@/lib/auth/link-errors';
+import { sendRecoveryEmail } from '@/lib/auth/recovery';
+import { invitationPending } from '@/lib/users/invitation-state';
 
 // ─────────────────────────────────────────────────────────────
 // Reading
@@ -50,6 +52,57 @@ export interface UserRow {
   branchId: string | null;
   branchName: string | null;
   validTo: Date | null;
+  /**
+   * Invited, but has never once signed in.
+   *
+   * Worth surfacing because the failure it usually means is silent. Supabase
+   * creates the account before it tries to email the invitation, so a send that
+   * fails — a rate limit, an unverified domain — leaves a real account nobody
+   * can get into, and the administrator who created it saw a success message.
+   * Nothing else on this screen distinguishes that from a colleague who simply
+   * has not got round to it.
+   *
+   * False when the sign-in state could not be read at all, so a temporary
+   * outage shows no badge rather than accusing everybody of not having joined.
+   */
+  invitationPending: boolean;
+}
+
+/**
+ * When each account last signed in.
+ *
+ * Supabase Auth owns this; our `app_user` table only mirrors identity. Reading
+ * it costs one extra call on this page, which is worth it to show an
+ * administrator that an invitation never landed.
+ *
+ * Failure is not propagated. The Users screen manages roles, branches and
+ * access, and none of that should stop working because an auth lookup timed
+ * out — the badge is the only thing that depends on this.
+ */
+async function fetchLastSignIns(): Promise<Map<string, Date | null>> {
+  const state = new Map<string, Date | null>();
+  if (!isInviteConfigured()) return state;
+
+  try {
+    const admin = createSupabaseAdminClient();
+
+    // Paged rather than assuming one call covers it. The cap stops a runaway
+    // loop if the API ever stops shrinking the last page.
+    for (let page = 1; page <= 20; page += 1) {
+      const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+      if (error) throw new Error(error.message);
+
+      for (const u of data.users) {
+        state.set(u.id, u.last_sign_in_at ? new Date(u.last_sign_in_at) : null);
+      }
+      if (data.users.length < 200) break;
+    }
+  } catch (error) {
+    console.error('[users] could not read sign-in state:', error);
+    return new Map();
+  }
+
+  return state;
 }
 
 export async function getUsersAndRoles(): Promise<{
@@ -128,11 +181,24 @@ export async function getUsersAndRoles(): Promise<{
     .from(branch)
     .where(and(eq(branch.organisationId, actor.organisationId), isNull(branch.archivedAt)));
 
+  const lastSignIns = await fetchLastSignIns();
+
+  const users: UserRow[] = userRows.map((u) => ({
+    ...u,
+    // `has` rather than a null check: an account missing from the map means the
+    // lookup failed, which is not the same as an account that never signed in.
+    invitationPending: invitationPending({
+      known: lastSignIns.has(u.id),
+      lastSignInAt: lastSignIns.get(u.id) ?? null,
+      disabledAt: u.disabledAt,
+    }),
+  }));
+
   return {
     roles: [...byRole.values()].sort(
       (a, b) => Number(b.isSystem) - Number(a.isSystem) || a.name.localeCompare(b.name),
     ),
-    users: userRows.sort((a, b) => a.fullName.localeCompare(b.fullName)),
+    users: users.sort((a, b) => a.fullName.localeCompare(b.fullName)),
     branches: branchRows,
     currentUserId: actor.userId,
     canEdit: can(actor, 'users:edit'),
@@ -426,6 +492,108 @@ export async function setUserDisabled(userId: string, disabled: boolean, reason 
 // ─────────────────────────────────────────────────────────────
 // Invitations
 // ─────────────────────────────────────────────────────────────
+
+/** Writes the audit entry, once the email is known to have gone. */
+const recordLinkSent = action<{ userId: string; email: string }>('users:edit').handler(
+  async (input) => ({
+    result: { id: input.userId },
+    audit: {
+      action: 'user.password_link_sent',
+      entityType: 'app_user',
+      entityId: input.userId,
+      after: { email: input.email },
+    },
+  }),
+);
+
+/**
+ * Send an existing account a fresh link to set a password.
+ *
+ * This is the missing half of inviting somebody. Supabase creates the auth
+ * account before it tries to email the invitation, so a send that fails leaves
+ * a real account that nobody can get into — and inviting the same person again
+ * is refused with "already registered", which reads like a different problem
+ * entirely. Until now the only way out was to talk the colleague through
+ * "Forgot password?" themselves.
+ *
+ * It sends a recovery link rather than a second invitation. Supabase will not
+ * re-invite an address it already knows, and a recovery link does the same job:
+ * it lets somebody with no password choose one.
+ *
+ * Not routed through `action()`. That wrapper opens a transaction, and this
+ * does no database writing worth a transaction — it reads one row to check the
+ * account is ours, then talks to an email service. Its audit entry is written
+ * on its own below.
+ */
+export async function sendPasswordLink(userId: string) {
+  let actor;
+  try {
+    actor = await getActor();
+  } catch {
+    return { ok: false as const, error: 'You are not signed in.' };
+  }
+
+  if (!can(actor, 'users:edit')) {
+    return { ok: false as const, error: 'You cannot manage user accounts.' };
+  }
+
+  /*
+   * Scoped to the caller's own organisation, from the database. Without this a
+   * user id from anywhere would make this endpoint email any account in the
+   * system on request — a way to pester an address, and a way to confirm one
+   * exists.
+   */
+  const [target] = await db
+    .select({ id: appUser.id, email: appUser.email, disabledAt: appUser.disabledAt })
+    .from(appUser)
+    .where(
+      and(
+        eq(appUser.id, userId),
+        eq(appUser.organisationId, actor.organisationId),
+        isNull(appUser.archivedAt),
+      ),
+    )
+    .limit(1);
+
+  if (!target) {
+    return { ok: false as const, error: 'That account no longer exists.' };
+  }
+
+  // A disabled account has no access to restore, and emailing its holder a
+  // working link would quietly undo the disabling.
+  if (target.disabledAt) {
+    return {
+      ok: false as const,
+      error: 'That account is disabled. Enable it first if they should get back in.',
+    };
+  }
+
+  const { sent, failure } = await sendRecoveryEmail(target.email);
+
+  if (!sent) {
+    return {
+      ok: false as const,
+      error: failure?.message ?? 'Could not send that link. Try again shortly.',
+    };
+  }
+
+  /*
+   * Recorded only once the message has actually gone.
+   *
+   * Deliberately after the send rather than around it: the audit append takes a
+   * per-organisation advisory lock for the life of its transaction, and holding
+   * that open across a call to an email service would block every other audited
+   * action in the pharmacy for as long as the mail server felt like taking.
+   *
+   * The cost is that a crash between the two loses the record of a link that
+   * was sent. That is the right way round — an unrecorded email is a gap in the
+   * log, whereas a recorded email that never left is a lie in it.
+   */
+  await recordLinkSent({ userId: target.id, email: target.email });
+
+  revalidatePath('/users');
+  return { ok: true as const, email: target.email };
+}
 
 export interface InviteInput {
   email: string;

@@ -30,6 +30,7 @@ import {
 } from '@/lib/tenancy/permissions';
 import {
   createRole, deleteRole, saveRolePermissions, assignRole, setUserDisabled,
+  sendPasswordLink,
   type RoleRow, type UserRow,
 } from './actions';
 
@@ -441,6 +442,7 @@ function UserRowView({
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sentTo, setSentTo] = useState<string | null>(null);
 
   const disabled = user.disabledAt !== null;
 
@@ -476,6 +478,17 @@ function UserRowView({
     else setError(result.error);
   }
 
+  async function resendLink() {
+    setBusy(true);
+    setError(null);
+    setSentTo(null);
+    const result = await sendPasswordLink(user.id);
+    setBusy(false);
+
+    if (result.ok) setSentTo(result.email);
+    else setError(result.error);
+  }
+
   const select =
     'rounded-[6px] border border-line bg-surface px-2.5 py-1.5 text-[13px] text-ink transition-[border-color,box-shadow] focus:border-brand-400 focus:shadow-[0_0_0_3px_var(--color-brand-50)] focus:outline-none disabled:opacity-55';
 
@@ -491,8 +504,26 @@ function UserRowView({
               you
             </span>
           ) : null}
+          {/*
+            An account that exists but has never been signed into. Usually the
+            invitation email failed and nobody was told, so this is the only
+            place that difference is visible.
+          */}
+          {user.invitationPending ? (
+            <span
+              title="This account has never been signed into. The invitation may not have arrived."
+              className="rounded-[4px] bg-review-100 px-1.5 py-0.5 font-mono text-[9.5px] uppercase tracking-wide text-review-700"
+            >
+              not joined
+            </span>
+          ) : null}
         </div>
         <div className="font-mono text-[11.5px] text-ink-faint">{user.email}</div>
+        {sentTo ? (
+          <div role="status" className="mt-1 text-[12px] text-safe-700">
+            Link sent to {sentTo}.
+          </div>
+        ) : null}
         {error ? <div className="mt-1 text-[12px] text-stop-700">{error}</div> : null}
       </td>
 
@@ -535,6 +566,25 @@ function UserRowView({
       </td>
 
       <td className="px-4 py-3 text-right">
+        {/*
+          The other half of inviting somebody. Supabase makes the account before
+          it emails the invitation, so a failed send leaves an account nobody
+          can reach — and re-inviting is refused as "already registered".
+          Offered for anyone active, since a colleague locked out years later
+          needs exactly the same thing.
+        */}
+        {canEdit && !disabled ? (
+          <button
+            type="button"
+            onClick={resendLink}
+            disabled={busy}
+            title={`Email ${user.email} a link to set a new password`}
+            className="mr-1.5 inline-flex items-center gap-1.5 rounded-[6px] border border-line px-2.5 py-1.5 text-[12.5px] font-medium text-ink-soft transition-colors hover:border-brand-200 hover:text-brand-700 disabled:opacity-55"
+          >
+            {busy ? <Loader2 size={12} className="animate-spin" /> : null}
+            {user.invitationPending ? 'Resend invitation' : 'Send password link'}
+          </button>
+        ) : null}
         {canDisable ? (
           <button
             type="button"
